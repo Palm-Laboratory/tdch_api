@@ -5,6 +5,7 @@ create table video_metadata (
     scripture varchar(255),
     service_type varchar(100),
     summary text,
+    tags text[] not null default '{}',
     visible boolean not null default true,
     featured boolean not null default false,
     pinned_rank integer,

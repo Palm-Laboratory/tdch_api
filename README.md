@@ -13,15 +13,14 @@
 
 권장 런타임:
 
-- Java 17+
+- Java 21+
 - PostgreSQL 16+
 
-현재 워크스페이스에는 Gradle이 설치되어 있지 않아 래퍼를 아직 생성하지 않았습니다.
-Gradle이 준비된 환경에서 아래를 한 번 실행하면 됩니다.
+이 프로젝트에는 Gradle wrapper가 포함되어 있습니다.
+Java 21이 준비된 환경에서 아래를 실행하면 됩니다.
 
 ```bash
-cd backend
-gradle wrapper
+cd tdch_api
 ./gradlew bootRun
 ```
 
@@ -36,6 +35,8 @@ YOUTUBE_MESSAGES_PLAYLIST_ID=your-playlist-id
 YOUTUBE_BETTER_DEVOTION_PLAYLIST_ID=your-playlist-id
 YOUTUBE_ITS_OKAY_PLAYLIST_ID=your-playlist-id
 ```
+
+메뉴(`content_menu`)는 Flyway seed로 생성하고, 실제 `youtube_playlist` 연결은 위 환경변수를 읽어 앱 시작 시 bootstrap 합니다.
 
 ## 초기 엔드포인트
 

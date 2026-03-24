@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -27,6 +29,9 @@ class VideoMetadata(
     var serviceType: String? = null,
     @Column(columnDefinition = "text")
     var summary: String? = null,
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(nullable = false, columnDefinition = "text[]")
+    var tags: Array<String> = emptyArray(),
     @Column(nullable = false)
     var visible: Boolean = true,
     @Column(nullable = false)

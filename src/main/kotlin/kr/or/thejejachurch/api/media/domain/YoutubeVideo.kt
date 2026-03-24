@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.OffsetDateTime
 
 @Entity
@@ -47,7 +49,8 @@ class YoutubeVideo(
     var youtubeWatchUrl: String,
     @Column(name = "youtube_embed_url", nullable = false, columnDefinition = "text")
     var youtubeEmbedUrl: String,
-    @Column(name = "raw_payload", columnDefinition = "text")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "raw_payload", columnDefinition = "jsonb")
     var rawPayload: String? = null,
     @Column(name = "last_synced_at", nullable = false)
     var lastSyncedAt: OffsetDateTime = OffsetDateTime.now(),

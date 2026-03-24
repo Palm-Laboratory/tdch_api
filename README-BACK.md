@@ -152,33 +152,30 @@
 - [`backend/src/main/resources/db/migration/V4__create_playlist_video.sql`](/Users/hanwool/ground/Palm%20Lab/thejejachurch_web/backend/src/main/resources/db/migration/V4__create_playlist_video.sql)
 - [`backend/src/main/resources/db/migration/V5__create_video_metadata.sql`](/Users/hanwool/ground/Palm%20Lab/thejejachurch_web/backend/src/main/resources/db/migration/V5__create_video_metadata.sql)
 - [`backend/src/main/resources/db/migration/V6__seed_content_menus.sql`](/Users/hanwool/ground/Palm%20Lab/thejejachurch_web/backend/src/main/resources/db/migration/V6__seed_content_menus.sql)
-- [`backend/src/main/resources/db/migration/V7__seed_youtube_playlists.sql`](/Users/hanwool/ground/Palm%20Lab/thejejachurch_web/backend/src/main/resources/db/migration/V7__seed_youtube_playlists.sql)
 
 주의:
 
-- `V7` 에는 실제 playlist id 대신 placeholder 값이 들어 있다.
-- 백엔드를 새 위치로 옮길 때 실제 재생목록 ID 또는 환경변수 기반 seed 전략으로 수정하는 것이 좋다.
+- `content_menu`만 Flyway seed로 생성한다.
+- 실제 `youtube_playlist` 연결은 환경변수 기반 bootstrap으로 애플리케이션 시작 시 upsert 하는 전략으로 정리했다.
 
 ## 기술 결정사항
 
 - 프론트와 백엔드는 분리 배포한다.
 - 백엔드는 `Kotlin + Spring Boot + PostgreSQL + Flyway` 로 간다.
-- 초기엔 Java 17 기준으로 부트스트랩했다.
-- 장기적으로는 Java 21로 올리는 방향이 좋지만, 현재 로컬 환경에서 `java -version` 확인 결과 Java 17만 있었다.
+- Java 21 기준으로 간다.
 
 ## 현재 환경에서 확인된 제약
 
-- 현재 워크스페이스에 `gradle` 명령이 없었다.
-- 따라서 `gradle wrapper` 생성 및 실제 부팅 테스트는 아직 못 했다.
-- 현재 임시 백엔드 코드는 "실행 검증 전" 상태다.
+- 현재 프로젝트에 Gradle wrapper를 추가했다.
+- 다만 이 샌드박스에서는 Gradle daemon/socket 제약과 Java 21 미설치 상태 때문에 실제 부팅 검증은 아직 끝내지 못했다.
 
-즉 새 백엔드 프로젝트에서 가장 먼저 해야 할 일은 래퍼 생성과 부팅 검증이다.
+즉 새 백엔드 프로젝트에서 가장 먼저 해야 할 일은 Java 21 환경에서 wrapper 기반 부팅 검증을 끝내는 것이다.
 
 ## 새 백엔드 프로젝트에서 이어서 해야 할 우선순위
 
-1. 현재 `backend/` 내용을 새 상위 폴더의 실제 백엔드 프로젝트로 옮긴다.
-2. `gradle wrapper` 를 생성한다.
-3. Postgres 로컬 컨테이너를 올리고 Flyway 마이그레이션을 검증한다.
+1. Java 21 환경에서 wrapper 기반 부팅 검증을 끝낸다.
+2. Postgres 로컬 컨테이너를 올리고 Flyway 마이그레이션을 검증한다.
+3. `content_menu` seed + `youtube_playlist` env bootstrap 을 반영한다.
 4. JPA Repository 를 추가한다.
 5. `MediaQueryService` 의 샘플 응답을 실제 DB 조회로 바꾼다.
 6. YouTube API 클라이언트를 구현한다.

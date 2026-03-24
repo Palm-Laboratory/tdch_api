@@ -15,7 +15,7 @@ create table youtube_video (
     detected_kind varchar(20) not null,
     youtube_watch_url text not null,
     youtube_embed_url text not null,
-    raw_payload text,
+    raw_payload jsonb,
     last_synced_at timestamptz not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
