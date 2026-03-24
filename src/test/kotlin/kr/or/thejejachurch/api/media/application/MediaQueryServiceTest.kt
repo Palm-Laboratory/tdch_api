@@ -14,7 +14,10 @@ import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepo
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
+import org.springframework.data.domain.PageImpl
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -51,10 +54,12 @@ class MediaQueryServiceTest {
 
         whenever(contentMenuRepository.findBySiteKey("messages")).thenReturn(menu)
         whenever(youtubePlaylistRepository.findByContentMenuIdAndSyncEnabledTrue(1L)).thenReturn(playlist)
-        whenever(playlistVideoRepository.findAllByYoutubePlaylistIdAndIsActiveTrueOrderByPositionAsc(10L)).thenReturn(
-            listOf(
-                playlistVideo(10L, 100L, 0),
-                playlistVideo(10L, 101L, 1),
+        whenever(playlistVideoRepository.findAllByYoutubePlaylistIdAndIsActiveTrueOrderByPositionAsc(eq(10L), any())).thenReturn(
+            PageImpl(
+                listOf(
+                    playlistVideo(10L, 100L, 0),
+                    playlistVideo(10L, 101L, 1),
+                ),
             ),
         )
         whenever(youtubeVideoRepository.findAllById(listOf(100L, 101L))).thenReturn(listOf(firstVideo, secondVideo))

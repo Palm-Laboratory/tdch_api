@@ -16,12 +16,11 @@ import kr.or.thejejachurch.api.media.interfaces.dto.MediaItemDto
 import kr.or.thejejachurch.api.media.interfaces.dto.MediaListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.MenuDto
 import kr.or.thejejachurch.api.media.interfaces.dto.VideoDetailResponse
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import kotlin.math.ceil
-import kotlin.math.min
 
 @Service
 class MediaQueryService(
@@ -54,17 +53,38 @@ class MediaQueryService(
     @Transactional(readOnly = true)
     fun getVideos(siteKey: String, page: Int, size: Int): MediaListResponse {
         val menu = getActiveMenu(siteKey)
-        val items = getMenuItems(siteKey = siteKey)
-        val fromIndex = min(page * size, items.size)
-        val toIndex = min(fromIndex + size, items.size)
+        val playlist = menu.id?.let(youtubePlaylistRepository::findByContentMenuIdAndSyncEnabledTrue)
+        if (playlist?.id == null) {
+            return MediaListResponse(
+                menu = toMenuDto(menu),
+                page = page,
+                size = size,
+                totalElements = 0,
+                totalPages = 0,
+                items = emptyList(),
+            )
+        }
+
+        val playlistPage = playlistVideoRepository.findAllByYoutubePlaylistIdAndIsActiveTrueOrderByPositionAsc(
+            playlist.id,
+            PageRequest.of(page, size),
+        )
+        val orderedVideos = loadOrderedVideos(playlistPage.content)
+        val orderedMetadata = loadMetadataMap(orderedVideos.values.mapNotNull { it.id })
+        val items = orderedVideos.values.map { video ->
+            toMediaItemDto(
+                video = video,
+                metadata = video.id?.let(orderedMetadata::get),
+            )
+        }
 
         return MediaListResponse(
             menu = toMenuDto(menu),
             page = page,
             size = size,
-            totalElements = items.size.toLong(),
-            totalPages = if (items.isEmpty()) 0 else ceil(items.size / size.toDouble()).toInt(),
-            items = items.subList(fromIndex, toIndex),
+            totalElements = playlistPage.totalElements,
+            totalPages = playlistPage.totalPages,
+            items = items,
         )
     }
 
