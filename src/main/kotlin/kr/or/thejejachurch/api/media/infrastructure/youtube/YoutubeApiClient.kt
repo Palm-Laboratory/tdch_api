@@ -23,10 +23,10 @@ class YoutubeApiClient(
         .connectTimeout(CONNECT_TIMEOUT)
         .build()
 
-    fun getPlaylistItems(
+    override fun getPlaylistItems(
         playlistId: String,
-        pageToken: String? = null,
-        maxResults: Int = MAX_RESULTS_PER_PAGE,
+        pageToken: String?,
+        maxResults: Int,
     ): YoutubePlaylistItemsPage {
         require(playlistId.isNotBlank()) { "playlistId must not be blank." }
         require(maxResults in 1..MAX_RESULTS_PER_PAGE) { "maxResults must be between 1 and $MAX_RESULTS_PER_PAGE." }
@@ -55,7 +55,7 @@ class YoutubeApiClient(
         )
     }
 
-    fun getVideos(videoIds: Collection<String>): List<YoutubeVideoResource> {
+    override fun getVideos(videoIds: Collection<String>): List<YoutubeVideoResource> {
         val normalizedIds = videoIds.map(String::trim).filter(String::isNotBlank).distinct()
         if (normalizedIds.isEmpty()) {
             return emptyList()
