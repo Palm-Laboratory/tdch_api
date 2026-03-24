@@ -10,6 +10,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
+    @ExceptionHandler(ForbiddenException::class)
+    fun handleForbidden(ex: ForbiddenException): ResponseEntity<ApiErrorResponse> =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+            ApiErrorResponse(
+                code = "FORBIDDEN",
+                message = ex.message ?: "접근 권한이 없습니다.",
+            )
+        )
+
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(ex: NotFoundException): ResponseEntity<ApiErrorResponse> =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(

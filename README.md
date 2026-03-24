@@ -35,6 +35,7 @@ YOUTUBE_API_KEY=your-key
 YOUTUBE_MESSAGES_PLAYLIST_ID=your-playlist-id
 YOUTUBE_BETTER_DEVOTION_PLAYLIST_ID=your-playlist-id
 YOUTUBE_ITS_OKAY_PLAYLIST_ID=your-playlist-id
+ADMIN_SYNC_KEY=your-admin-key
 ```
 
 메뉴(`content_menu`)는 Flyway seed로 생성하고, 실제 `youtube_playlist` 연결은 위 환경변수를 읽어 앱 시작 시 bootstrap 합니다.
@@ -46,3 +47,11 @@ YOUTUBE_ITS_OKAY_PLAYLIST_ID=your-playlist-id
 - `GET /api/v1/media/home`
 - `GET /api/v1/media/menus/{siteKey}/videos`
 - `GET /api/v1/media/videos/{youtubeVideoId}`
+- `POST /api/v1/admin/media/sync`
+
+수동 sync 실행 예시:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/admin/media/sync \
+  -H "X-Admin-Key: your-admin-key"
+```

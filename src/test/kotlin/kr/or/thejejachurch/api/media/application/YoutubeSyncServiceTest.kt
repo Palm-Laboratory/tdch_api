@@ -132,7 +132,7 @@ class YoutubeSyncServiceTest {
         whenever(videoMetadataRepository.save(any())).thenAnswer { it.getArgument<VideoMetadata>(0) }
         whenever(playlistVideoRepository.save(any())).thenAnswer { it.getArgument<PlaylistVideo>(0) }
 
-        service.syncAllMenus()
+        val result = service.syncAllMenus()
 
         val savedPlaylistRows = argumentCaptor<PlaylistVideo>()
         verify(playlistVideoRepository, times(2)).save(savedPlaylistRows.capture())
@@ -144,6 +144,9 @@ class YoutubeSyncServiceTest {
         assertThat(playlist.itemCount).isEqualTo(2)
         assertThat(playlist.lastSyncedAt).isNotNull()
         assertThat(playlist.channelId).isEqualTo("channel-video-1")
+        assertThat(result.totalPlaylists).isEqualTo(1)
+        assertThat(result.succeededPlaylists).isEqualTo(1)
+        assertThat(result.failedPlaylists).isZero()
     }
 
     private fun youtubeVideoResource(videoId: String, durationSeconds: Int): YoutubeVideoResource = YoutubeVideoResource(

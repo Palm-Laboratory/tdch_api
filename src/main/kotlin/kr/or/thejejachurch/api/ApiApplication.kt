@@ -1,5 +1,6 @@
 package kr.or.thejejachurch.api
 
+import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.config.YoutubeProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -8,7 +9,12 @@ import org.springframework.scheduling.annotation.EnableScheduling
 
 @EnableScheduling
 @SpringBootApplication
-@EnableConfigurationProperties(YoutubeProperties::class)
+@EnableConfigurationProperties(
+    value = [
+        YoutubeProperties::class,
+        AdminProperties::class,
+    ],
+)
 class ApiApplication
 
 fun main(args: Array<String>) {

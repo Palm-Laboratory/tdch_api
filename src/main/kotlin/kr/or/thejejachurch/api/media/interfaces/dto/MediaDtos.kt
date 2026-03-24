@@ -1,5 +1,7 @@
 package kr.or.thejejachurch.api.media.interfaces.dto
 
+import java.time.OffsetDateTime
+
 data class MenuDto(
     val siteKey: String,
     val name: String,
@@ -54,4 +56,12 @@ data class VideoDetailResponse(
     val serviceType: String? = null,
     val summary: String? = null,
     val tags: List<String> = emptyList(),
+)
+
+data class AdminMediaSyncResponse(
+    val status: String,
+    val totalPlaylists: Int,
+    val succeededPlaylists: Int,
+    val failedPlaylists: Int,
+    val completedAt: OffsetDateTime,
 )

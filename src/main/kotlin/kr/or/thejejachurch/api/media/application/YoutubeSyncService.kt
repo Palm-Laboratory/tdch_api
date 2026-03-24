@@ -35,19 +35,28 @@ class YoutubeSyncService(
     private val log = LoggerFactory.getLogger(javaClass)
     private val transactionTemplate = TransactionTemplate(transactionManager)
 
-    fun syncAllMenus() {
+    fun syncAllMenus(): YoutubeSyncSummary {
         val playlists = youtubePlaylistRepository.findAllBySyncEnabledTrueOrderByIdAsc()
         if (playlists.isEmpty()) {
             log.info("YouTube sync skipped because no sync-enabled playlists were found.")
-            return
+            return YoutubeSyncSummary(
+                totalPlaylists = 0,
+                succeededPlaylists = 0,
+                failedPlaylists = 0,
+            )
         }
+
+        var succeeded = 0
+        var failed = 0
 
         playlists.forEach { playlist ->
             try {
                 transactionTemplate.executeWithoutResult {
                     syncPlaylist(playlist)
                 }
+                succeeded += 1
             } catch (ex: Exception) {
+                failed += 1
                 log.error(
                     "YouTube sync failed for playlistId={} contentMenuId={}: {}",
                     playlist.youtubePlaylistId,
@@ -57,6 +66,12 @@ class YoutubeSyncService(
                 )
             }
         }
+
+        return YoutubeSyncSummary(
+            totalPlaylists = playlists.size,
+            succeededPlaylists = succeeded,
+            failedPlaylists = failed,
+        )
     }
 
     private fun syncPlaylist(playlist: YoutubePlaylist) {
