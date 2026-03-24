@@ -1,112 +1,209 @@
 package kr.or.thejejachurch.api.media.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
+import kr.or.thejejachurch.api.media.domain.ContentKind
+import kr.or.thejejachurch.api.media.domain.ContentMenu
+import kr.or.thejejachurch.api.media.domain.PlaylistVideo
+import kr.or.thejejachurch.api.media.domain.VideoMetadata
+import kr.or.thejejachurch.api.media.domain.YoutubeVideo
+import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.PlaylistVideoRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.VideoMetadataRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.interfaces.dto.HomeMediaResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.MediaItemDto
 import kr.or.thejejachurch.api.media.interfaces.dto.MediaListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.MenuDto
 import kr.or.thejejachurch.api.media.interfaces.dto.VideoDetailResponse
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import kotlin.math.ceil
+import kotlin.math.min
 
 @Service
-class MediaQueryService {
+class MediaQueryService(
+    private val contentMenuRepository: ContentMenuRepository,
+    private val youtubePlaylistRepository: YoutubePlaylistRepository,
+    private val playlistVideoRepository: PlaylistVideoRepository,
+    private val youtubeVideoRepository: YoutubeVideoRepository,
+    private val videoMetadataRepository: VideoMetadataRepository,
+) {
 
-    private val menus = listOf(
-        MenuDto(siteKey = "messages", name = "말씀/설교", slug = "messages", contentKind = "LONG_FORM"),
-        MenuDto(siteKey = "better-devotion", name = "더 좋은 묵상", slug = "better-devotion", contentKind = "LONG_FORM"),
-        MenuDto(siteKey = "its-okay", name = "그래도 괜찮아", slug = "its-okay", contentKind = "SHORT"),
-    )
+    @Transactional(readOnly = true)
+    fun getMenus(): List<MenuDto> =
+        contentMenuRepository.findAllByActiveTrueOrderByIdAsc().map(::toMenuDto)
 
-    private val sampleItemsByMenu = mapOf(
-        "messages" to listOf(
-            MediaItemDto(
-                youtubeVideoId = "abc123xyz",
-                title = "목마름을 채우시는 사랑",
-                displayTitle = "목마름을 채우시는 사랑",
-                thumbnailUrl = "https://i.ytimg.com/vi/abc123xyz/hqdefault.jpg",
-                youtubeUrl = "https://www.youtube.com/watch?v=abc123xyz",
-                embedUrl = "https://www.youtube.com/embed/abc123xyz",
-                publishedAt = "2026-03-02T02:00:00Z",
-                displayDate = "2026-03-02",
-                contentKind = "LONG_FORM",
-                preacher = "이진욱 목사",
-                scripture = "요한복음 4:1~42",
-                serviceType = "주일예배",
-                featured = true,
-            ),
-        ),
-        "better-devotion" to listOf(
-            MediaItemDto(
-                youtubeVideoId = "devotion001",
-                title = "아침을 여는 묵상",
-                displayTitle = "아침을 여는 묵상",
-                thumbnailUrl = "https://i.ytimg.com/vi/devotion001/hqdefault.jpg",
-                youtubeUrl = "https://www.youtube.com/watch?v=devotion001",
-                embedUrl = "https://www.youtube.com/embed/devotion001",
-                publishedAt = "2026-03-03T23:00:00Z",
-                displayDate = "2026-03-04",
-                contentKind = "LONG_FORM",
-                preacher = "이진욱 목사",
-                scripture = "시편 23:1~6",
-                serviceType = "묵상",
-            ),
-        ),
-        "its-okay" to listOf(
-            MediaItemDto(
-                youtubeVideoId = "short001",
-                title = "그래도 괜찮아 1화",
-                displayTitle = "그래도 괜찮아 1화",
-                thumbnailUrl = "https://i.ytimg.com/vi/short001/hqdefault.jpg",
-                youtubeUrl = "https://www.youtube.com/shorts/short001",
-                embedUrl = "https://www.youtube.com/embed/short001",
-                publishedAt = "2026-03-05T03:00:00Z",
-                displayDate = "2026-03-05",
-                contentKind = "SHORT",
-            ),
-        ),
-    )
+    @Transactional(readOnly = true)
+    fun getHome(): HomeMediaResponse {
+        val allMessageItems = getMenuItems(siteKey = "messages")
+        val latestMessages = allMessageItems.take(HOME_SECTION_SIZE)
+        val latestDevotions = getMenuItems(siteKey = "better-devotion", limit = HOME_SECTION_SIZE)
+        val latestShorts = getMenuItems(siteKey = "its-okay", limit = HOME_SECTION_SIZE)
 
-    fun getMenus(): List<MenuDto> = menus
-
-    fun getHome(): HomeMediaResponse = HomeMediaResponse(
-        featuredSermons = sampleItemsByMenu["messages"].orEmpty().filter { it.featured },
-        latestMessages = sampleItemsByMenu["messages"].orEmpty(),
-        latestDevotions = sampleItemsByMenu["better-devotion"].orEmpty(),
-        latestShorts = sampleItemsByMenu["its-okay"].orEmpty(),
-    )
-
-    fun getVideos(siteKey: String, page: Int, size: Int): MediaListResponse {
-        val menu = menus.firstOrNull { it.siteKey == siteKey }
-            ?: throw NotFoundException("Unknown siteKey: $siteKey")
-        val items = sampleItemsByMenu[siteKey].orEmpty()
-        return MediaListResponse(
-            menu = menu,
-            page = page,
-            size = size,
-            totalElements = items.size.toLong(),
-            totalPages = if (items.isEmpty()) 0 else 1,
-            items = items.take(size),
+        return HomeMediaResponse(
+            featuredSermons = allMessageItems.filter { it.featured }.take(HOME_SECTION_SIZE),
+            latestMessages = latestMessages,
+            latestDevotions = latestDevotions,
+            latestShorts = latestShorts,
         )
     }
 
-    fun getVideo(youtubeVideoId: String): VideoDetailResponse {
-        val item = sampleItemsByMenu.values.flatten().firstOrNull { it.youtubeVideoId == youtubeVideoId }
-            ?: throw NotFoundException("Unknown youtubeVideoId: $youtubeVideoId")
-        return VideoDetailResponse(
-            youtubeVideoId = item.youtubeVideoId,
-            title = item.title,
-            displayTitle = item.displayTitle,
-            description = "초기 부트스트랩 단계의 샘플 응답입니다. 이후 DB 조회로 대체됩니다.",
-            thumbnailUrl = item.thumbnailUrl,
-            youtubeUrl = item.youtubeUrl,
-            embedUrl = item.embedUrl,
-            contentKind = item.contentKind,
-            publishedAt = item.publishedAt,
-            preacher = item.preacher,
-            scripture = item.scripture,
-            serviceType = item.serviceType,
-            summary = "이 필드는 video_metadata.summary 로 옮겨질 예정입니다.",
-            tags = listOf(item.contentKind.lowercase()),
+    @Transactional(readOnly = true)
+    fun getVideos(siteKey: String, page: Int, size: Int): MediaListResponse {
+        val menu = getActiveMenu(siteKey)
+        val items = getMenuItems(siteKey = siteKey)
+        val fromIndex = min(page * size, items.size)
+        val toIndex = min(fromIndex + size, items.size)
+
+        return MediaListResponse(
+            menu = toMenuDto(menu),
+            page = page,
+            size = size,
+            totalElements = items.size.toLong(),
+            totalPages = if (items.isEmpty()) 0 else ceil(items.size / size.toDouble()).toInt(),
+            items = items.subList(fromIndex, toIndex),
         )
+    }
+
+    @Transactional(readOnly = true)
+    fun getVideo(youtubeVideoId: String): VideoDetailResponse {
+        val video = youtubeVideoRepository.findByYoutubeVideoId(youtubeVideoId)
+            ?: throw NotFoundException("Unknown youtubeVideoId: $youtubeVideoId")
+        val metadata = video.id?.let(videoMetadataRepository::findByYoutubeVideoId)
+
+        return VideoDetailResponse(
+            youtubeVideoId = video.youtubeVideoId,
+            title = video.title,
+            displayTitle = resolveDisplayTitle(video, metadata),
+            description = video.description.orEmpty(),
+            thumbnailUrl = resolveThumbnailUrl(video, metadata),
+            youtubeUrl = video.youtubeWatchUrl,
+            embedUrl = video.youtubeEmbedUrl,
+            contentKind = resolveContentKind(video, metadata).name,
+            publishedAt = video.publishedAt.toString(),
+            preacher = metadata?.preacher,
+            scripture = metadata?.scripture,
+            serviceType = metadata?.serviceType,
+            summary = metadata?.summary,
+            tags = metadata?.tags?.toList().orEmpty(),
+        )
+    }
+
+    private fun getMenuItems(siteKey: String, limit: Int? = null): List<MediaItemDto> {
+        val menu = getActiveMenu(siteKey)
+        val playlist = menu.id?.let(youtubePlaylistRepository::findByContentMenuIdAndSyncEnabledTrue)
+            ?: return emptyList()
+
+        val activePlaylistVideos = playlist.id?.let(playlistVideoRepository::findAllByYoutubePlaylistIdAndIsActiveTrueOrderByPositionAsc)
+            .orEmpty()
+        if (activePlaylistVideos.isEmpty()) {
+            return emptyList()
+        }
+
+        val orderedVideos = loadOrderedVideos(activePlaylistVideos)
+        val orderedMetadata = loadMetadataMap(orderedVideos.values.mapNotNull { it.id })
+
+        return orderedVideos.values.map { video ->
+            toMediaItemDto(
+                video = video,
+                metadata = video.id?.let(orderedMetadata::get),
+            )
+        }.let { items ->
+            if (limit == null) items else items.take(limit)
+        }
+    }
+
+    private fun loadOrderedVideos(playlistVideos: List<PlaylistVideo>): LinkedHashMap<Long, YoutubeVideo> {
+        val videoIds = playlistVideos.map { it.youtubeVideoId }
+        if (videoIds.isEmpty()) {
+            return linkedMapOf()
+        }
+
+        val videosById = youtubeVideoRepository.findAllById(videoIds).associateByNotNull { it.id }
+        val ordered = linkedMapOf<Long, YoutubeVideo>()
+
+        playlistVideos.forEach { playlistVideo ->
+            val video = videosById[playlistVideo.youtubeVideoId] ?: return@forEach
+            ordered[playlistVideo.youtubeVideoId] = video
+        }
+
+        return ordered
+    }
+
+    private fun loadMetadataMap(videoIds: List<Long>): Map<Long, VideoMetadata> {
+        if (videoIds.isEmpty()) {
+            return emptyMap()
+        }
+        return videoMetadataRepository.findAllByYoutubeVideoIdIn(videoIds).associateBy { it.youtubeVideoId }
+    }
+
+    private fun getActiveMenu(siteKey: String): ContentMenu =
+        contentMenuRepository.findBySiteKey(siteKey)
+            ?.takeIf { it.active }
+            ?: throw NotFoundException("Unknown siteKey: $siteKey")
+
+    private fun toMenuDto(menu: ContentMenu): MenuDto = MenuDto(
+        siteKey = menu.siteKey,
+        name = menu.menuName,
+        slug = menu.slug,
+        contentKind = menu.contentKind.name,
+    )
+
+    private fun toMediaItemDto(
+        video: YoutubeVideo,
+        metadata: VideoMetadata?,
+    ): MediaItemDto = MediaItemDto(
+        youtubeVideoId = video.youtubeVideoId,
+        title = video.title,
+        displayTitle = resolveDisplayTitle(video, metadata),
+        thumbnailUrl = resolveThumbnailUrl(video, metadata),
+        youtubeUrl = video.youtubeWatchUrl,
+        embedUrl = video.youtubeEmbedUrl,
+        publishedAt = video.publishedAt.toString(),
+        displayDate = resolveDisplayDate(video.publishedAt, metadata),
+        contentKind = resolveContentKind(video, metadata).name,
+        preacher = metadata?.preacher,
+        scripture = metadata?.scripture,
+        serviceType = metadata?.serviceType,
+        featured = metadata?.featured ?: false,
+    )
+
+    private fun resolveDisplayTitle(
+        video: YoutubeVideo,
+        metadata: VideoMetadata?,
+    ): String = metadata?.manualTitle?.takeIf { it.isNotBlank() } ?: video.title
+
+    private fun resolveThumbnailUrl(
+        video: YoutubeVideo,
+        metadata: VideoMetadata?,
+    ): String = metadata?.manualThumbnailUrl?.takeIf { it.isNotBlank() }
+        ?: video.thumbnailUrl
+        ?: ""
+
+    private fun resolveDisplayDate(
+        publishedAt: OffsetDateTime,
+        metadata: VideoMetadata?,
+    ): String = metadata?.manualPublishedDate?.toString() ?: publishedAt.toLocalDate().format(DATE_FORMATTER)
+
+    private fun resolveContentKind(
+        video: YoutubeVideo,
+        metadata: VideoMetadata?,
+    ): ContentKind = metadata?.manualKind ?: video.detectedKind
+
+    private fun <K, V> Iterable<V>.associateByNotNull(keySelector: (V) -> K?): Map<K, V> {
+        val map = linkedMapOf<K, V>()
+        for (element in this) {
+            val key = keySelector(element) ?: continue
+            map[key] = element
+        }
+        return map
+    }
+
+    companion object {
+        private const val HOME_SECTION_SIZE = 12
+        private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     }
 }

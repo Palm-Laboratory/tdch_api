@@ -21,6 +21,7 @@ Java 21이 준비된 환경에서 아래를 실행하면 됩니다.
 
 ```bash
 cd tdch_api
+cp .env.example .env
 ./gradlew bootRun
 ```
 
