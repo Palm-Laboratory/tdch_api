@@ -143,15 +143,25 @@ class YoutubeSyncService(
         val playlistDbId = playlist.id ?: throw IllegalStateException("youtube_playlist.id is null")
         val now = OffsetDateTime.now()
         val existingRows = playlistVideoRepository.findAllByYoutubePlaylistIdOrderByPositionAsc(playlistDbId)
-            .associateBy { it.youtubeVideoId }
+        val existingRowsByVideoId = existingRows.associateBy { it.youtubeVideoId }
         val activeVideoIds = mutableSetOf<Long>()
+
+        // Free current positions first so inserts and reorders do not collide with the unique
+        // (youtube_playlist_id, position) constraint while this playlist is being rewritten.
+        existingRows.forEachIndexed { index, row ->
+            row.position = -(index + 1)
+            row.updatedAt = now
+        }
+        if (existingRows.isNotEmpty()) {
+            playlistVideoRepository.flush()
+        }
 
         playlistItems.forEach { item ->
             val video = videosByYoutubeId[item.videoId] ?: return@forEach
             val videoDbId = video.id ?: return@forEach
             activeVideoIds += videoDbId
 
-            val existing = existingRows[videoDbId]
+            val existing = existingRowsByVideoId[videoDbId]
             if (existing == null) {
                 playlistVideoRepository.save(
                     PlaylistVideo(
@@ -172,7 +182,7 @@ class YoutubeSyncService(
             }
         }
 
-        existingRows.values
+        existingRows
             .filter { it.youtubeVideoId !in activeVideoIds }
             .forEach { row ->
                 row.isActive = false
