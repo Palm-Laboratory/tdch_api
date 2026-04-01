@@ -63,7 +63,7 @@ from (
         ('sermons', 'sermons-messages', '말씀/설교', '/sermons/messages', '/sermons/messages', 'CONTENT_REF', 'messages', true, true, true, true, true, true, 10),
         ('sermons', 'sermons-better-devotion', '더 좋은 묵상', '/sermons/better-devotion', '/sermons/better-devotion', 'CONTENT_REF', 'better-devotion', true, true, true, true, true, false, 20),
         ('sermons', 'sermons-its-okay', '그래도 괜찮아', '/sermons/its-okay', '/sermons/its-okay', 'CONTENT_REF', 'its-okay', true, true, true, true, true, false, 30),
-        ('newcomer', 'newcomer-main', '새가족 안내', '/newcomer/guide', '/newcomer/guide', 'INTERNAL', null, true, true, true, true, true, true, 10),
+        ('newcomer', 'newcomer-main', '새가족 안내', '/newcomer', '/newcomer', 'INTERNAL', null, true, true, true, true, true, true, 10),
         ('newcomer', 'newcomer-care', '새가족 양육', '/newcomer/care', '/newcomer/care', 'INTERNAL', null, true, true, true, true, true, false, 20),
         ('newcomer', 'newcomer-curriculum', '교육 과정', '/newcomer/curriculum', '/newcomer/curriculum', 'INTERNAL', null, true, true, true, true, true, false, 30),
         ('location-contact', 'location-contact-map', '지도', '/about/location#map', '/about/location', 'ANCHOR', null, true, true, true, true, true, false, 10),
