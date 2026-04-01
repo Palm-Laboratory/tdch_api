@@ -53,6 +53,7 @@ data class VideoDetailResponse(
     val publishedAt: String,
     val preacher: String? = null,
     val scripture: String? = null,
+    val scriptureBody: String? = null,
     val serviceType: String? = null,
     val summary: String? = null,
     val tags: List<String> = emptyList(),

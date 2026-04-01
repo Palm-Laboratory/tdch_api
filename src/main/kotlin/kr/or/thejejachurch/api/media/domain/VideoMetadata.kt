@@ -25,6 +25,8 @@ class VideoMetadata(
     var preacher: String? = null,
     @Column(length = 255)
     var scripture: String? = null,
+    @Column(name = "scripture_body", columnDefinition = "text")
+    var scriptureBody: String? = null,
     @Column(name = "service_type", length = 100)
     var serviceType: String? = null,
     @Column(columnDefinition = "text")

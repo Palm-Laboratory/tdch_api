@@ -106,6 +106,7 @@ class MediaQueryService(
             publishedAt = video.publishedAt.toString(),
             preacher = metadata?.preacher,
             scripture = metadata?.scripture,
+            scriptureBody = metadata?.scriptureBody,
             serviceType = metadata?.serviceType,
             summary = metadata?.summary,
             tags = metadata?.tags?.toList().orEmpty(),
