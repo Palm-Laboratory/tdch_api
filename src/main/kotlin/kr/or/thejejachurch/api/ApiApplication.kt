@@ -1,6 +1,7 @@
 package kr.or.thejejachurch.api
 
 import kr.or.thejejachurch.api.common.config.AdminProperties
+import kr.or.thejejachurch.api.common.config.CorsProperties
 import kr.or.thejejachurch.api.common.config.YoutubeProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -13,6 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
     value = [
         YoutubeProperties::class,
         AdminProperties::class,
+        CorsProperties::class,
     ],
 )
 class ApiApplication

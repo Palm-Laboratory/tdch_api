@@ -37,6 +37,7 @@ YOUTUBE_MESSAGES_PLAYLIST_ID=your-playlist-id
 YOUTUBE_BETTER_DEVOTION_PLAYLIST_ID=your-playlist-id
 YOUTUBE_ITS_OKAY_PLAYLIST_ID=your-playlist-id
 ADMIN_SYNC_KEY=your-admin-key
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
 메뉴는 역할별로 나뉩니다.
@@ -61,4 +62,10 @@ ADMIN_SYNC_KEY=your-admin-key
 ```bash
 curl -X POST http://localhost:8080/api/v1/admin/media/sync \
   -H "X-Admin-Key: your-admin-key"
+```
+
+운영 CORS 예시:
+
+```text
+CORS_ALLOWED_ORIGINS=https://your-project.vercel.app,https://your-domain.com,https://www.your-domain.com
 ```
