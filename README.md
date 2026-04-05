@@ -69,3 +69,23 @@ curl -X POST http://localhost:8080/api/v1/admin/media/sync \
 ```text
 CORS_ALLOWED_ORIGINS=https://your-project.vercel.app,https://your-domain.com,https://www.your-domain.com
 ```
+
+## Oracle VM 운영 배포
+
+Oracle Cloud Infrastructure VM 기준 운영 파일을 함께 관리합니다.
+
+- `deploy/docker-compose.prod.yml`: 운영용 `app + postgres` compose
+- `deploy/nginx/api.tdch.co.kr.http.conf`: 인증서 발급 전 HTTP-only nginx 설정
+- `deploy/nginx/api.tdch.co.kr.conf`: 인증서 발급 후 HTTPS reverse proxy 설정
+- `.env.production.example`: `/opt/tdch/.env` 작성용 예시
+- `.github/workflows/deploy-oracle.yml`: `main` 브랜치용 GHCR + SSH 배포 워크플로
+- `docs/oracle-oci-deploy.md`: VM 반영 절차와 GitHub Secrets 정리
+
+운영 VM의 최종 파일 배치는 아래를 전제로 합니다.
+
+```text
+/opt/tdch/.env
+/opt/tdch/docker-compose.prod.yml
+```
+
+배포 워크플로는 `GHCR`에 이미지를 올린 뒤, Oracle VM에 SSH로 접속해 `docker compose pull && up -d`를 실행합니다.
