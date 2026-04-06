@@ -1,0 +1,28 @@
+package kr.or.thejejachurch.api.adminaccount.application
+
+import kr.or.thejejachurch.api.adminaccount.domain.AdminAccountRole
+import java.time.OffsetDateTime
+
+data class AuthenticatedAdminAccount(
+    val id: Long,
+    val username: String,
+    val displayName: String,
+    val role: AdminAccountRole,
+)
+
+data class AdminAccountSummary(
+    val id: Long,
+    val username: String,
+    val displayName: String,
+    val role: AdminAccountRole,
+    val active: Boolean,
+    val lastLoginAt: OffsetDateTime?,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+)
+
+data class CreateAdminAccountCommand(
+    val username: String,
+    val displayName: String,
+    val password: String,
+)

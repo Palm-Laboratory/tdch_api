@@ -10,6 +10,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
+    @ExceptionHandler(UnauthorizedException::class)
+    fun handleUnauthorized(ex: UnauthorizedException): ResponseEntity<ApiErrorResponse> =
+        ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+            ApiErrorResponse(
+                code = "UNAUTHORIZED",
+                message = ex.message ?: "인증 정보가 올바르지 않습니다.",
+            )
+        )
+
     @ExceptionHandler(ForbiddenException::class)
     fun handleForbidden(ex: ForbiddenException): ResponseEntity<ApiErrorResponse> =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(
