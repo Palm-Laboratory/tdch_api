@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.adminaccount.application.AdminAccountManagementSe
 import kr.or.thejejachurch.api.adminaccount.application.AdminAccountSummary
 import kr.or.thejejachurch.api.adminaccount.domain.AdminAccountRole
 import kr.or.thejejachurch.api.adminaccount.interfaces.dto.AdminAccountCreateRequest
+import kr.or.thejejachurch.api.adminaccount.interfaces.dto.AdminAccountUpdateRequest
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
 import org.assertj.core.api.Assertions.assertThat
@@ -42,6 +43,60 @@ class AdminAccountControllerTest {
 
         assertThat(response.id).isEqualTo(2L)
         assertThat(response.username).isEqualTo("admin")
+    }
+
+    @Test
+    fun `update account delegates to management service`() {
+        val controller = AdminAccountController(
+            adminAccountManagementService = adminAccountManagementService,
+            adminProperties = AdminProperties(syncKey = "secret-key"),
+        )
+        whenever(
+            adminAccountManagementService.updateAdminAccount(
+                actorId = org.mockito.kotlin.eq(1L),
+                accountId = org.mockito.kotlin.eq(2L),
+                command = org.mockito.kotlin.any(),
+            )
+        ).thenReturn(
+            AdminAccountSummary(
+                id = 2L,
+                username = "admin",
+                displayName = "수정된 관리자",
+                role = AdminAccountRole.ADMIN,
+                active = false,
+                lastLoginAt = null,
+                createdAt = OffsetDateTime.now(),
+                updatedAt = OffsetDateTime.now(),
+            )
+        )
+
+        val response = controller.updateAccount(
+            "secret-key",
+            1L,
+            2L,
+            AdminAccountUpdateRequest(
+                username = "admin",
+                displayName = "수정된 관리자",
+                role = AdminAccountRole.ADMIN,
+                active = false,
+                password = "new-password-123",
+            )
+        )
+
+        assertThat(response.displayName).isEqualTo("수정된 관리자")
+        assertThat(response.active).isFalse()
+    }
+
+    @Test
+    fun `delete account delegates to management service`() {
+        val controller = AdminAccountController(
+            adminAccountManagementService = adminAccountManagementService,
+            adminProperties = AdminProperties(syncKey = "secret-key"),
+        )
+
+        controller.deleteAccount("secret-key", 1L, 2L)
+
+        verify(adminAccountManagementService).deleteAdminAccount(1L, 2L)
     }
 
     @Test

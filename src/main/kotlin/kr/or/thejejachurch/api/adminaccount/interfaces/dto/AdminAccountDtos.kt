@@ -24,6 +24,17 @@ data class AdminAccountCreateRequest(
     val password: String,
 )
 
+data class AdminAccountUpdateRequest(
+    @field:NotBlank(message = "username must not be blank")
+    val username: String,
+    @field:NotBlank(message = "displayName must not be blank")
+    val displayName: String,
+    val role: AdminAccountRole,
+    val active: Boolean,
+    @field:Size(min = 8, message = "password must be at least 8 characters")
+    val password: String? = null,
+)
+
 data class AdminAccountDto(
     val id: Long,
     val username: String,

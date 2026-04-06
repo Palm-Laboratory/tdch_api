@@ -82,4 +82,24 @@ class AdminAccountAuthServiceTest {
 
         verify(adminAccountRepository, never()).findByUsername("Admin")
     }
+
+    @Test
+    fun `get current account returns latest profile`() {
+        whenever(adminAccountRepository.findById(1L)).thenReturn(
+            java.util.Optional.of(
+                AdminAccount(
+                    id = 1L,
+                    username = "tdch.admin",
+                    displayName = "총관리자",
+                    passwordHash = passwordEncoder.encode("password-123"),
+                    role = AdminAccountRole.SUPER_ADMIN,
+                )
+            )
+        )
+
+        val result = service.getCurrentAccount(1L)
+
+        assertThat(result.username).isEqualTo("tdch.admin")
+        assertThat(result.displayName).isEqualTo("총관리자")
+    }
 }
