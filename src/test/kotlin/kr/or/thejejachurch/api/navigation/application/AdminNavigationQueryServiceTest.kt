@@ -5,7 +5,9 @@ import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationSet
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
@@ -14,10 +16,12 @@ import org.mockito.kotlin.whenever
 class AdminNavigationQueryServiceTest {
 
     private val siteNavigationItemRepository: SiteNavigationItemRepository = mock()
+    private val siteNavigationSetRepository: SiteNavigationSetRepository = mock()
     private val contentMenuRepository: ContentMenuRepository = mock()
 
     private val service = AdminNavigationQueryService(
         siteNavigationItemRepository = siteNavigationItemRepository,
+        siteNavigationSetRepository = siteNavigationSetRepository,
         contentMenuRepository = contentMenuRepository,
     )
 
@@ -33,7 +37,10 @@ class AdminNavigationQueryServiceTest {
             visible = false,
         )
 
-        whenever(siteNavigationItemRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(
+        whenever(siteNavigationSetRepository.findBySetKeyAndActiveTrue("main")).thenReturn(
+            SiteNavigationSet(id = 1L, setKey = "main", label = "메인 사이트 메뉴"),
+        )
+        whenever(siteNavigationItemRepository.findAllByNavigationSetIdOrderBySortOrderAscIdAsc(1L)).thenReturn(
             listOf(root, hiddenChild),
         )
 
@@ -75,6 +82,7 @@ class AdminNavigationQueryServiceTest {
         visible: Boolean = true,
     ): SiteNavigationItem = SiteNavigationItem(
         id = id,
+        navigationSetId = 1L,
         parentId = parentId,
         menuKey = key,
         label = label,

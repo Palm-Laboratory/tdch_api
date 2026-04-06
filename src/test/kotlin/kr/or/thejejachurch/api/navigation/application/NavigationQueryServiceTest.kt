@@ -3,17 +3,21 @@ package kr.or.thejejachurch.api.navigation.application
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationSet
 
 class NavigationQueryServiceTest {
 
     private val siteNavigationItemRepository: SiteNavigationItemRepository = mock()
+    private val siteNavigationSetRepository: SiteNavigationSetRepository = mock()
 
     private val service = NavigationQueryService(
         siteNavigationItemRepository = siteNavigationItemRepository,
+        siteNavigationSetRepository = siteNavigationSetRepository,
     )
 
     @Test
@@ -38,7 +42,10 @@ class NavigationQueryServiceTest {
             linkType = NavigationLinkType.ANCHOR,
         )
 
-        whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(
+        whenever(siteNavigationSetRepository.findBySetKeyAndActiveTrue("main")).thenReturn(
+            SiteNavigationSet(id = 1L, setKey = "main", label = "메인 사이트 메뉴"),
+        )
+        whenever(siteNavigationItemRepository.findAllByNavigationSetIdAndVisibleTrueOrderBySortOrderAscIdAsc(1L)).thenReturn(
             listOf(root, firstChild, secondChild),
         )
 
@@ -63,6 +70,7 @@ class NavigationQueryServiceTest {
         linkType: NavigationLinkType = NavigationLinkType.INTERNAL,
     ): SiteNavigationItem = SiteNavigationItem(
         id = id,
+        navigationSetId = 1L,
         parentId = parentId,
         menuKey = key,
         label = label,
