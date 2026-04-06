@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenuDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
@@ -14,15 +15,18 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AdminNavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
+    private val siteNavigationSetRepository: SiteNavigationSetRepository,
     private val contentMenuRepository: ContentMenuRepository,
 ) {
 
     @Transactional(readOnly = true)
     fun getNavigationItems(includeHidden: Boolean): AdminNavigationTreeResponse {
+        val mainNavigationSetId = siteNavigationSetRepository.findBySetKeyAndActiveTrue(MAIN_NAVIGATION_SET_KEY)?.id
+            ?: return AdminNavigationTreeResponse(groups = emptyList())
         val items = if (includeHidden) {
-            siteNavigationItemRepository.findAllByOrderBySortOrderAscIdAsc()
+            siteNavigationItemRepository.findAllByNavigationSetIdOrderBySortOrderAscIdAsc(mainNavigationSetId)
         } else {
-            siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()
+            siteNavigationItemRepository.findAllByNavigationSetIdAndVisibleTrueOrderBySortOrderAscIdAsc(mainNavigationSetId)
         }
         val itemsByParentId = items.groupBy { it.parentId }
 
@@ -35,8 +39,10 @@ class AdminNavigationQueryService(
 
     @Transactional(readOnly = true)
     fun getNavigationItem(id: Long): AdminNavigationItemDto {
-        val item = siteNavigationItemRepository.findById(id)
-            .orElseThrow { NotFoundException("내비게이션 항목을 찾을 수 없습니다. id=$id") }
+        val mainNavigationSetId = siteNavigationSetRepository.findBySetKeyAndActiveTrue(MAIN_NAVIGATION_SET_KEY)?.id
+            ?: throw NotFoundException("메인 내비게이션 세트를 찾을 수 없습니다.")
+        val item = siteNavigationItemRepository.findByNavigationSetIdAndId(mainNavigationSetId, id)
+            ?: throw NotFoundException("내비게이션 항목을 찾을 수 없습니다. id=$id")
 
         return toAdminNavigationItemDto(item, emptyMap())
     }
@@ -78,4 +84,8 @@ class AdminNavigationQueryService(
             toAdminNavigationItemDto(child, itemsByParentId)
         },
     )
+
+    companion object {
+        private const val MAIN_NAVIGATION_SET_KEY = "main"
+    }
 }

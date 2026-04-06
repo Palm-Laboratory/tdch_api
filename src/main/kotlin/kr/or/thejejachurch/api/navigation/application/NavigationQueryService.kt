@@ -2,6 +2,7 @@ package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationGroupDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationItemDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationResponse
@@ -11,11 +12,14 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class NavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
+    private val siteNavigationSetRepository: SiteNavigationSetRepository,
 ) {
 
     @Transactional(readOnly = true)
     fun getNavigation(): NavigationResponse {
-        val items = siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()
+        val mainNavigationSetId = siteNavigationSetRepository.findBySetKeyAndActiveTrue(MAIN_NAVIGATION_SET_KEY)?.id
+            ?: return NavigationResponse(groups = emptyList())
+        val items = siteNavigationItemRepository.findAllByNavigationSetIdAndVisibleTrueOrderBySortOrderAscIdAsc(mainNavigationSetId)
         val itemsByParentId = items.groupBy { it.parentId }
 
         val groups = itemsByParentId[null].orEmpty().map { root ->
@@ -54,4 +58,8 @@ class NavigationQueryService(
         breadcrumbVisible = item.breadcrumbVisible,
         defaultLanding = item.defaultLanding,
     )
+
+    companion object {
+        private const val MAIN_NAVIGATION_SET_KEY = "main"
+    }
 }

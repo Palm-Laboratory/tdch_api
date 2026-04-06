@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface SiteNavigationItemRepository : JpaRepository<SiteNavigationItem, Long> {
-    fun findAllByVisibleTrueOrderBySortOrderAscIdAsc(): List<SiteNavigationItem>
-    fun findAllByOrderBySortOrderAscIdAsc(): List<SiteNavigationItem>
+    fun findAllByNavigationSetIdAndVisibleTrueOrderBySortOrderAscIdAsc(navigationSetId: Long): List<SiteNavigationItem>
+    fun findAllByNavigationSetIdOrderBySortOrderAscIdAsc(navigationSetId: Long): List<SiteNavigationItem>
+    fun findByNavigationSetIdAndId(navigationSetId: Long, id: Long): SiteNavigationItem?
 }
