@@ -84,6 +84,96 @@ class AdminNavigationCommandService(
     }
 
     @Transactional
+    fun updateNavigationItem(
+        id: Long,
+        request: AdminNavigationUpsertRequest,
+    ): AdminNavigationItemDto {
+        val currentItem = siteNavigationItemRepository.findById(id)
+            .orElseThrow { NotFoundException("수정할 메뉴를 찾을 수 없습니다. id=$id") }
+        val navigationSetId = request.navigationSetId
+            ?: throw IllegalArgumentException("navigationSetId 는 필수입니다.")
+
+        if (currentItem.navigationSetId != navigationSetId) {
+            throw IllegalArgumentException("메뉴 세트는 변경할 수 없습니다.")
+        }
+
+        val navigationSet = siteNavigationSetRepository.findById(navigationSetId)
+            .orElseThrow { NotFoundException("내비게이션 세트를 찾을 수 없습니다. id=$navigationSetId") }
+
+        if (!navigationSet.active) {
+            throw IllegalArgumentException("비활성화된 내비게이션 세트의 메뉴는 수정할 수 없습니다.")
+        }
+
+        if (siteNavigationItemRepository.existsByNavigationSetIdAndMenuKeyAndIdNot(navigationSetId, request.menuKey, id)) {
+            throw IllegalArgumentException("이미 사용 중인 menuKey 입니다. menuKey=${request.menuKey}")
+        }
+
+        val parent = request.parentId?.let { parentId ->
+            if (parentId == id) {
+                throw IllegalArgumentException("메뉴 자신을 상위 메뉴로 선택할 수 없습니다.")
+            }
+
+            siteNavigationItemRepository.findByNavigationSetIdAndId(navigationSetId, parentId)
+                ?: throw NotFoundException("상위 메뉴를 찾을 수 없습니다. id=$parentId")
+        }
+
+        if (parent?.parentId != null) {
+            throw IllegalArgumentException("상위 메뉴는 1depth 메뉴만 선택할 수 있습니다.")
+        }
+
+        if (siteNavigationItemRepository.existsByParentId(id) && parent != null) {
+            throw IllegalArgumentException("하위 메뉴가 있는 1depth 메뉴는 2depth로 변경할 수 없습니다.")
+        }
+
+        if (parent == null && request.defaultLanding) {
+            throw IllegalArgumentException("1depth 메뉴는 기본 랜딩으로 지정할 수 없습니다.")
+        }
+
+        if (
+            parent != null &&
+            request.defaultLanding &&
+            siteNavigationItemRepository.existsByNavigationSetIdAndParentIdAndDefaultLandingTrueAndIdNot(
+                navigationSetId,
+                parent.id!!,
+                id,
+            )
+        ) {
+            throw IllegalArgumentException("이미 기본 랜딩으로 지정된 하위 메뉴가 있습니다.")
+        }
+
+        val linkType = runCatching { NavigationLinkType.valueOf(request.linkType) }
+            .getOrElse { throw IllegalArgumentException("지원하지 않는 링크 타입입니다. linkType=${request.linkType}") }
+
+        validateContentReference(request, linkType)
+        validateLinkFields(request, linkType)
+
+        val updated = siteNavigationItemRepository.save(
+            SiteNavigationItem(
+                id = currentItem.id,
+                navigationSetId = currentItem.navigationSetId,
+                parentId = parent?.id,
+                menuKey = request.menuKey,
+                label = request.label,
+                href = request.href,
+                matchPath = request.matchPath?.trim()?.takeIf { it.isNotEmpty() },
+                linkType = linkType,
+                contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() },
+                visible = request.visible,
+                headerVisible = request.headerVisible,
+                mobileVisible = request.mobileVisible,
+                lnbVisible = request.lnbVisible,
+                breadcrumbVisible = request.breadcrumbVisible,
+                defaultLanding = request.defaultLanding,
+                sortOrder = request.sortOrder,
+                createdAt = currentItem.createdAt,
+                updatedAt = currentItem.updatedAt,
+            )
+        )
+
+        return updated.toAdminNavigationItemDto()
+    }
+
+    @Transactional
     fun deleteNavigationItem(id: Long) {
         val item = siteNavigationItemRepository.findById(id)
             .orElseThrow { NotFoundException("삭제할 메뉴를 찾을 수 없습니다. id=$id") }
