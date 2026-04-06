@@ -14,6 +14,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.OffsetDateTime
 
@@ -157,6 +159,54 @@ class AdminNavigationCommandServiceTest {
 
         assertThat(created.contentSiteKey).isEqualTo("messages")
         assertThat(created.parentId).isEqualTo(1L)
+    }
+
+    @Test
+    fun `deleteNavigationItem deletes item without children`() {
+        whenever(siteNavigationItemRepository.findById(10L)).thenReturn(
+            java.util.Optional.of(
+                SiteNavigationItem(
+                    id = 10L,
+                    navigationSetId = 1L,
+                    parentId = null,
+                    menuKey = "test-root",
+                    label = "테스트",
+                    href = "/test",
+                    matchPath = "/test",
+                    linkType = NavigationLinkType.INTERNAL,
+                )
+            )
+        )
+        whenever(siteNavigationItemRepository.existsByParentId(10L)).thenReturn(false)
+
+        service.deleteNavigationItem(10L)
+
+        verify(siteNavigationItemRepository).delete(any())
+    }
+
+    @Test
+    fun `deleteNavigationItem rejects when children exist`() {
+        whenever(siteNavigationItemRepository.findById(10L)).thenReturn(
+            java.util.Optional.of(
+                SiteNavigationItem(
+                    id = 10L,
+                    navigationSetId = 1L,
+                    parentId = null,
+                    menuKey = "test-root",
+                    label = "테스트",
+                    href = "/test",
+                    matchPath = "/test",
+                    linkType = NavigationLinkType.INTERNAL,
+                )
+            )
+        )
+        whenever(siteNavigationItemRepository.existsByParentId(10L)).thenReturn(true)
+
+        assertThatThrownBy { service.deleteNavigationItem(10L) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("하위 메뉴가 있는 메뉴는 삭제할 수 없습니다")
+
+        verify(siteNavigationItemRepository, never()).delete(any())
     }
 
     private fun SiteNavigationItem.copyForTest(id: Long): SiteNavigationItem = SiteNavigationItem(
