@@ -11,6 +11,7 @@ import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationTreeResp
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationUpsertRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -60,6 +61,15 @@ class AdminNavigationController(
     ): AdminNavigationItemDto {
         validateAdminKey(adminKey)
         return adminNavigationCommandService.createNavigationItem(request)
+    }
+
+    @DeleteMapping("/items/{id}")
+    fun deleteItem(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @PathVariable id: Long,
+    ) {
+        validateAdminKey(adminKey)
+        adminNavigationCommandService.deleteNavigationItem(id)
     }
 
     @GetMapping("/content-menus")

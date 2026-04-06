@@ -83,6 +83,18 @@ class AdminNavigationCommandService(
         return saved.toAdminNavigationItemDto()
     }
 
+    @Transactional
+    fun deleteNavigationItem(id: Long) {
+        val item = siteNavigationItemRepository.findById(id)
+            .orElseThrow { NotFoundException("삭제할 메뉴를 찾을 수 없습니다. id=$id") }
+
+        if (siteNavigationItemRepository.existsByParentId(id)) {
+            throw IllegalArgumentException("하위 메뉴가 있는 메뉴는 삭제할 수 없습니다.")
+        }
+
+        siteNavigationItemRepository.delete(item)
+    }
+
     private fun validateContentReference(
         request: AdminNavigationUpsertRequest,
         linkType: NavigationLinkType,

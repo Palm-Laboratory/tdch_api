@@ -9,4 +9,5 @@ interface SiteNavigationItemRepository : JpaRepository<SiteNavigationItem, Long>
     fun findByNavigationSetIdAndId(navigationSetId: Long, id: Long): SiteNavigationItem?
     fun existsByNavigationSetIdAndMenuKey(navigationSetId: Long, menuKey: String): Boolean
     fun existsByNavigationSetIdAndParentIdAndDefaultLandingTrue(navigationSetId: Long, parentId: Long): Boolean
+    fun existsByParentId(parentId: Long): Boolean
 }
