@@ -8,6 +8,12 @@ interface SiteNavigationItemRepository : JpaRepository<SiteNavigationItem, Long>
     fun findAllByNavigationSetIdOrderBySortOrderAscIdAsc(navigationSetId: Long): List<SiteNavigationItem>
     fun findByNavigationSetIdAndId(navigationSetId: Long, id: Long): SiteNavigationItem?
     fun existsByNavigationSetIdAndMenuKey(navigationSetId: Long, menuKey: String): Boolean
+    fun existsByNavigationSetIdAndMenuKeyAndIdNot(navigationSetId: Long, menuKey: String, id: Long): Boolean
     fun existsByNavigationSetIdAndParentIdAndDefaultLandingTrue(navigationSetId: Long, parentId: Long): Boolean
+    fun existsByNavigationSetIdAndParentIdAndDefaultLandingTrueAndIdNot(
+        navigationSetId: Long,
+        parentId: Long,
+        id: Long,
+    ): Boolean
     fun existsByParentId(parentId: Long): Boolean
 }

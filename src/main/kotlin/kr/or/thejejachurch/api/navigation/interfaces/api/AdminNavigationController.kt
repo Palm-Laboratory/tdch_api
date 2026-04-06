@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
@@ -61,6 +62,16 @@ class AdminNavigationController(
     ): AdminNavigationItemDto {
         validateAdminKey(adminKey)
         return adminNavigationCommandService.createNavigationItem(request)
+    }
+
+    @PutMapping("/items/{id}")
+    fun updateItem(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @PathVariable id: Long,
+        @Valid @RequestBody request: AdminNavigationUpsertRequest,
+    ): AdminNavigationItemDto {
+        validateAdminKey(adminKey)
+        return adminNavigationCommandService.updateNavigationItem(id, request)
     }
 
     @DeleteMapping("/items/{id}")
