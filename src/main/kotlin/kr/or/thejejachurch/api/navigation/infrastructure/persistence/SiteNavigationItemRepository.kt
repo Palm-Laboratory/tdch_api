@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface SiteNavigationItemRepository : JpaRepository<SiteNavigationItem, Long> {
     fun findAllByVisibleTrueOrderBySortOrderAscIdAsc(): List<SiteNavigationItem>
+    fun findAllByOrderBySortOrderAscIdAsc(): List<SiteNavigationItem>
 }
