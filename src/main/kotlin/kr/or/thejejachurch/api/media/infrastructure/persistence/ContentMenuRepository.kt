@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface ContentMenuRepository : JpaRepository<ContentMenu, Long> {
     fun findAllByActiveTrueOrderByIdAsc(): List<ContentMenu>
     fun findBySiteKey(siteKey: String): ContentMenu?
+    fun findBySlug(slug: String): ContentMenu?
 }
