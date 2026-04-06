@@ -4,5 +4,6 @@ import kr.or.thejejachurch.api.navigation.domain.SiteNavigationSet
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface SiteNavigationSetRepository : JpaRepository<SiteNavigationSet, Long> {
+    fun findAllByActiveTrueOrderByIdAsc(): List<SiteNavigationSet>
     fun findBySetKeyAndActiveTrue(setKey: String): SiteNavigationSet?
 }

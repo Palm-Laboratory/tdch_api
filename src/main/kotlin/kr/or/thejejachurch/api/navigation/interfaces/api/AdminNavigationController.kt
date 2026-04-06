@@ -2,12 +2,18 @@ package kr.or.thejejachurch.api.navigation.interfaces.api
 
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
+import kr.or.thejejachurch.api.navigation.application.AdminNavigationCommandService
 import kr.or.thejejachurch.api.navigation.application.AdminNavigationQueryService
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
+import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetsResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationTreeResponse
+import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationUpsertRequest
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -17,8 +23,17 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/admin/navigation")
 class AdminNavigationController(
     private val adminNavigationQueryService: AdminNavigationQueryService,
+    private val adminNavigationCommandService: AdminNavigationCommandService,
     private val adminProperties: AdminProperties,
 ) {
+
+    @GetMapping("/sets")
+    fun getSets(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+    ): AdminNavigationSetsResponse {
+        validateAdminKey(adminKey)
+        return adminNavigationQueryService.getNavigationSets()
+    }
 
     @GetMapping("/items")
     fun getItems(
@@ -36,6 +51,15 @@ class AdminNavigationController(
     ): AdminNavigationItemDto {
         validateAdminKey(adminKey)
         return adminNavigationQueryService.getNavigationItem(id)
+    }
+
+    @PostMapping("/items")
+    fun createItem(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @Valid @RequestBody request: AdminNavigationUpsertRequest,
+    ): AdminNavigationItemDto {
+        validateAdminKey(adminKey)
+        return adminNavigationCommandService.createNavigationItem(request)
     }
 
     @GetMapping("/content-menus")

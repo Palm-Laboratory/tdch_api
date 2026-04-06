@@ -8,6 +8,8 @@ import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigat
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenuDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
+import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetDto
+import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetsResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationTreeResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -18,6 +20,19 @@ class AdminNavigationQueryService(
     private val siteNavigationSetRepository: SiteNavigationSetRepository,
     private val contentMenuRepository: ContentMenuRepository,
 ) {
+
+    @Transactional(readOnly = true)
+    fun getNavigationSets(): AdminNavigationSetsResponse = AdminNavigationSetsResponse(
+        sets = siteNavigationSetRepository.findAllByActiveTrueOrderByIdAsc().map { navigationSet ->
+            AdminNavigationSetDto(
+                id = navigationSet.id ?: throw IllegalStateException("site_navigation_set.id is null"),
+                setKey = navigationSet.setKey,
+                label = navigationSet.label,
+                description = navigationSet.description,
+                active = navigationSet.active,
+            )
+        }
+    )
 
     @Transactional(readOnly = true)
     fun getNavigationItems(includeHidden: Boolean): AdminNavigationTreeResponse {
@@ -65,6 +80,7 @@ class AdminNavigationQueryService(
         itemsByParentId: Map<Long?, List<SiteNavigationItem>>,
     ): AdminNavigationItemDto = AdminNavigationItemDto(
         id = item.id ?: throw IllegalStateException("site_navigation_item.id is null"),
+        navigationSetId = item.navigationSetId,
         parentId = item.parentId,
         menuKey = item.menuKey,
         label = item.label,
