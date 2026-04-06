@@ -266,6 +266,62 @@ class AdminNavigationCommandServiceTest {
     }
 
     @Test
+    fun `updateNavigationItem rejects duplicate default landing in same parent`() {
+        whenever(siteNavigationItemRepository.findById(11L)).thenReturn(
+            java.util.Optional.of(
+                SiteNavigationItem(
+                    id = 11L,
+                    navigationSetId = 1L,
+                    parentId = 20L,
+                    menuKey = "about-pastor",
+                    label = "담임목사 소개",
+                    href = "/about/pastor",
+                    matchPath = "/about/pastor",
+                    linkType = NavigationLinkType.INTERNAL,
+                    defaultLanding = false,
+                )
+            )
+        )
+        whenever(siteNavigationSetRepository.findById(1L)).thenReturn(
+            java.util.Optional.of(SiteNavigationSet(id = 1L, setKey = "main", label = "메인 사이트 메뉴")),
+        )
+        whenever(siteNavigationItemRepository.existsByNavigationSetIdAndMenuKeyAndIdNot(1L, "about-pastor", 11L)).thenReturn(false)
+        whenever(siteNavigationItemRepository.findByNavigationSetIdAndId(1L, 20L)).thenReturn(
+            SiteNavigationItem(
+                id = 20L,
+                navigationSetId = 1L,
+                parentId = null,
+                menuKey = "about",
+                label = "교회 소개",
+                href = "/about",
+                matchPath = "/about",
+                linkType = NavigationLinkType.INTERNAL,
+            )
+        )
+        whenever(
+            siteNavigationItemRepository.existsByNavigationSetIdAndParentIdAndDefaultLandingTrueAndIdNot(1L, 20L, 11L)
+        ).thenReturn(true)
+
+        assertThatThrownBy {
+            service.updateNavigationItem(
+                11L,
+                AdminNavigationUpsertRequest(
+                    navigationSetId = 1L,
+                    parentId = 20L,
+                    menuKey = "about-pastor",
+                    label = "담임목사 소개",
+                    href = "/about/pastor",
+                    matchPath = "/about/pastor",
+                    linkType = "INTERNAL",
+                    defaultLanding = true,
+                )
+            )
+        }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("이미 기본 랜딩으로 지정된 하위 메뉴가 있습니다")
+    }
+
+    @Test
     fun `deleteNavigationItem deletes item without children`() {
         whenever(siteNavigationItemRepository.findById(10L)).thenReturn(
             java.util.Optional.of(
