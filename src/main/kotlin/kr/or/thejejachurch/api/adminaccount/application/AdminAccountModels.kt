@@ -26,3 +26,11 @@ data class CreateAdminAccountCommand(
     val displayName: String,
     val password: String,
 )
+
+data class UpdateAdminAccountCommand(
+    val username: String,
+    val displayName: String,
+    val role: AdminAccountRole,
+    val active: Boolean,
+    val password: String? = null,
+)

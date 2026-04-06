@@ -4,13 +4,16 @@ import jakarta.validation.Valid
 import kr.or.thejejachurch.api.adminaccount.application.AdminAccountManagementService
 import kr.or.thejejachurch.api.adminaccount.application.CreateAdminAccountCommand
 import kr.or.thejejachurch.api.adminaccount.interfaces.dto.AdminAccountCreateRequest
+import kr.or.thejejachurch.api.adminaccount.interfaces.dto.AdminAccountUpdateRequest
 import kr.or.thejejachurch.api.adminaccount.interfaces.dto.AdminAccountsResponse
 import kr.or.thejejachurch.api.adminaccount.interfaces.dto.toDto
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
@@ -58,6 +61,37 @@ class AdminAccountController(
                 password = request.password,
             )
         ).toDto()
+    }
+
+    @PutMapping("/{id}")
+    fun updateAccount(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable id: Long,
+        @Valid @RequestBody request: AdminAccountUpdateRequest,
+    ) = run {
+        validateAdminKey(adminKey)
+        adminAccountManagementService.updateAdminAccount(
+            actorId = actorId,
+            accountId = id,
+            command = kr.or.thejejachurch.api.adminaccount.application.UpdateAdminAccountCommand(
+                username = request.username,
+                displayName = request.displayName,
+                role = request.role,
+                active = request.active,
+                password = request.password,
+            )
+        ).toDto()
+    }
+
+    @DeleteMapping("/{id}")
+    fun deleteAccount(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable id: Long,
+    ) {
+        validateAdminKey(adminKey)
+        adminAccountManagementService.deleteAdminAccount(actorId, id)
     }
 
     private fun validateAdminKey(adminKey: String?) {

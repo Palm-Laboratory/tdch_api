@@ -4,6 +4,8 @@ import kr.or.thejejachurch.api.adminaccount.application.AdminAccountAuthService
 import kr.or.thejejachurch.api.adminaccount.application.AuthenticatedAdminAccount
 import kr.or.thejejachurch.api.adminaccount.domain.AdminAccountRole
 import kr.or.thejejachurch.api.adminaccount.interfaces.dto.AdminAccountAuthenticateRequest
+import kr.or.thejejachurch.api.common.config.AdminProperties
+import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.common.error.UnauthorizedException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -25,7 +27,10 @@ class AdminAuthControllerTest {
                 role = AdminAccountRole.SUPER_ADMIN,
             )
         )
-        val controller = AdminAuthController(adminAccountAuthService)
+        val controller = AdminAuthController(
+            adminAccountAuthService,
+            AdminProperties(syncKey = "secret-key"),
+        )
 
         val response = controller.login(
             AdminAccountAuthenticateRequest(username = "super-admin", password = "password-123"),
@@ -40,12 +45,48 @@ class AdminAuthControllerTest {
         whenever(adminAccountAuthService.authenticate("super-admin", "wrong-password")).thenThrow(
             UnauthorizedException("아이디 또는 비밀번호가 올바르지 않습니다.")
         )
-        val controller = AdminAuthController(adminAccountAuthService)
+        val controller = AdminAuthController(
+            adminAccountAuthService,
+            AdminProperties(syncKey = "secret-key"),
+        )
 
         assertThrows<UnauthorizedException> {
             controller.login(
                 AdminAccountAuthenticateRequest(username = "super-admin", password = "wrong-password"),
             )
+        }
+    }
+
+    @Test
+    fun `me returns current authenticated account when admin key matches`() {
+        whenever(adminAccountAuthService.getCurrentAccount(1L)).thenReturn(
+            AuthenticatedAdminAccount(
+                id = 1L,
+                username = "tdch.admin",
+                displayName = "총관리자",
+                role = AdminAccountRole.SUPER_ADMIN,
+            )
+        )
+        val controller = AdminAuthController(
+            adminAccountAuthService,
+            AdminProperties(syncKey = "secret-key"),
+        )
+
+        val response = controller.me("secret-key", 1L)
+
+        assertThat(response.username).isEqualTo("tdch.admin")
+        assertThat(response.displayName).isEqualTo("총관리자")
+    }
+
+    @Test
+    fun `me throws forbidden when admin key mismatches`() {
+        val controller = AdminAuthController(
+            adminAccountAuthService,
+            AdminProperties(syncKey = "secret-key"),
+        )
+
+        assertThrows<ForbiddenException> {
+            controller.me("wrong-key", 1L)
         }
     }
 }
