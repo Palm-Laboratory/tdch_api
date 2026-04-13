@@ -38,8 +38,7 @@ from nav_set
 cross join (
     values
         ('about', '교회 소개', '/about', '/about', 'INTERNAL', true, true, true, true, true, 10),
-        ('sermons', '예배 영상', '/sermons', '/sermons', 'INTERNAL', true, true, true, true, true, 20),
-        ('newcomer', '제자 양육', '/newcomer', '/newcomer', 'INTERNAL', true, true, true, true, true, 30)
+        ('newcomer', '제자 양육', '/newcomer', '/newcomer', 'INTERNAL', true, true, true, true, true, 20)
 ) as data(
     menu_key,
     label,
@@ -105,9 +104,6 @@ join (
         ('about', 'about-location', '오시는 길', '/about/location', '/about/location', 'INTERNAL', true, true, true, true, true, false, 40),
         ('about', 'about-history', '교회연혁', '/about/history', '/about/history', 'INTERNAL', true, true, true, true, true, false, 50),
         ('about', 'about-giving', '헌금 안내', '/about/giving', '/about/giving', 'INTERNAL', true, true, true, true, true, false, 60),
-        ('sermons', 'sermons-messages', '말씀/설교', '/sermons/messages', '/sermons/messages', 'INTERNAL', true, true, true, true, true, true, 10),
-        ('sermons', 'sermons-better-devotion', '더 좋은 묵상', '/sermons/better-devotion', '/sermons/better-devotion', 'INTERNAL', true, true, true, true, true, false, 20),
-        ('sermons', 'sermons-its-okay', '그래도 괜찮아', '/sermons/its-okay', '/sermons/its-okay', 'INTERNAL', true, true, true, true, true, false, 30),
         ('newcomer', 'newcomer-guide', '새가족 안내', '/newcomer/guide', '/newcomer/guide', 'INTERNAL', true, true, true, true, true, true, 10),
         ('newcomer', 'newcomer-care', '새가족 양육', '/newcomer/care', '/newcomer/care', 'INTERNAL', true, true, true, true, true, false, 20),
         ('newcomer', 'newcomer-disciples', '제자 훈련', '/newcomer/disciples', '/newcomer/disciples', 'INTERNAL', true, true, true, true, true, false, 30)
