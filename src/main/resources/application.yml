@@ -21,13 +21,6 @@ management:
       exposure:
         include: health,info
 
-youtube:
-  api-key: ${YOUTUBE_API_KEY:}
-  playlists:
-    messages: ${YOUTUBE_MESSAGES_PLAYLIST_ID:}
-    better-devotion: ${YOUTUBE_BETTER_DEVOTION_PLAYLIST_ID:}
-    its-okay: ${YOUTUBE_ITS_OKAY_PLAYLIST_ID:}
-
 admin:
   sync-key: ${ADMIN_SYNC_KEY:}
   bootstrap:

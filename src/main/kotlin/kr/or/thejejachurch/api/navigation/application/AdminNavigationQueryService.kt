@@ -1,12 +1,9 @@
 package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
-import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
-import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenuDto
-import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetsResponse
@@ -18,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional
 class AdminNavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val siteNavigationSetRepository: SiteNavigationSetRepository,
-    private val contentMenuRepository: ContentMenuRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -31,7 +27,7 @@ class AdminNavigationQueryService(
                 description = navigationSet.description,
                 active = navigationSet.active,
             )
-        }
+        },
     )
 
     @Transactional(readOnly = true)
@@ -62,19 +58,6 @@ class AdminNavigationQueryService(
         return toAdminNavigationItemDto(item, emptyMap())
     }
 
-    @Transactional(readOnly = true)
-    fun getContentMenus(): AdminContentMenusResponse = AdminContentMenusResponse(
-        items = contentMenuRepository.findAllByActiveTrueOrderByIdAsc().map { menu ->
-            AdminContentMenuDto(
-                siteKey = menu.siteKey,
-                menuName = menu.menuName,
-                slug = menu.slug,
-                contentKind = menu.contentKind.name,
-                active = menu.active,
-            )
-        },
-    )
-
     private fun toAdminNavigationItemDto(
         item: SiteNavigationItem,
         itemsByParentId: Map<Long?, List<SiteNavigationItem>>,
@@ -87,7 +70,6 @@ class AdminNavigationQueryService(
         href = item.href,
         matchPath = item.matchPath,
         linkType = item.linkType.name,
-        contentSiteKey = item.contentSiteKey,
         visible = item.visible,
         headerVisible = item.headerVisible,
         mobileVisible = item.mobileVisible,
