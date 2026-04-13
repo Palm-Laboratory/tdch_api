@@ -1,8 +1,5 @@
 package kr.or.thejejachurch.api.navigation.application
 
-import kr.or.thejejachurch.api.media.domain.ContentKind
-import kr.or.thejejachurch.api.media.domain.ContentMenu
-import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationSet
@@ -23,12 +20,9 @@ class AdminNavigationCommandServiceTest {
 
     private val siteNavigationItemRepository: SiteNavigationItemRepository = mock()
     private val siteNavigationSetRepository: SiteNavigationSetRepository = mock()
-    private val contentMenuRepository: ContentMenuRepository = mock()
-
     private val service = AdminNavigationCommandService(
         siteNavigationItemRepository = siteNavigationItemRepository,
         siteNavigationSetRepository = siteNavigationSetRepository,
-        contentMenuRepository = contentMenuRepository,
     )
 
     @Test
@@ -48,7 +42,6 @@ class AdminNavigationCommandServiceTest {
                 href = item.href,
                 matchPath = item.matchPath,
                 linkType = item.linkType,
-                contentSiteKey = item.contentSiteKey,
                 visible = item.visible,
                 headerVisible = item.headerVisible,
                 mobileVisible = item.mobileVisible,
@@ -107,58 +100,6 @@ class AdminNavigationCommandServiceTest {
         }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("이미 사용 중인 menuKey")
-    }
-
-    @Test
-    fun `createNavigationItem validates content ref target`() {
-        whenever(siteNavigationSetRepository.findById(1L)).thenReturn(
-            java.util.Optional.of(SiteNavigationSet(id = 1L, setKey = "main", label = "메인 사이트 메뉴")),
-        )
-        whenever(siteNavigationItemRepository.existsByNavigationSetIdAndMenuKey(1L, "sermons-new")).thenReturn(false)
-        whenever(siteNavigationItemRepository.findByNavigationSetIdAndId(1L, 1L)).thenReturn(
-            SiteNavigationItem(
-                id = 1L,
-                navigationSetId = 1L,
-                parentId = null,
-                menuKey = "sermons",
-                label = "예배 영상",
-                href = "/sermons",
-                matchPath = "/sermons",
-                linkType = NavigationLinkType.INTERNAL,
-            )
-        )
-        whenever(contentMenuRepository.findBySiteKey("messages")).thenReturn(
-            ContentMenu(
-                id = 1L,
-                siteKey = "messages",
-                menuName = "말씀/설교",
-                slug = "messages",
-                contentKind = ContentKind.LONG_FORM,
-                active = true,
-            )
-        )
-        whenever(siteNavigationItemRepository.existsByNavigationSetIdAndParentIdAndDefaultLandingTrue(1L, 1L)).thenReturn(false)
-        whenever(siteNavigationItemRepository.save(any())).thenAnswer { invocation ->
-            val item = invocation.getArgument<SiteNavigationItem>(0)
-            item.copyForTest(id = 101L)
-        }
-
-        val created = service.createNavigationItem(
-            AdminNavigationUpsertRequest(
-                navigationSetId = 1L,
-                parentId = 1L,
-                menuKey = "sermons-new",
-                label = "새 설교 메뉴",
-                href = "/sermons/new",
-                matchPath = "/sermons/new",
-                linkType = "CONTENT_REF",
-                contentSiteKey = "messages",
-                defaultLanding = false,
-            )
-        )
-
-        assertThat(created.contentSiteKey).isEqualTo("messages")
-        assertThat(created.parentId).isEqualTo(1L)
     }
 
     @Test
@@ -378,7 +319,6 @@ class AdminNavigationCommandServiceTest {
         href = href,
         matchPath = matchPath,
         linkType = linkType,
-        contentSiteKey = contentSiteKey,
         visible = visible,
         headerVisible = headerVisible,
         mobileVisible = mobileVisible,
