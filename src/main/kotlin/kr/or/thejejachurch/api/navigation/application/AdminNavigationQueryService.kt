@@ -1,12 +1,12 @@
 package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
-import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.MediaCollectionRepository
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
-import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenuDto
-import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
+import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminMediaCollectionDto
+import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminMediaCollectionsResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetsResponse
@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 class AdminNavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val siteNavigationSetRepository: SiteNavigationSetRepository,
-    private val contentMenuRepository: ContentMenuRepository,
+    private val mediaCollectionRepository: MediaCollectionRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -63,14 +63,15 @@ class AdminNavigationQueryService(
     }
 
     @Transactional(readOnly = true)
-    fun getContentMenus(): AdminContentMenusResponse = AdminContentMenusResponse(
-        items = contentMenuRepository.findAllByActiveTrueOrderByIdAsc().map { menu ->
-            AdminContentMenuDto(
-                siteKey = menu.siteKey,
-                menuName = menu.menuName,
-                slug = menu.slug,
-                contentKind = menu.contentKind.name,
-                active = menu.active,
+    fun getMediaCollections(): AdminMediaCollectionsResponse = AdminMediaCollectionsResponse(
+        items = mediaCollectionRepository.findAllByActiveTrueOrderBySortOrderAscIdAsc().map { collection ->
+            AdminMediaCollectionDto(
+                id = collection.id ?: throw IllegalStateException("media_collection.id is null"),
+                collectionKey = collection.collectionKey,
+                title = collection.title,
+                defaultPath = collection.defaultPath,
+                contentKind = collection.contentKind.name,
+                active = collection.active,
             )
         },
     )
@@ -87,7 +88,7 @@ class AdminNavigationQueryService(
         href = item.href,
         matchPath = item.matchPath,
         linkType = item.linkType.name,
-        contentSiteKey = item.contentSiteKey,
+        targetMediaCollectionId = item.targetMediaCollectionId,
         visible = item.visible,
         headerVisible = item.headerVisible,
         mobileVisible = item.mobileVisible,

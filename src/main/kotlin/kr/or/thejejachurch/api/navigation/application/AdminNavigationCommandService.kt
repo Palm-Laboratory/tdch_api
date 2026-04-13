@@ -1,7 +1,7 @@
 package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
-import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.MediaCollectionRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 class AdminNavigationCommandService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val siteNavigationSetRepository: SiteNavigationSetRepository,
-    private val contentMenuRepository: ContentMenuRepository,
+    private val mediaCollectionRepository: MediaCollectionRepository,
 ) {
 
     @Transactional
@@ -69,7 +69,7 @@ class AdminNavigationCommandService(
                 href = request.href,
                 matchPath = request.matchPath?.trim()?.takeIf { it.isNotEmpty() },
                 linkType = linkType,
-                contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() },
+                targetMediaCollectionId = request.targetMediaCollectionId,
                 visible = request.visible,
                 headerVisible = request.headerVisible,
                 mobileVisible = request.mobileVisible,
@@ -157,7 +157,7 @@ class AdminNavigationCommandService(
                 href = request.href,
                 matchPath = request.matchPath?.trim()?.takeIf { it.isNotEmpty() },
                 linkType = linkType,
-                contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() },
+                targetMediaCollectionId = request.targetMediaCollectionId,
                 visible = request.visible,
                 headerVisible = request.headerVisible,
                 mobileVisible = request.mobileVisible,
@@ -189,16 +189,16 @@ class AdminNavigationCommandService(
         request: AdminNavigationUpsertRequest,
         linkType: NavigationLinkType,
     ) {
-        val contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() }
+        val targetMediaCollectionId = request.targetMediaCollectionId
         if (linkType == NavigationLinkType.CONTENT_REF) {
-            if (contentSiteKey == null) {
-                throw IllegalArgumentException("CONTENT_REF 메뉴는 contentSiteKey 가 필요합니다.")
+            if (targetMediaCollectionId == null) {
+                throw IllegalArgumentException("CONTENT_REF 메뉴는 targetMediaCollectionId 가 필요합니다.")
             }
-            if (contentMenuRepository.findBySiteKey(contentSiteKey) == null) {
-                throw IllegalArgumentException("존재하지 않는 콘텐츠 메뉴입니다. contentSiteKey=$contentSiteKey")
+            if (!mediaCollectionRepository.existsById(targetMediaCollectionId)) {
+                throw IllegalArgumentException("존재하지 않는 미디어 컬렉션입니다. targetMediaCollectionId=$targetMediaCollectionId")
             }
-        } else if (contentSiteKey != null) {
-            throw IllegalArgumentException("contentSiteKey 는 CONTENT_REF 타입에서만 사용할 수 있습니다.")
+        } else if (targetMediaCollectionId != null) {
+            throw IllegalArgumentException("targetMediaCollectionId 는 CONTENT_REF 타입에서만 사용할 수 있습니다.")
         }
     }
 
@@ -239,7 +239,7 @@ class AdminNavigationCommandService(
         href = href,
         matchPath = matchPath,
         linkType = linkType.name,
-        contentSiteKey = contentSiteKey,
+        targetMediaCollectionId = targetMediaCollectionId,
         visible = visible,
         headerVisible = headerVisible,
         mobileVisible = mobileVisible,
