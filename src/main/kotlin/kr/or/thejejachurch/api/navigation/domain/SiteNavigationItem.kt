@@ -31,8 +31,6 @@ class SiteNavigationItem(
     @Enumerated(EnumType.STRING)
     @Column(name = "link_type", nullable = false, length = 20)
     val linkType: NavigationLinkType = NavigationLinkType.INTERNAL,
-    @Column(name = "target_media_collection_id")
-    val targetMediaCollectionId: Long? = null,
     @Column(nullable = false)
     val visible: Boolean = true,
     @Column(name = "header_visible", nullable = false)

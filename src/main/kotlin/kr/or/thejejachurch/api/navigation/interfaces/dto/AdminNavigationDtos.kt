@@ -25,7 +25,6 @@ data class AdminNavigationItemDto(
     val href: String,
     val matchPath: String?,
     val linkType: String,
-    val targetMediaCollectionId: Long? = null,
     val visible: Boolean,
     val headerVisible: Boolean,
     val mobileVisible: Boolean,
@@ -41,19 +40,6 @@ data class AdminNavigationTreeResponse(
     val groups: List<AdminNavigationItemDto>,
 )
 
-data class AdminMediaCollectionDto(
-    val id: Long,
-    val collectionKey: String,
-    val title: String,
-    val defaultPath: String,
-    val contentKind: String,
-    val active: Boolean,
-)
-
-data class AdminMediaCollectionsResponse(
-    val items: List<AdminMediaCollectionDto>,
-)
-
 data class AdminNavigationUpsertRequest(
     @field:NotNull
     val navigationSetId: Long?,
@@ -67,7 +53,6 @@ data class AdminNavigationUpsertRequest(
     val matchPath: String? = null,
     @field:NotBlank
     val linkType: String,
-    val targetMediaCollectionId: Long? = null,
     val visible: Boolean = true,
     val headerVisible: Boolean = true,
     val mobileVisible: Boolean = true,

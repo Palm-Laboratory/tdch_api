@@ -4,5 +4,4 @@ enum class NavigationLinkType {
     INTERNAL,
     ANCHOR,
     EXTERNAL,
-    CONTENT_REF,
 }

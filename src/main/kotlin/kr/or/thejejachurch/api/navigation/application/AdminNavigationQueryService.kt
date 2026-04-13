@@ -1,12 +1,9 @@
 package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
-import kr.or.thejejachurch.api.media.infrastructure.persistence.MediaCollectionRepository
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
-import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminMediaCollectionDto
-import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminMediaCollectionsResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetsResponse
@@ -18,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional
 class AdminNavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val siteNavigationSetRepository: SiteNavigationSetRepository,
-    private val mediaCollectionRepository: MediaCollectionRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -31,7 +27,7 @@ class AdminNavigationQueryService(
                 description = navigationSet.description,
                 active = navigationSet.active,
             )
-        }
+        },
     )
 
     @Transactional(readOnly = true)
@@ -62,20 +58,6 @@ class AdminNavigationQueryService(
         return toAdminNavigationItemDto(item, emptyMap())
     }
 
-    @Transactional(readOnly = true)
-    fun getMediaCollections(): AdminMediaCollectionsResponse = AdminMediaCollectionsResponse(
-        items = mediaCollectionRepository.findAllByActiveTrueOrderBySortOrderAscIdAsc().map { collection ->
-            AdminMediaCollectionDto(
-                id = collection.id ?: throw IllegalStateException("media_collection.id is null"),
-                collectionKey = collection.collectionKey,
-                title = collection.title,
-                defaultPath = collection.defaultPath,
-                contentKind = collection.contentKind.name,
-                active = collection.active,
-            )
-        },
-    )
-
     private fun toAdminNavigationItemDto(
         item: SiteNavigationItem,
         itemsByParentId: Map<Long?, List<SiteNavigationItem>>,
@@ -88,7 +70,6 @@ class AdminNavigationQueryService(
         href = item.href,
         matchPath = item.matchPath,
         linkType = item.linkType.name,
-        targetMediaCollectionId = item.targetMediaCollectionId,
         visible = item.visible,
         headerVisible = item.headerVisible,
         mobileVisible = item.mobileVisible,

@@ -7,7 +7,6 @@ create table site_navigation_item (
     href varchar(255) not null,
     match_path varchar(255),
     link_type varchar(20) not null default 'INTERNAL',
-    target_media_collection_id bigint references media_collection(id),
     visible boolean not null default true,
     header_visible boolean not null default true,
     mobile_visible boolean not null default true,
@@ -18,7 +17,7 @@ create table site_navigation_item (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint chk_site_navigation_link_type
-        check (link_type in ('INTERNAL', 'ANCHOR', 'EXTERNAL', 'CONTENT_REF')),
+        check (link_type in ('INTERNAL', 'ANCHOR', 'EXTERNAL')),
     constraint chk_site_navigation_root_default_landing
         check (parent_id is not null or default_landing = false),
     constraint uk_site_navigation_item_set_menu_key
