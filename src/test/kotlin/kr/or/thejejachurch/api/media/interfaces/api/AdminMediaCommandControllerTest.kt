@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.media.application.AdminMediaCommandService
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
+import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdateVideoMetadataRequest
 import org.assertj.core.api.Assertions.assertThat
@@ -18,6 +19,58 @@ class AdminMediaCommandControllerTest {
     private val adminMediaCommandService: AdminMediaCommandService = mock()
 
     @Test
+    fun `create playlist delegates to command service`() {
+        val controller = AdminMediaCommandController(
+            adminMediaCommandService = adminMediaCommandService,
+            adminProperties = AdminProperties(syncKey = "secret-key"),
+        )
+        whenever(adminMediaCommandService.createPlaylist(any())).thenReturn(
+            AdminPlaylistDetailDto(
+                id = 1L,
+                menuName = "예배 영상",
+                siteKey = "sermons",
+                slug = "sermons",
+                contentKind = "LONG_FORM",
+                status = "PUBLISHED",
+                active = true,
+                navigationVisible = true,
+                sortOrder = 10,
+                description = "메인 설교 모음",
+                discoveredAt = null,
+                publishedAt = null,
+                lastModifiedBy = null,
+                youtubePlaylistId = "PL_SERMONS",
+                youtubeTitle = "예배 영상",
+                youtubeDescription = "",
+                channelTitle = "",
+                thumbnailUrl = "",
+                itemCount = 0,
+                syncEnabled = true,
+            )
+        )
+
+        val response = controller.createPlaylist(
+            adminKey = "secret-key",
+            actorId = 1L,
+            request = CreatePlaylistRequest(
+                siteKey = "sermons",
+                menuName = "예배 영상",
+                slug = "sermons",
+                contentKind = "LONG_FORM",
+                youtubePlaylistId = "PL_SERMONS",
+                syncEnabled = true,
+                active = true,
+                status = "PUBLISHED",
+                navigationVisible = true,
+                sortOrder = 10,
+                description = "메인 설교 모음",
+            ),
+        )
+
+        assertThat(response.siteKey).isEqualTo("sermons")
+    }
+
+    @Test
     fun `update playlist delegates to command service`() {
         val controller = AdminMediaCommandController(
             adminMediaCommandService = adminMediaCommandService,
@@ -30,7 +83,14 @@ class AdminMediaCommandControllerTest {
                 siteKey = "messages",
                 slug = "messages-renewed",
                 contentKind = "LONG_FORM",
+                status = "PUBLISHED",
                 active = true,
+                navigationVisible = false,
+                sortOrder = 3,
+                description = "업데이트 설명",
+                discoveredAt = null,
+                publishedAt = null,
+                lastModifiedBy = null,
                 youtubePlaylistId = "PL_MESSAGES",
                 youtubeTitle = "말씀/설교",
                 youtubeDescription = "",
@@ -49,12 +109,18 @@ class AdminMediaCommandControllerTest {
             request = UpdatePlaylistRequest(
                 menuName = "새 말씀 메뉴",
                 slug = "messages-renewed",
+                youtubePlaylistId = "PL_MESSAGES",
                 syncEnabled = true,
                 active = true,
+                status = "PUBLISHED",
+                navigationVisible = false,
+                sortOrder = 3,
+                description = "업데이트 설명",
             ),
         )
 
         assertThat(response.slug).isEqualTo("messages-renewed")
+        assertThat(response.status).isEqualTo("PUBLISHED")
     }
 
     @Test

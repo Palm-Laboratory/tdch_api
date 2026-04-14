@@ -52,7 +52,11 @@ class AdminMediaReadEndpointsTest {
                         siteKey = "messages",
                         slug = "messages",
                         contentKind = "LONG_FORM",
+                        status = "PUBLISHED",
                         active = true,
+                        navigationVisible = true,
+                        sortOrder = 1,
+                        description = "메시지 목록",
                         youtubePlaylistId = "PL_MESSAGES",
                         itemCount = 12,
                         syncEnabled = true,
@@ -68,7 +72,11 @@ class AdminMediaReadEndpointsTest {
                 siteKey = "messages",
                 slug = "messages",
                 contentKind = "LONG_FORM",
+                status = "PUBLISHED",
                 active = true,
+                navigationVisible = true,
+                sortOrder = 1,
+                description = "메시지 목록",
                 youtubePlaylistId = "PL_MESSAGES",
                 youtubeTitle = "말씀/설교",
                 youtubeDescription = "",
@@ -173,6 +181,7 @@ class AdminMediaReadEndpointsTest {
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.data").isArray)
+            .andExpect(jsonPath("$.data[0].status").value("PUBLISHED"))
     }
 
     @Test
@@ -185,6 +194,7 @@ class AdminMediaReadEndpointsTest {
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.siteKey").value("messages"))
+            .andExpect(jsonPath("$.status").value("PUBLISHED"))
     }
 
     @Test

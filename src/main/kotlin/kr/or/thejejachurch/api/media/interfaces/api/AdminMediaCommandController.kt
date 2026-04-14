@@ -6,9 +6,11 @@ import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.media.application.AdminMediaCommandService
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
+import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdateVideoMetadataRequest
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
@@ -21,6 +23,16 @@ class AdminMediaCommandController(
     private val adminMediaCommandService: AdminMediaCommandService,
     private val adminProperties: AdminProperties,
 ) {
+    @PostMapping("/playlists")
+    fun createPlaylist(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @Valid @RequestBody request: CreatePlaylistRequest,
+    ): AdminPlaylistDetailDto {
+        validateAdminKey(adminKey)
+        return adminMediaCommandService.createPlaylist(request)
+    }
+
     @PutMapping("/playlists/{siteKey}")
     fun updatePlaylist(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,

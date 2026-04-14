@@ -2,6 +2,7 @@ package kr.or.thejejachurch.api.media.application
 
 import kr.or.thejejachurch.api.media.domain.ContentKind
 import kr.or.thejejachurch.api.media.domain.ContentMenu
+import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.domain.PlaylistVideo
 import kr.or.thejejachurch.api.media.domain.YoutubePlaylist
 import kr.or.thejejachurch.api.media.domain.YoutubeSyncJob
@@ -52,7 +53,14 @@ class AdminMediaQueryServiceTest {
                     menuName = "말씀/설교",
                     slug = "messages",
                     contentKind = ContentKind.LONG_FORM,
+                    status = ContentMenuStatus.PUBLISHED,
                     active = true,
+                    navigationVisible = true,
+                    sortOrder = 10,
+                    description = "말씀/설교",
+                    discoveredAt = OffsetDateTime.parse("2026-04-14T06:00:00Z"),
+                    publishedAt = OffsetDateTime.parse("2026-04-15T06:00:00Z"),
+                    lastModifiedBy = 7L,
                 ),
             ),
         )
@@ -215,5 +223,88 @@ class AdminMediaQueryServiceTest {
         assertThat(detail.items.first().siteKey).isEqualTo("messages")
         assertThat(detail.items.last().youtubePlaylistId).isEqualTo("PL_SHORTS")
         assertThat(detail.items.last().errorMessage).isEqualTo("quota exceeded")
+    }
+
+    @Test
+    fun `get playlists exposes sermon menu operating fields`() {
+        whenever(contentMenuRepository.findAll()).thenReturn(
+            listOf(
+                ContentMenu(
+                    id = 1L,
+                    siteKey = "messages",
+                    menuName = "말씀/설교",
+                    slug = "messages",
+                    contentKind = ContentKind.LONG_FORM,
+                    status = ContentMenuStatus.PUBLISHED,
+                    active = true,
+                    navigationVisible = true,
+                    sortOrder = 10,
+                    description = "말씀/설교",
+                    discoveredAt = OffsetDateTime.parse("2026-04-14T06:00:00Z"),
+                    publishedAt = OffsetDateTime.parse("2026-04-15T06:00:00Z"),
+                    lastModifiedBy = 7L,
+                ),
+            ),
+        )
+        whenever(youtubePlaylistRepository.findByContentMenuId(1L)).thenReturn(
+            YoutubePlaylist(
+                id = 10L,
+                contentMenuId = 1L,
+                youtubePlaylistId = "PL_MESSAGES",
+                title = "말씀/설교",
+                syncEnabled = true,
+            ),
+        )
+        whenever(playlistVideoRepository.findAllByYoutubePlaylistIdAndIsActiveTrueOrderByPositionAsc(10L)).thenReturn(emptyList())
+
+        val response = service.getPlaylists(kind = null, search = null, page = 1, size = 20, sort = null, order = null)
+
+        assertThat(response.data.first().status).isEqualTo("PUBLISHED")
+        assertThat(response.data.first().navigationVisible).isTrue()
+        assertThat(response.data.first().sortOrder).isEqualTo(10)
+        assertThat(response.data.first().description).isEqualTo("말씀/설교")
+        assertThat(response.data.first().discoveredAt).isEqualTo(OffsetDateTime.parse("2026-04-14T06:00:00Z").toString())
+        assertThat(response.data.first().publishedAt).isEqualTo(OffsetDateTime.parse("2026-04-15T06:00:00Z").toString())
+        assertThat(response.data.first().lastModifiedBy).isEqualTo(7L)
+    }
+
+    @Test
+    fun `get playlist detail exposes sermon menu operating fields`() {
+        whenever(contentMenuRepository.findBySiteKey("messages")).thenReturn(
+            ContentMenu(
+                id = 1L,
+                siteKey = "messages",
+                menuName = "말씀/설교",
+                slug = "messages",
+                contentKind = ContentKind.LONG_FORM,
+                status = ContentMenuStatus.PUBLISHED,
+                active = true,
+                navigationVisible = true,
+                sortOrder = 10,
+                description = "말씀/설교",
+                discoveredAt = OffsetDateTime.parse("2026-04-14T06:00:00Z"),
+                publishedAt = OffsetDateTime.parse("2026-04-15T06:00:00Z"),
+                lastModifiedBy = 7L,
+            ),
+        )
+        whenever(youtubePlaylistRepository.findByContentMenuId(1L)).thenReturn(
+            YoutubePlaylist(
+                id = 10L,
+                contentMenuId = 1L,
+                youtubePlaylistId = "PL_MESSAGES",
+                title = "말씀/설교",
+                syncEnabled = true,
+            ),
+        )
+
+        val detail = service.getPlaylist("messages")
+
+        assertThat(detail.status).isEqualTo("PUBLISHED")
+        assertThat(detail.navigationVisible).isTrue()
+        assertThat(detail.sortOrder).isEqualTo(10)
+        assertThat(detail.description).isEqualTo("말씀/설교")
+        assertThat(detail.discoveredAt).isEqualTo(OffsetDateTime.parse("2026-04-14T06:00:00Z").toString())
+        assertThat(detail.publishedAt).isEqualTo(OffsetDateTime.parse("2026-04-15T06:00:00Z").toString())
+        assertThat(detail.lastModifiedBy).isEqualTo(7L)
     }
 }

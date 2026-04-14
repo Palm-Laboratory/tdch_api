@@ -2,18 +2,23 @@ package kr.or.thejejachurch.api.media.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.media.domain.ContentKind
+import kr.or.thejejachurch.api.media.domain.ContentMenu
+import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.domain.VideoMetadata
+import kr.or.thejejachurch.api.media.domain.YoutubePlaylist
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.VideoMetadataRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
+import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdateVideoMetadataRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 @Service
 class AdminMediaCommandService(
@@ -23,6 +28,53 @@ class AdminMediaCommandService(
     private val videoMetadataRepository: VideoMetadataRepository,
     private val adminMediaQueryService: AdminMediaQueryService,
 ) {
+
+    @Transactional
+    fun createPlaylist(
+        request: CreatePlaylistRequest,
+    ): AdminPlaylistDetailDto {
+        val siteKey = request.siteKey.trim().lowercase()
+        val menuName = request.menuName.trim()
+        val slug = request.slug.trim().lowercase()
+        val youtubePlaylistId = request.youtubePlaylistId.trim()
+
+        require(siteKey.isNotBlank()) { "siteKey must not be blank" }
+        require(menuName.isNotBlank()) { "menuName must not be blank" }
+        require(slug.isNotBlank()) { "slug must not be blank" }
+        require(youtubePlaylistId.isNotBlank()) { "youtubePlaylistId must not be blank" }
+
+        require(contentMenuRepository.findBySiteKey(siteKey) == null) { "이미 사용 중인 siteKey입니다." }
+        require(contentMenuRepository.findBySlug(slug) == null) { "이미 사용 중인 slug입니다." }
+        require(youtubePlaylistRepository.findByYoutubePlaylistId(youtubePlaylistId) == null) { "이미 연결된 youtubePlaylistId입니다." }
+
+        val now = OffsetDateTime.now()
+        val menu = contentMenuRepository.save(
+            ContentMenu(
+                siteKey = siteKey,
+                menuName = menuName,
+                slug = slug,
+                contentKind = ContentKind.valueOf(request.contentKind.trim().uppercase()),
+                status = ContentMenuStatus.valueOf(request.status.trim().uppercase()),
+                active = request.active,
+                navigationVisible = request.navigationVisible,
+                sortOrder = request.sortOrder,
+                description = request.description.normalizedOrNull(),
+                discoveredAt = now,
+                publishedAt = if (request.status.equals("PUBLISHED", ignoreCase = true)) now else null,
+            ),
+        )
+
+        youtubePlaylistRepository.save(
+            YoutubePlaylist(
+                contentMenuId = menu.id ?: throw IllegalStateException("content menu id is missing"),
+                youtubePlaylistId = youtubePlaylistId,
+                title = menuName,
+                syncEnabled = request.syncEnabled,
+            ),
+        )
+
+        return adminMediaQueryService.getPlaylist(siteKey)
+    }
 
     @Transactional
     fun updatePlaylist(
@@ -47,10 +99,25 @@ class AdminMediaCommandService(
 
         menu.menuName = menuName
         menu.slug = slug
+        menu.status = ContentMenuStatus.valueOf(request.status.trim().uppercase())
         menu.active = request.active
+        menu.navigationVisible = request.navigationVisible
+        menu.sortOrder = request.sortOrder
+        menu.description = request.description.normalizedOrNull()
+        if (menu.status == ContentMenuStatus.PUBLISHED && menu.publishedAt == null) {
+            menu.publishedAt = OffsetDateTime.now()
+        }
         contentMenuRepository.save(menu)
 
         menu.id?.let(youtubePlaylistRepository::findByContentMenuId)?.let { playlist ->
+            val requestedYoutubePlaylistId = request.youtubePlaylistId?.trim()?.takeIf { it.isNotEmpty() }
+            if (requestedYoutubePlaylistId != null && requestedYoutubePlaylistId != playlist.youtubePlaylistId) {
+                val existing = youtubePlaylistRepository.findByYoutubePlaylistId(requestedYoutubePlaylistId)
+                if (existing != null && existing.id != playlist.id) {
+                    throw IllegalArgumentException("이미 연결된 youtubePlaylistId입니다.")
+                }
+                playlist.youtubePlaylistId = requestedYoutubePlaylistId
+            }
             playlist.syncEnabled = request.syncEnabled
             youtubePlaylistRepository.save(playlist)
         }

@@ -25,8 +25,23 @@ class ContentMenu(
     @Enumerated(EnumType.STRING)
     @Column(name = "content_kind", nullable = false, length = 20)
     var contentKind: ContentKind,
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var status: ContentMenuStatus = ContentMenuStatus.DRAFT,
     @Column(nullable = false)
     var active: Boolean = true,
+    @Column(name = "navigation_visible", nullable = false)
+    var navigationVisible: Boolean = true,
+    @Column(name = "sort_order", nullable = false)
+    var sortOrder: Int = 0,
+    @Column(columnDefinition = "text")
+    var description: String? = null,
+    @Column(name = "discovered_at")
+    var discoveredAt: OffsetDateTime? = null,
+    @Column(name = "published_at")
+    var publishedAt: OffsetDateTime? = null,
+    @Column(name = "last_modified_by")
+    var lastModifiedBy: Long? = null,
     @Column(name = "created_at", nullable = false)
     var createdAt: OffsetDateTime = OffsetDateTime.now(),
     @Column(name = "updated_at", nullable = false)

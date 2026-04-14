@@ -82,7 +82,14 @@ data class AdminPlaylistDto(
     val siteKey: String,
     val slug: String,
     val contentKind: String,
+    val status: String = "DRAFT",
     val active: Boolean,
+    val navigationVisible: Boolean = true,
+    val sortOrder: Int = 0,
+    val description: String? = null,
+    val discoveredAt: String? = null,
+    val publishedAt: String? = null,
+    val lastModifiedBy: Long? = null,
     val youtubePlaylistId: String,
     val itemCount: Int,
     val syncEnabled: Boolean,
@@ -100,7 +107,14 @@ data class AdminPlaylistDetailDto(
     val siteKey: String,
     val slug: String,
     val contentKind: String,
+    val status: String = "DRAFT",
     val active: Boolean,
+    val navigationVisible: Boolean = true,
+    val sortOrder: Int = 0,
+    val description: String? = null,
+    val discoveredAt: String? = null,
+    val publishedAt: String? = null,
+    val lastModifiedBy: Long? = null,
     val youtubePlaylistId: String,
     val youtubeTitle: String,
     val youtubeDescription: String,
@@ -201,13 +215,37 @@ data class AdminSyncJobDetailDto(
     val items: List<AdminSyncJobItemDto>,
 )
 
+data class CreatePlaylistRequest(
+    @field:NotBlank(message = "siteKey must not be blank")
+    val siteKey: String,
+    @field:NotBlank(message = "menuName must not be blank")
+    val menuName: String,
+    @field:NotBlank(message = "slug must not be blank")
+    val slug: String,
+    @field:NotBlank(message = "contentKind must not be blank")
+    val contentKind: String,
+    @field:NotBlank(message = "youtubePlaylistId must not be blank")
+    val youtubePlaylistId: String,
+    val syncEnabled: Boolean = true,
+    val active: Boolean = true,
+    val status: String = "DRAFT",
+    val navigationVisible: Boolean = true,
+    val sortOrder: Int = 0,
+    val description: String? = null,
+)
+
 data class UpdatePlaylistRequest(
     @field:NotBlank(message = "menuName must not be blank")
     val menuName: String,
     @field:NotBlank(message = "slug must not be blank")
     val slug: String,
+    val youtubePlaylistId: String? = null,
     val syncEnabled: Boolean,
     val active: Boolean,
+    val status: String = "DRAFT",
+    val navigationVisible: Boolean = true,
+    val sortOrder: Int = 0,
+    val description: String? = null,
 )
 
 data class UpdateVideoMetadataRequest(

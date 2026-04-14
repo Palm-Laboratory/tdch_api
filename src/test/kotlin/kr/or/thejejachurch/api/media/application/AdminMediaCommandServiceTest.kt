@@ -3,6 +3,7 @@ package kr.or.thejejachurch.api.media.application
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.media.domain.ContentKind
 import kr.or.thejejachurch.api.media.domain.ContentMenu
+import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.domain.VideoMetadata
 import kr.or.thejejachurch.api.media.domain.YoutubePlaylist
 import kr.or.thejejachurch.api.media.domain.YoutubeVideo
@@ -12,6 +13,7 @@ import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistR
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
+import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdateVideoMetadataRequest
 import org.assertj.core.api.Assertions.assertThat
@@ -42,6 +44,78 @@ class AdminMediaCommandServiceTest {
     )
 
     @Test
+    fun `create playlist creates unified sermon menu resource`() {
+        whenever(contentMenuRepository.findBySiteKey("sermons")).thenReturn(null)
+        whenever(contentMenuRepository.findBySlug("sermons")).thenReturn(null)
+        whenever(youtubePlaylistRepository.findByYoutubePlaylistId("PL_SERMONS")).thenReturn(null)
+        whenever(contentMenuRepository.save(any())).thenAnswer {
+            val menu = it.getArgument<ContentMenu>(0)
+            ContentMenu(
+                id = 1L,
+                siteKey = menu.siteKey,
+                menuName = menu.menuName,
+                slug = menu.slug,
+                contentKind = menu.contentKind,
+                status = menu.status,
+                active = menu.active,
+                navigationVisible = menu.navigationVisible,
+                sortOrder = menu.sortOrder,
+                description = menu.description,
+                discoveredAt = menu.discoveredAt,
+                publishedAt = menu.publishedAt,
+                lastModifiedBy = menu.lastModifiedBy,
+            )
+        }
+        whenever(youtubePlaylistRepository.save(any())).thenAnswer { it.getArgument<YoutubePlaylist>(0) }
+        whenever(adminMediaQueryService.getPlaylist("sermons")).thenReturn(
+            AdminPlaylistDetailDto(
+                id = 1L,
+                menuName = "예배 영상",
+                siteKey = "sermons",
+                slug = "sermons",
+                contentKind = "LONG_FORM",
+                status = "PUBLISHED",
+                active = true,
+                navigationVisible = true,
+                sortOrder = 10,
+                description = "메인 설교 모음",
+                discoveredAt = "2026-04-14T06:00:00Z",
+                publishedAt = "2026-04-14T06:00:00Z",
+                lastModifiedBy = null,
+                youtubePlaylistId = "PL_SERMONS",
+                youtubeTitle = "예배 영상",
+                youtubeDescription = "",
+                channelTitle = "",
+                thumbnailUrl = "",
+                itemCount = 0,
+                syncEnabled = true,
+            ),
+        )
+
+        val created = service.createPlaylist(
+            CreatePlaylistRequest(
+                siteKey = "sermons",
+                menuName = "예배 영상",
+                slug = "sermons",
+                contentKind = "LONG_FORM",
+                youtubePlaylistId = "PL_SERMONS",
+                syncEnabled = true,
+                active = true,
+                status = "PUBLISHED",
+                navigationVisible = true,
+                sortOrder = 10,
+                description = "메인 설교 모음",
+            ),
+        )
+
+        assertThat(created.siteKey).isEqualTo("sermons")
+        assertThat(created.status).isEqualTo("PUBLISHED")
+        assertThat(created.sortOrder).isEqualTo(10)
+        verify(contentMenuRepository).save(any())
+        verify(youtubePlaylistRepository).save(any())
+    }
+
+    @Test
     fun `update playlist updates menu and sync flag`() {
         whenever(contentMenuRepository.findBySiteKey("messages")).thenReturn(
             ContentMenu(
@@ -50,6 +124,7 @@ class AdminMediaCommandServiceTest {
                 menuName = "말씀/설교",
                 slug = "messages",
                 contentKind = ContentKind.LONG_FORM,
+                status = ContentMenuStatus.DRAFT,
                 active = true,
             )
         )
@@ -70,7 +145,14 @@ class AdminMediaCommandServiceTest {
                 siteKey = "messages",
                 slug = "messages-renewed",
                 contentKind = "LONG_FORM",
+                status = "PUBLISHED",
                 active = false,
+                navigationVisible = false,
+                sortOrder = 3,
+                description = "업데이트 설명",
+                discoveredAt = "2026-04-14T06:00:00Z",
+                publishedAt = "2026-04-15T06:00:00Z",
+                lastModifiedBy = null,
                 youtubePlaylistId = "PL_MESSAGES",
                 youtubeTitle = "말씀/설교",
                 youtubeDescription = "",
@@ -87,13 +169,25 @@ class AdminMediaCommandServiceTest {
             request = UpdatePlaylistRequest(
                 menuName = "새 말씀 메뉴",
                 slug = "messages-renewed",
+                youtubePlaylistId = "PL_MESSAGES",
                 syncEnabled = false,
                 active = false,
+                status = "PUBLISHED",
+                navigationVisible = false,
+                sortOrder = 3,
+                description = "업데이트 설명",
             ),
         )
 
         assertThat(result.slug).isEqualTo("messages-renewed")
         assertThat(result.syncEnabled).isFalse()
+        assertThat(result.status).isEqualTo("PUBLISHED")
+        assertThat(result.navigationVisible).isFalse()
+        assertThat(result.sortOrder).isEqualTo(3)
+        assertThat(result.description).isEqualTo("업데이트 설명")
+        assertThat(result.discoveredAt).isEqualTo("2026-04-14T06:00:00Z")
+        assertThat(result.publishedAt).isEqualTo("2026-04-15T06:00:00Z")
+        assertThat(result.lastModifiedBy).isNull()
         verify(contentMenuRepository).save(any())
         verify(youtubePlaylistRepository).save(any())
     }
@@ -107,6 +201,7 @@ class AdminMediaCommandServiceTest {
                 menuName = "말씀/설교",
                 slug = "messages",
                 contentKind = ContentKind.LONG_FORM,
+                status = ContentMenuStatus.DRAFT,
                 active = true,
             )
         )
@@ -117,6 +212,7 @@ class AdminMediaCommandServiceTest {
                 menuName = "더 좋은 묵상",
                 slug = "better-devotion",
                 contentKind = ContentKind.LONG_FORM,
+                status = ContentMenuStatus.DRAFT,
                 active = true,
             )
         )
@@ -127,8 +223,10 @@ class AdminMediaCommandServiceTest {
                 request = UpdatePlaylistRequest(
                     menuName = "새 말씀 메뉴",
                     slug = "better-devotion",
+                    youtubePlaylistId = "PL_MESSAGES",
                     syncEnabled = true,
                     active = true,
+                    status = "DRAFT",
                 ),
             )
         }
