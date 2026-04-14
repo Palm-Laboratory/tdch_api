@@ -37,16 +37,16 @@ class MediaQueryService(
 
     @Transactional(readOnly = true)
     fun getHome(): HomeMediaResponse {
-        val allMessageItems = getMenuItems(siteKey = "messages")
-        val latestMessages = allMessageItems.take(HOME_SECTION_SIZE)
-        val latestDevotions = getMenuItems(siteKey = "better-devotion", limit = HOME_SECTION_SIZE)
-        val latestShorts = getMenuItems(siteKey = "its-okay", limit = HOME_SECTION_SIZE)
+        val longFormItems = contentMenuRepository.findAllByActiveTrueOrderByIdAsc()
+            .asSequence()
+            .filter { it.contentKind == ContentKind.LONG_FORM }
+            .flatMap { menu -> getMenuItems(siteKey = menu.siteKey).asSequence() }
+            .sortedByDescending { OffsetDateTime.parse(it.publishedAt) }
+            .toList()
 
         return HomeMediaResponse(
-            featuredSermons = allMessageItems.filter { it.featured }.take(HOME_SECTION_SIZE),
-            latestMessages = latestMessages,
-            latestDevotions = latestDevotions,
-            latestShorts = latestShorts,
+            featuredSermons = longFormItems.filter { it.featured }.take(HOME_SECTION_SIZE),
+            latestSermons = longFormItems.take(HOME_SECTION_SIZE),
         )
     }
 
@@ -73,6 +73,7 @@ class MediaQueryService(
         val orderedMetadata = loadMetadataMap(orderedVideos.values.mapNotNull { it.id })
         val items = orderedVideos.values.map { video ->
             toMediaItemDto(
+                menu = menu,
                 video = video,
                 metadata = video.id?.let(orderedMetadata::get),
             )
@@ -129,6 +130,7 @@ class MediaQueryService(
 
         return orderedVideos.values.map { video ->
             toMediaItemDto(
+                menu = menu,
                 video = video,
                 metadata = video.id?.let(orderedMetadata::get),
             )
@@ -174,9 +176,12 @@ class MediaQueryService(
     )
 
     private fun toMediaItemDto(
+        menu: ContentMenu,
         video: YoutubeVideo,
         metadata: VideoMetadata?,
     ): MediaItemDto = MediaItemDto(
+        menuSiteKey = menu.siteKey,
+        menuSlug = menu.slug,
         youtubeVideoId = video.youtubeVideoId,
         title = video.title,
         displayTitle = resolveDisplayTitle(video, metadata),

@@ -19,11 +19,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 class AdminAccountManagementServiceTest {
 
     private val adminAccountRepository: AdminAccountRepository = mock()
-    private val adminAccountBootstrapService: AdminAccountBootstrapService = mock()
     private val passwordEncoder = BCryptPasswordEncoder()
     private val service = AdminAccountManagementService(
         adminAccountRepository = adminAccountRepository,
-        adminAccountBootstrapService = adminAccountBootstrapService,
         passwordEncoder = passwordEncoder,
     )
 

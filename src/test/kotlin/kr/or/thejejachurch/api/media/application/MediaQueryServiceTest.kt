@@ -20,6 +20,7 @@ import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageImpl
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 class MediaQueryServiceTest {
 
@@ -97,6 +98,54 @@ class MediaQueryServiceTest {
         assertThat(response.tags).containsExactly("messages", "grace")
     }
 
+    @Test
+    fun `getHome aggregates latest long form items without legacy site key assumptions`() {
+        val sermonsMenu = menu(id = 1L, siteKey = "sermons-main", contentKind = ContentKind.LONG_FORM)
+        val devotionMenu = menu(id = 2L, siteKey = "weekday-devotion", contentKind = ContentKind.LONG_FORM)
+        val shortsMenu = menu(id = 3L, siteKey = "short-clips", contentKind = ContentKind.SHORT)
+        val sermonsPlaylist = playlist(id = 10L, contentMenuId = 1L)
+        val devotionPlaylist = playlist(id = 11L, contentMenuId = 2L)
+        val sermonsVideo = video(
+            id = 100L,
+            youtubeVideoId = "video-100",
+            title = "주일 예배",
+            publishedAt = OffsetDateTime.of(2026, 4, 10, 5, 0, 0, 0, ZoneOffset.UTC),
+        )
+        val devotionVideo = video(
+            id = 101L,
+            youtubeVideoId = "video-101",
+            title = "새벽 묵상",
+            publishedAt = OffsetDateTime.of(2026, 4, 12, 5, 0, 0, 0, ZoneOffset.UTC),
+        )
+        val featuredMetadata = metadata(youtubeVideoId = 100L, featured = true)
+
+        whenever(contentMenuRepository.findAllByActiveTrueOrderByIdAsc()).thenReturn(
+            listOf(sermonsMenu, devotionMenu, shortsMenu),
+        )
+        whenever(contentMenuRepository.findBySiteKey("sermons-main")).thenReturn(sermonsMenu)
+        whenever(contentMenuRepository.findBySiteKey("weekday-devotion")).thenReturn(devotionMenu)
+        whenever(contentMenuRepository.findBySiteKey("short-clips")).thenReturn(shortsMenu)
+        whenever(youtubePlaylistRepository.findByContentMenuIdAndSyncEnabledTrue(1L)).thenReturn(sermonsPlaylist)
+        whenever(youtubePlaylistRepository.findByContentMenuIdAndSyncEnabledTrue(2L)).thenReturn(devotionPlaylist)
+        whenever(youtubePlaylistRepository.findByContentMenuIdAndSyncEnabledTrue(3L)).thenReturn(null)
+        whenever(playlistVideoRepository.findAllByYoutubePlaylistIdAndIsActiveTrueOrderByPositionAsc(10L)).thenReturn(
+            listOf(playlistVideo(10L, 100L, 0)),
+        )
+        whenever(playlistVideoRepository.findAllByYoutubePlaylistIdAndIsActiveTrueOrderByPositionAsc(11L)).thenReturn(
+            listOf(playlistVideo(11L, 101L, 0)),
+        )
+        whenever(youtubeVideoRepository.findAllById(listOf(100L))).thenReturn(listOf(sermonsVideo))
+        whenever(youtubeVideoRepository.findAllById(listOf(101L))).thenReturn(listOf(devotionVideo))
+        whenever(videoMetadataRepository.findAllByYoutubeVideoIdIn(listOf(100L))).thenReturn(listOf(featuredMetadata))
+        whenever(videoMetadataRepository.findAllByYoutubeVideoIdIn(listOf(101L))).thenReturn(emptyList())
+
+        val response = service.getHome()
+
+        assertThat(response.latestSermons.map { it.menuSiteKey }).containsExactly("weekday-devotion", "sermons-main")
+        assertThat(response.latestSermons.map { it.menuSlug }).containsExactly("weekday-devotion", "sermons-main")
+        assertThat(response.featuredSermons.map { it.youtubeVideoId }).containsExactly("video-100")
+    }
+
     private fun menu(id: Long, siteKey: String, contentKind: ContentKind): ContentMenu = ContentMenu(
         id = id,
         siteKey = siteKey,
@@ -121,12 +170,17 @@ class MediaQueryServiceTest {
         isActive = true,
     )
 
-    private fun video(id: Long, youtubeVideoId: String, title: String): YoutubeVideo = YoutubeVideo(
+    private fun video(
+        id: Long,
+        youtubeVideoId: String,
+        title: String,
+        publishedAt: OffsetDateTime = OffsetDateTime.parse("2026-03-02T02:00:00Z"),
+    ): YoutubeVideo = YoutubeVideo(
         id = id,
         youtubeVideoId = youtubeVideoId,
         title = title,
         description = "설명",
-        publishedAt = OffsetDateTime.parse("2026-03-02T02:00:00Z"),
+        publishedAt = publishedAt,
         thumbnailUrl = "https://example.com/default-thumb.jpg",
         detectedKind = ContentKind.LONG_FORM,
         youtubeWatchUrl = "https://youtube.com/watch?v=$youtubeVideoId",

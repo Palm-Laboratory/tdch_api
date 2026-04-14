@@ -33,9 +33,7 @@ DB_URL=jdbc:postgresql://localhost:5432/thejejachurch
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 YOUTUBE_API_KEY=your-key
-YOUTUBE_MESSAGES_PLAYLIST_ID=your-playlist-id
-YOUTUBE_BETTER_DEVOTION_PLAYLIST_ID=your-playlist-id
-YOUTUBE_ITS_OKAY_PLAYLIST_ID=your-playlist-id
+YOUTUBE_CHANNEL_ID=your-channel-id
 ADMIN_SYNC_KEY=your-admin-key
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
@@ -45,7 +43,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 - `content_menu`: 설교/영상 콘텐츠 카테고리
 - `site_navigation_item`: 헤더/모바일 메뉴/브레드크럼/LNB용 사이트 메뉴
 
-`content_menu` 는 Flyway seed로 생성하고, 실제 `youtube_playlist` 연결은 위 환경변수를 읽어 앱 시작 시 bootstrap 합니다.
+`content_menu` 는 Flyway/관리자 기능을 통해 관리하고, 실제 `youtube_playlist` 연결은 관리자 생성/발견 플로우로 운영합니다.
 
 ## 초기 엔드포인트
 

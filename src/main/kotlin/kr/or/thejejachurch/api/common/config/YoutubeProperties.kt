@@ -6,11 +6,4 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class YoutubeProperties(
     val apiKey: String = "",
     val channelId: String = "",
-    val playlists: PlaylistProperties = PlaylistProperties(),
-) {
-    data class PlaylistProperties(
-        val messages: String = "",
-        val betterDevotion: String = "",
-        val itsOkay: String = "",
-    )
-}
+)

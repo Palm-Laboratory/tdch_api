@@ -12,6 +12,8 @@ data class MenuDto(
 )
 
 data class MediaItemDto(
+    val menuSiteKey: String? = null,
+    val menuSlug: String? = null,
     val youtubeVideoId: String,
     val title: String,
     val displayTitle: String,
@@ -38,9 +40,7 @@ data class MediaListResponse(
 
 data class HomeMediaResponse(
     val featuredSermons: List<MediaItemDto>,
-    val latestMessages: List<MediaItemDto>,
-    val latestDevotions: List<MediaItemDto>,
-    val latestShorts: List<MediaItemDto>,
+    val latestSermons: List<MediaItemDto>,
 )
 
 data class VideoDetailResponse(
