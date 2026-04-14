@@ -53,7 +53,6 @@ cp .env.production.example /tmp/tdch.env
 - `DB_PASSWORD=<same-as-postgres-password>`
 - `YOUTUBE_*`
 - `ADMIN_SYNC_KEY`
-- `ADMIN_BOOTSTRAP_*`
 - `CORS_ALLOWED_ORIGINS=https://<web-domain>,https://www.<web-domain>`
 
 완성한 파일을 VM에 업로드한다.
