@@ -1,12 +1,9 @@
 package kr.or.thejejachurch.api.navigation.application
 
-<<<<<<< HEAD
-=======
 import kr.or.thejejachurch.api.media.domain.ContentKind
 import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
->>>>>>> dev
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationSet
@@ -19,11 +16,13 @@ import org.mockito.kotlin.whenever
 
 class AdminNavigationQueryServiceTest {
 
+    private val contentMenuRepository: ContentMenuRepository = mock()
     private val siteNavigationItemRepository: SiteNavigationItemRepository = mock()
     private val siteNavigationSetRepository: SiteNavigationSetRepository = mock()
     private val service = AdminNavigationQueryService(
         siteNavigationItemRepository = siteNavigationItemRepository,
         siteNavigationSetRepository = siteNavigationSetRepository,
+        contentMenuRepository = contentMenuRepository,
     )
 
     @Test
@@ -52,8 +51,6 @@ class AdminNavigationQueryServiceTest {
         assertThat(response.groups[0].children[0].visible).isFalse()
     }
 
-<<<<<<< HEAD
-=======
     @Test
     fun `getContentMenus returns active menus in order`() {
         whenever(contentMenuRepository.findAllByActiveTrueOrderByIdAsc()).thenReturn(
@@ -121,7 +118,6 @@ class AdminNavigationQueryServiceTest {
         assertThat(response.groups[0].children.map { it.label }).containsExactly("말씀/설교", "짧은 영상")
     }
 
->>>>>>> dev
     private fun item(
         id: Long,
         key: String,

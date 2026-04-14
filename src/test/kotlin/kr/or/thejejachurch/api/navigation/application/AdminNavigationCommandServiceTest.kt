@@ -1,5 +1,6 @@
 package kr.or.thejejachurch.api.navigation.application
 
+import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationSet
@@ -18,11 +19,13 @@ import java.time.OffsetDateTime
 
 class AdminNavigationCommandServiceTest {
 
+    private val contentMenuRepository: ContentMenuRepository = mock()
     private val siteNavigationItemRepository: SiteNavigationItemRepository = mock()
     private val siteNavigationSetRepository: SiteNavigationSetRepository = mock()
     private val service = AdminNavigationCommandService(
         siteNavigationItemRepository = siteNavigationItemRepository,
         siteNavigationSetRepository = siteNavigationSetRepository,
+        contentMenuRepository = contentMenuRepository,
     )
 
     @Test
