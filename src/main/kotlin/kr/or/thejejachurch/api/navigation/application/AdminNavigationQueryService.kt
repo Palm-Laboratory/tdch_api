@@ -1,7 +1,10 @@
 package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
+import kr.or.thejejachurch.api.media.domain.ContentMenu
+import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
+import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
@@ -47,7 +50,18 @@ class AdminNavigationQueryService(
 
         return AdminNavigationTreeResponse(
             groups = itemsByParentId[null].orEmpty().map { item ->
-                toAdminNavigationItemDto(item, itemsByParentId)
+                if (item.menuKey == SERMONS_ROOT_KEY) {
+                    toAdminNavigationItemDto(
+                        item = item,
+                        itemsByParentId = itemsByParentId,
+                        overrideChildren = contentMenuRepository
+                            .findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)
+                            .sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
+                            .map(::toAdminSermonNavigationItemDto),
+                    )
+                } else {
+                    toAdminNavigationItemDto(item, itemsByParentId)
+                }
             },
         )
     }
@@ -78,6 +92,7 @@ class AdminNavigationQueryService(
     private fun toAdminNavigationItemDto(
         item: SiteNavigationItem,
         itemsByParentId: Map<Long?, List<SiteNavigationItem>>,
+        overrideChildren: List<AdminNavigationItemDto>? = null,
     ): AdminNavigationItemDto = AdminNavigationItemDto(
         id = item.id ?: throw IllegalStateException("site_navigation_item.id is null"),
         navigationSetId = item.navigationSetId,
@@ -96,12 +111,34 @@ class AdminNavigationQueryService(
         defaultLanding = item.defaultLanding,
         sortOrder = item.sortOrder,
         updatedAt = item.updatedAt,
-        children = itemsByParentId[item.id].orEmpty().map { child ->
+        children = overrideChildren ?: itemsByParentId[item.id].orEmpty().map { child ->
             toAdminNavigationItemDto(child, itemsByParentId)
         },
     )
 
+    private fun toAdminSermonNavigationItemDto(menu: ContentMenu): AdminNavigationItemDto = AdminNavigationItemDto(
+        id = menu.id ?: throw IllegalStateException("content_menu.id is null"),
+        navigationSetId = 0L,
+        parentId = null,
+        menuKey = menu.siteKey,
+        label = menu.menuName,
+        href = "/sermons/${menu.slug}",
+        matchPath = "/sermons/${menu.slug}",
+        linkType = NavigationLinkType.CONTENT_REF.name,
+        contentSiteKey = menu.siteKey,
+        visible = true,
+        headerVisible = true,
+        mobileVisible = true,
+        lnbVisible = true,
+        breadcrumbVisible = true,
+        defaultLanding = false,
+        sortOrder = menu.sortOrder,
+        updatedAt = menu.updatedAt,
+        children = emptyList(),
+    )
+
     companion object {
         private const val MAIN_NAVIGATION_SET_KEY = "main"
+        private const val SERMONS_ROOT_KEY = "sermons"
     }
 }
