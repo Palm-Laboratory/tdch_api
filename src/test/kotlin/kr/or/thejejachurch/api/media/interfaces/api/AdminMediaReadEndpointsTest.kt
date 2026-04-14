@@ -6,6 +6,10 @@ import kr.or.thejejachurch.api.media.interfaces.dto.AdminPaginationDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistListResponse
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobDetailDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobItemDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
@@ -107,6 +111,54 @@ class AdminMediaReadEndpointsTest {
                 tags = emptyList(),
             )
         )
+        whenever(adminMediaQueryService.getSyncJobs()).thenReturn(
+            AdminSyncJobListResponse(
+                data = listOf(
+                    AdminSyncJobDto(
+                        id = 1L,
+                        triggerType = "SCHEDULED",
+                        status = "PARTIAL_FAILED",
+                        startedAt = "2026-04-14T06:00:00Z",
+                        finishedAt = "2026-04-14T06:03:00Z",
+                        totalPlaylists = 3,
+                        succeededPlaylists = 2,
+                        failedPlaylists = 1,
+                        itemCount = 3,
+                        failedItemCount = 1,
+                        errorSummary = "1 playlist failed",
+                    ),
+                ),
+            ),
+        )
+        whenever(adminMediaQueryService.getSyncJob(1L)).thenReturn(
+            AdminSyncJobDetailDto(
+                id = 1L,
+                triggerType = "SCHEDULED",
+                status = "PARTIAL_FAILED",
+                startedAt = "2026-04-14T06:00:00Z",
+                finishedAt = "2026-04-14T06:03:00Z",
+                totalPlaylists = 3,
+                succeededPlaylists = 2,
+                failedPlaylists = 1,
+                errorSummary = "1 playlist failed",
+                items = listOf(
+                    AdminSyncJobItemDto(
+                        id = 11L,
+                        status = "FAILED",
+                        siteKey = "its-okay",
+                        menuName = "그래도 괜찮아",
+                        youtubePlaylistId = "PL_SHORTS",
+                        processedItems = 0,
+                        insertedVideos = 0,
+                        updatedVideos = 0,
+                        deactivatedPlaylistVideos = 0,
+                        errorMessage = "quota exceeded",
+                        startedAt = "2026-04-14T06:01:00Z",
+                        finishedAt = "2026-04-14T06:01:03Z",
+                    ),
+                ),
+            ),
+        )
 
         mockMvc = MockMvcBuilders.standaloneSetup(syncController, queryController).build()
     }
@@ -159,5 +211,29 @@ class AdminMediaReadEndpointsTest {
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.youtubeVideoId").value("video-100"))
+    }
+
+    @Test
+    fun `sync jobs endpoint should respond with sync history payload`() {
+        mockMvc.perform(
+            get("/api/v1/admin/media/sync-jobs")
+                .header("X-Admin-Key", "secret-key")
+                .header("X-Admin-Actor-Id", "1"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.data[0].status").value("PARTIAL_FAILED"))
+    }
+
+    @Test
+    fun `sync job detail endpoint should respond with sync job item payload`() {
+        mockMvc.perform(
+            get("/api/v1/admin/media/sync-jobs/1")
+                .header("X-Admin-Key", "secret-key")
+                .header("X-Admin-Actor-Id", "1"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.items[0].youtubePlaylistId").value("PL_SHORTS"))
     }
 }

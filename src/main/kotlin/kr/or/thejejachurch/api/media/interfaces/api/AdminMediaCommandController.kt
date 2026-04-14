@@ -42,7 +42,6 @@ class AdminMediaCommandController(
         validateAdminKey(adminKey)
         return adminMediaCommandService.updateVideoMetadata(youtubeVideoId, request)
     }
-
     private fun validateAdminKey(adminKey: String?) {
         val configuredKey = adminProperties.syncKey.trim()
         if (configuredKey.isBlank()) {

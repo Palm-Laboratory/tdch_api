@@ -5,6 +5,8 @@ import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.media.application.AdminMediaQueryService
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistListResponse
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobDetailDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
 import org.springframework.web.bind.annotation.GetMapping
@@ -68,6 +70,25 @@ class AdminMediaQueryController(
     ): AdminVideoMetadataDto {
         validateAdminKey(adminKey)
         return adminMediaQueryService.getVideoMetadata(youtubeVideoId)
+    }
+
+    @GetMapping("/sync-jobs")
+    fun getSyncJobs(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+    ): AdminSyncJobListResponse {
+        validateAdminKey(adminKey)
+        return adminMediaQueryService.getSyncJobs()
+    }
+
+    @GetMapping("/sync-jobs/{jobId}")
+    fun getSyncJob(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable jobId: Long,
+    ): AdminSyncJobDetailDto {
+        validateAdminKey(adminKey)
+        return adminMediaQueryService.getSyncJob(jobId)
     }
 
     private fun validateAdminKey(adminKey: String?) {

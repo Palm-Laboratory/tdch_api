@@ -155,6 +155,52 @@ data class AdminVideoMetadataDto(
     val tags: List<String> = emptyList(),
 )
 
+data class AdminSyncJobDto(
+    val id: Long,
+    val triggerType: String,
+    val status: String,
+    val startedAt: String,
+    val finishedAt: String? = null,
+    val totalPlaylists: Int,
+    val succeededPlaylists: Int,
+    val failedPlaylists: Int,
+    val itemCount: Int,
+    val failedItemCount: Int,
+    val errorSummary: String? = null,
+)
+
+data class AdminSyncJobListResponse(
+    val data: List<AdminSyncJobDto>,
+)
+
+data class AdminSyncJobItemDto(
+    val id: Long,
+    val status: String,
+    val siteKey: String? = null,
+    val menuName: String? = null,
+    val youtubePlaylistId: String? = null,
+    val processedItems: Int,
+    val insertedVideos: Int,
+    val updatedVideos: Int,
+    val deactivatedPlaylistVideos: Int,
+    val errorMessage: String? = null,
+    val startedAt: String,
+    val finishedAt: String? = null,
+)
+
+data class AdminSyncJobDetailDto(
+    val id: Long,
+    val triggerType: String,
+    val status: String,
+    val startedAt: String,
+    val finishedAt: String? = null,
+    val totalPlaylists: Int,
+    val succeededPlaylists: Int,
+    val failedPlaylists: Int,
+    val errorSummary: String? = null,
+    val items: List<AdminSyncJobItemDto>,
+)
+
 data class UpdatePlaylistRequest(
     @field:NotBlank(message = "menuName must not be blank")
     val menuName: String,

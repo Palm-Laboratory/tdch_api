@@ -66,7 +66,6 @@ class AdminMediaCommandService(
         val video = youtubeVideoRepository.findByYoutubeVideoId(youtubeVideoId)
             ?: throw NotFoundException("Unknown youtubeVideoId: $youtubeVideoId")
         val internalVideoId = video.id ?: throw IllegalStateException("youtube video id is missing")
-
         val metadata = videoMetadataRepository.findByYoutubeVideoId(internalVideoId)
             ?: VideoMetadata(youtubeVideoId = internalVideoId)
 

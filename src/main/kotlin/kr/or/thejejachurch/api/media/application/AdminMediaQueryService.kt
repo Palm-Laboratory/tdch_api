@@ -6,16 +6,24 @@ import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.PlaylistVideo
 import kr.or.thejejachurch.api.media.domain.VideoMetadata
 import kr.or.thejejachurch.api.media.domain.YoutubePlaylist
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJob
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJobItem
 import kr.or.thejejachurch.api.media.domain.YoutubeVideo
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.PlaylistVideoRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.VideoMetadataRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeSyncJobItemRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeSyncJobRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPaginationDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistListResponse
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobDetailDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobItemDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminSyncJobListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoDto
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoListResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
@@ -32,6 +40,8 @@ class AdminMediaQueryService(
     private val playlistVideoRepository: PlaylistVideoRepository,
     private val youtubeVideoRepository: YoutubeVideoRepository,
     private val videoMetadataRepository: VideoMetadataRepository,
+    private val youtubeSyncJobRepository: YoutubeSyncJobRepository,
+    private val youtubeSyncJobItemRepository: YoutubeSyncJobItemRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -142,6 +152,56 @@ class AdminMediaQueryService(
         )
     }
 
+    @Transactional(readOnly = true)
+    fun getSyncJobs(): AdminSyncJobListResponse {
+        val jobs = youtubeSyncJobRepository.findTop20ByOrderByStartedAtDesc()
+        val itemCountsByJobId = jobs.associate { job ->
+            val items = job.id?.let(youtubeSyncJobItemRepository::findAllByJobIdOrderByIdAsc).orEmpty()
+            val failedItemCount = items.count { it.errorMessage != null || it.status.name == "FAILED" }
+            (job.id ?: 0L) to (items.size to failedItemCount)
+        }
+
+        return AdminSyncJobListResponse(
+            data = jobs.map { job ->
+                val counts = itemCountsByJobId[job.id ?: 0L] ?: (0 to 0)
+                job.toAdminSyncJobDto(
+                    itemCount = counts.first,
+                    failedItemCount = counts.second,
+                )
+            },
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun getSyncJob(jobId: Long): AdminSyncJobDetailDto {
+        val job = youtubeSyncJobRepository.findById(jobId)
+            .orElseThrow { NotFoundException("Unknown syncJobId: $jobId") }
+        val items = youtubeSyncJobItemRepository.findAllByJobIdOrderByIdAsc(jobId)
+
+        val menuIds = items.mapNotNull { it.contentMenuId }.distinct()
+        val playlistIds = items.mapNotNull { it.youtubePlaylistId }.distinct()
+        val menusById = contentMenuRepository.findAllById(menuIds).associateBy { it.id }
+        val playlistsById = youtubePlaylistRepository.findAllById(playlistIds).associateBy { it.id }
+
+        return AdminSyncJobDetailDto(
+            id = job.id ?: throw IllegalStateException("sync job id is missing"),
+            triggerType = job.triggerType.name,
+            status = job.status.name,
+            startedAt = job.startedAt.toString(),
+            finishedAt = job.finishedAt?.toString(),
+            totalPlaylists = job.totalPlaylists,
+            succeededPlaylists = job.succeededPlaylists,
+            failedPlaylists = job.failedPlaylists,
+            errorSummary = job.errorSummary,
+            items = items.map { item ->
+                item.toAdminSyncJobItemDto(
+                    menu = item.contentMenuId?.let(menusById::get),
+                    playlist = item.youtubePlaylistId?.let(playlistsById::get),
+                )
+            },
+        )
+    }
+
     private fun getMenu(siteKey: String): ContentMenu =
         contentMenuRepository.findBySiteKey(siteKey)
             ?: throw NotFoundException("Unknown siteKey: $siteKey")
@@ -240,6 +300,41 @@ class AdminMediaQueryService(
             originalTitle.lowercase().contains(search) ||
             preacher?.lowercase()?.contains(search) == true ||
             scripture?.lowercase()?.contains(search) == true
+
+    private fun YoutubeSyncJob.toAdminSyncJobDto(
+        itemCount: Int,
+        failedItemCount: Int,
+    ): AdminSyncJobDto = AdminSyncJobDto(
+        id = id ?: throw IllegalStateException("sync job id is missing"),
+        triggerType = triggerType.name,
+        status = status.name,
+        startedAt = startedAt.toString(),
+        finishedAt = finishedAt?.toString(),
+        totalPlaylists = totalPlaylists,
+        succeededPlaylists = succeededPlaylists,
+        failedPlaylists = failedPlaylists,
+        itemCount = itemCount,
+        failedItemCount = failedItemCount,
+        errorSummary = errorSummary,
+    )
+
+    private fun YoutubeSyncJobItem.toAdminSyncJobItemDto(
+        menu: ContentMenu?,
+        playlist: YoutubePlaylist?,
+    ): AdminSyncJobItemDto = AdminSyncJobItemDto(
+        id = id ?: throw IllegalStateException("sync job item id is missing"),
+        status = status.name,
+        siteKey = menu?.siteKey,
+        menuName = menu?.menuName,
+        youtubePlaylistId = playlist?.youtubePlaylistId,
+        processedItems = processedItems,
+        insertedVideos = insertedVideos,
+        updatedVideos = updatedVideos,
+        deactivatedPlaylistVideos = deactivatedPlaylistVideos,
+        errorMessage = errorMessage,
+        startedAt = startedAt.toString(),
+        finishedAt = finishedAt?.toString(),
+    )
 
     private fun <T> paginate(items: List<T>, page: Int, size: Int): List<T> {
         val fromIndex = ((page - 1) * size).coerceAtMost(items.size)
