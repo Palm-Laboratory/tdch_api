@@ -6,11 +6,15 @@ import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.PlaylistVideo
 import kr.or.thejejachurch.api.media.domain.VideoMetadata
 import kr.or.thejejachurch.api.media.domain.YoutubePlaylist
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJob
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJobItem
 import kr.or.thejejachurch.api.media.domain.YoutubeVideo
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.PlaylistVideoRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.VideoMetadataRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeSyncJobItemRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeSyncJobRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeApiOperations
 import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubePlaylistItem
@@ -28,6 +32,8 @@ class YoutubeSyncService(
     private val youtubeVideoRepository: YoutubeVideoRepository,
     private val playlistVideoRepository: PlaylistVideoRepository,
     private val videoMetadataRepository: VideoMetadataRepository,
+    private val youtubeSyncJobRepository: YoutubeSyncJobRepository,
+    private val youtubeSyncJobItemRepository: YoutubeSyncJobItemRepository,
     private val youtubeApiClient: YoutubeApiOperations,
     transactionManager: PlatformTransactionManager,
 ) {
@@ -46,16 +52,43 @@ class YoutubeSyncService(
             )
         }
 
+        val job = YoutubeSyncJob.startScheduled(OffsetDateTime.now())
+        youtubeSyncJobRepository.save(job)
         var succeeded = 0
         var failed = 0
 
         playlists.forEach { playlist ->
             try {
-                transactionTemplate.executeWithoutResult {
+                val item = YoutubeSyncJobItem.start(
+                    jobId = job.id ?: 0L,
+                    contentMenuId = playlist.contentMenuId,
+                    youtubePlaylistId = playlist.id,
+                    startedAt = OffsetDateTime.now(),
+                )
+                val processedItems = transactionTemplate.execute {
                     syncPlaylist(playlist)
-                }
+                } ?: 0
+                item.markSucceeded(
+                    finishedAt = OffsetDateTime.now(),
+                    processedItems = processedItems,
+                    insertedVideos = 0,
+                    updatedVideos = processedItems,
+                    deactivatedPlaylistVideos = 0,
+                )
+                youtubeSyncJobItemRepository.save(item)
                 succeeded += 1
             } catch (ex: Exception) {
+                val item = YoutubeSyncJobItem.start(
+                    jobId = job.id ?: 0L,
+                    contentMenuId = playlist.contentMenuId,
+                    youtubePlaylistId = playlist.id,
+                    startedAt = OffsetDateTime.now(),
+                )
+                item.markFailed(
+                    finishedAt = OffsetDateTime.now(),
+                    errorMessage = ex.message ?: ex.javaClass.simpleName,
+                )
+                youtubeSyncJobItemRepository.save(item)
                 failed += 1
                 log.error(
                     "YouTube sync failed for playlistId={} contentMenuId={}: {}",
@@ -67,6 +100,15 @@ class YoutubeSyncService(
             }
         }
 
+        job.finish(
+            finishedAt = OffsetDateTime.now(),
+            totalPlaylists = playlists.size,
+            succeededPlaylists = succeeded,
+            failedPlaylists = failed,
+            errorSummary = if (failed > 0) "$failed playlist failed" else null,
+        )
+        youtubeSyncJobRepository.save(job)
+
         return YoutubeSyncSummary(
             totalPlaylists = playlists.size,
             succeededPlaylists = succeeded,
@@ -74,7 +116,7 @@ class YoutubeSyncService(
         )
     }
 
-    private fun syncPlaylist(playlist: YoutubePlaylist) {
+    private fun syncPlaylist(playlist: YoutubePlaylist): Int {
         val menu = contentMenuRepository.findById(playlist.contentMenuId)
             .orElseThrow { NotFoundException("content_menu not found: id=${playlist.contentMenuId}") }
 
@@ -92,6 +134,8 @@ class YoutubeSyncService(
             playlistItems.size,
             videosByYoutubeId.size,
         )
+
+        return playlistItems.size
     }
 
     private fun fetchAllPlaylistItems(playlistId: String): List<YoutubePlaylistItem> {

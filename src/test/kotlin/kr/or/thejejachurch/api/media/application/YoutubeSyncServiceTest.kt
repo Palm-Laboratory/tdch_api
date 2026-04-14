@@ -5,11 +5,18 @@ import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.PlaylistVideo
 import kr.or.thejejachurch.api.media.domain.VideoMetadata
 import kr.or.thejejachurch.api.media.domain.YoutubePlaylist
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJob
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJobItem
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJobItemStatus
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncJobStatus
+import kr.or.thejejachurch.api.media.domain.YoutubeSyncTriggerType
 import kr.or.thejejachurch.api.media.domain.YoutubeVideo
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.PlaylistVideoRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.VideoMetadataRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeSyncJobItemRepository
+import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeSyncJobRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeApiOperations
 import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubePlaylistItem
@@ -37,6 +44,8 @@ class YoutubeSyncServiceTest {
     private val youtubeVideoRepository: YoutubeVideoRepository = mock()
     private val playlistVideoRepository: PlaylistVideoRepository = mock()
     private val videoMetadataRepository: VideoMetadataRepository = mock()
+    private val youtubeSyncJobRepository: YoutubeSyncJobRepository = mock()
+    private val youtubeSyncJobItemRepository: YoutubeSyncJobItemRepository = mock()
     private val youtubeApiClient: YoutubeApiOperations = mock()
 
     private val service = YoutubeSyncService(
@@ -45,6 +54,8 @@ class YoutubeSyncServiceTest {
         youtubeVideoRepository = youtubeVideoRepository,
         playlistVideoRepository = playlistVideoRepository,
         videoMetadataRepository = videoMetadataRepository,
+        youtubeSyncJobRepository = youtubeSyncJobRepository,
+        youtubeSyncJobItemRepository = youtubeSyncJobItemRepository,
         youtubeApiClient = youtubeApiClient,
         transactionManager = NoOpPlatformTransactionManager(),
     )
@@ -132,12 +143,18 @@ class YoutubeSyncServiceTest {
         whenever(videoMetadataRepository.findAllByYoutubeVideoIdIn(listOf(100L, 101L))).thenReturn(emptyList())
         whenever(videoMetadataRepository.save(any())).thenAnswer { it.getArgument<VideoMetadata>(0) }
         whenever(playlistVideoRepository.save(any())).thenAnswer { it.getArgument<PlaylistVideo>(0) }
+        whenever(youtubeSyncJobRepository.save(any())).thenAnswer { it.getArgument<YoutubeSyncJob>(0) }
+        whenever(youtubeSyncJobItemRepository.save(any())).thenAnswer { it.getArgument<YoutubeSyncJobItem>(0) }
 
         val result = service.syncAllMenus()
 
         val savedPlaylistRows = argumentCaptor<PlaylistVideo>()
+        val savedJobs = argumentCaptor<YoutubeSyncJob>()
+        val savedJobItems = argumentCaptor<YoutubeSyncJobItem>()
         verify(playlistVideoRepository, times(2)).save(savedPlaylistRows.capture())
         verify(videoMetadataRepository, times(2)).save(any())
+        verify(youtubeSyncJobRepository, times(2)).save(savedJobs.capture())
+        verify(youtubeSyncJobItemRepository, times(1)).save(savedJobItems.capture())
 
         assertThat(savedPlaylistRows.allValues.map { it.youtubeVideoId }).containsExactly(100L, 101L)
         assertThat(savedPlaylistRows.allValues.map { it.position }).containsExactly(0, 1)
@@ -145,6 +162,10 @@ class YoutubeSyncServiceTest {
         assertThat(playlist.itemCount).isEqualTo(2)
         assertThat(playlist.lastSyncedAt).isNotNull()
         assertThat(playlist.channelId).isEqualTo("channel-video-1")
+        assertThat(savedJobs.firstValue.triggerType).isEqualTo(YoutubeSyncTriggerType.SCHEDULED)
+        assertThat(savedJobs.lastValue.status).isEqualTo(YoutubeSyncJobStatus.SUCCEEDED)
+        assertThat(savedJobItems.firstValue.status).isEqualTo(YoutubeSyncJobItemStatus.SUCCEEDED)
+        assertThat(savedJobItems.lastValue.processedItems).isEqualTo(2)
         assertThat(result.totalPlaylists).isEqualTo(1)
         assertThat(result.succeededPlaylists).isEqualTo(1)
         assertThat(result.failedPlaylists).isZero()
@@ -255,6 +276,8 @@ class YoutubeSyncServiceTest {
         whenever(videoMetadataRepository.findAllByYoutubeVideoIdIn(listOf(202L, 201L))).thenReturn(emptyList())
         whenever(videoMetadataRepository.save(any())).thenAnswer { it.getArgument<VideoMetadata>(0) }
         whenever(playlistVideoRepository.save(any())).thenAnswer { it.getArgument<PlaylistVideo>(0) }
+        whenever(youtubeSyncJobRepository.save(any())).thenAnswer { it.getArgument<YoutubeSyncJob>(0) }
+        whenever(youtubeSyncJobItemRepository.save(any())).thenAnswer { it.getArgument<YoutubeSyncJobItem>(0) }
 
         val result = service.syncAllMenus()
 
@@ -271,6 +294,112 @@ class YoutubeSyncServiceTest {
         assertThat(result.totalPlaylists).isEqualTo(1)
         assertThat(result.succeededPlaylists).isEqualTo(1)
         assertThat(result.failedPlaylists).isZero()
+    }
+
+    @Test
+    fun `syncAllMenus records failed playlist item and partial failed job summary`() {
+        val menu1 = ContentMenu(
+            id = 1L,
+            siteKey = "messages",
+            menuName = "말씀",
+            slug = "messages",
+            contentKind = ContentKind.LONG_FORM,
+            active = true,
+        )
+        val menu2 = ContentMenu(
+            id = 2L,
+            siteKey = "its-okay",
+            menuName = "그래도 괜찮아",
+            slug = "its-okay",
+            contentKind = ContentKind.SHORT,
+            active = true,
+        )
+        val successPlaylist = YoutubePlaylist(
+            id = 10L,
+            contentMenuId = 1L,
+            youtubePlaylistId = "PL_MESSAGES",
+            title = "말씀",
+            syncEnabled = true,
+        )
+        val failedPlaylist = YoutubePlaylist(
+            id = 20L,
+            contentMenuId = 2L,
+            youtubePlaylistId = "PL_SHORTS",
+            title = "그래도 괜찮아",
+            syncEnabled = true,
+        )
+        val savedVideoId = AtomicLong(100L)
+
+        whenever(youtubePlaylistRepository.findAllBySyncEnabledTrueOrderByIdAsc()).thenReturn(listOf(successPlaylist, failedPlaylist))
+        whenever(contentMenuRepository.findById(1L)).thenReturn(Optional.of(menu1))
+        whenever(contentMenuRepository.findById(2L)).thenReturn(Optional.of(menu2))
+        whenever(youtubeApiClient.getPlaylistItems("PL_MESSAGES", null, 50)).thenReturn(
+            YoutubePlaylistItemsPage(
+                nextPageToken = null,
+                items = listOf(
+                    YoutubePlaylistItem(
+                        videoId = "video-1",
+                        position = 0,
+                        addedToPlaylistAt = OffsetDateTime.parse("2026-03-05T00:00:00Z"),
+                        videoPublishedAt = OffsetDateTime.parse("2026-03-05T00:00:00Z"),
+                    ),
+                ),
+            ),
+        )
+        whenever(youtubeApiClient.getPlaylistItems("PL_SHORTS", null, 50)).thenThrow(IllegalStateException("quota exceeded"))
+        whenever(youtubeApiClient.getVideos(listOf("video-1"))).thenReturn(listOf(youtubeVideoResource("video-1", 320)))
+        whenever(youtubeVideoRepository.findAllByYoutubeVideoIdIn(listOf("video-1"))).thenReturn(emptyList())
+        whenever(youtubeVideoRepository.save(any())).thenAnswer { invocation ->
+            val source = invocation.getArgument<YoutubeVideo>(0)
+            YoutubeVideo(
+                id = savedVideoId.getAndIncrement(),
+                youtubeVideoId = source.youtubeVideoId,
+                title = source.title,
+                description = source.description,
+                publishedAt = source.publishedAt,
+                channelId = source.channelId,
+                channelTitle = source.channelTitle,
+                thumbnailUrl = source.thumbnailUrl,
+                durationSeconds = source.durationSeconds,
+                privacyStatus = source.privacyStatus,
+                uploadStatus = source.uploadStatus,
+                embeddable = source.embeddable,
+                madeForKids = source.madeForKids,
+                detectedKind = source.detectedKind,
+                youtubeWatchUrl = source.youtubeWatchUrl,
+                youtubeEmbedUrl = source.youtubeEmbedUrl,
+                rawPayload = source.rawPayload,
+                lastSyncedAt = source.lastSyncedAt,
+                createdAt = source.createdAt,
+                updatedAt = source.updatedAt,
+            )
+        }
+        whenever(playlistVideoRepository.findAllByYoutubePlaylistIdOrderByPositionAsc(10L)).thenReturn(emptyList())
+        whenever(videoMetadataRepository.findAllByYoutubeVideoIdIn(listOf(100L))).thenReturn(emptyList())
+        whenever(videoMetadataRepository.save(any())).thenAnswer { it.getArgument<VideoMetadata>(0) }
+        whenever(playlistVideoRepository.save(any())).thenAnswer { it.getArgument<PlaylistVideo>(0) }
+        whenever(youtubeSyncJobRepository.save(any())).thenAnswer { it.getArgument<YoutubeSyncJob>(0) }
+        whenever(youtubeSyncJobItemRepository.save(any())).thenAnswer { it.getArgument<YoutubeSyncJobItem>(0) }
+
+        val result = service.syncAllMenus()
+
+        val savedJobs = argumentCaptor<YoutubeSyncJob>()
+        val savedJobItems = argumentCaptor<YoutubeSyncJobItem>()
+        verify(youtubeSyncJobRepository, times(2)).save(savedJobs.capture())
+        verify(youtubeSyncJobItemRepository, times(2)).save(savedJobItems.capture())
+
+        assertThat(savedJobs.lastValue.status).isEqualTo(YoutubeSyncJobStatus.PARTIAL_FAILED)
+        assertThat(savedJobs.lastValue.failedPlaylists).isEqualTo(1)
+        assertThat(savedJobs.lastValue.errorSummary).isEqualTo("1 playlist failed")
+        assertThat(savedJobItems.allValues.map { it.status })
+            .containsExactly(
+                YoutubeSyncJobItemStatus.SUCCEEDED,
+                YoutubeSyncJobItemStatus.FAILED,
+            )
+        assertThat(savedJobItems.lastValue.errorMessage).isEqualTo("quota exceeded")
+        assertThat(result.totalPlaylists).isEqualTo(2)
+        assertThat(result.succeededPlaylists).isEqualTo(1)
+        assertThat(result.failedPlaylists).isEqualTo(1)
     }
 
     private fun youtubeVideoResource(videoId: String, durationSeconds: Int): YoutubeVideoResource = YoutubeVideoResource(

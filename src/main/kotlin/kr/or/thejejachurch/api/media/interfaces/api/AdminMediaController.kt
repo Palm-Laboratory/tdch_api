@@ -22,7 +22,6 @@ class AdminMediaController(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
     ): AdminMediaSyncResponse {
         validateAdminKey(adminKey)
-
         val summary = youtubeSyncService.syncAllMenus()
 
         return AdminMediaSyncResponse(
