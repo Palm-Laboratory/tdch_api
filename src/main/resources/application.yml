@@ -23,6 +23,7 @@ management:
 
 youtube:
   api-key: ${YOUTUBE_API_KEY:}
+  channel-id: ${YOUTUBE_CHANNEL_ID:}
   playlists:
     messages: ${YOUTUBE_MESSAGES_PLAYLIST_ID:}
     better-devotion: ${YOUTUBE_BETTER_DEVOTION_PLAYLIST_ID:}

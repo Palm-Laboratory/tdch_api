@@ -125,6 +125,26 @@ data class AdminPlaylistDetailDto(
     val lastSyncedAt: String? = null,
 )
 
+data class AdminPlaylistDiscoveryItemDto(
+    val siteKey: String,
+    val menuName: String,
+    val slug: String,
+    val contentKind: String,
+    val status: String,
+    val navigationVisible: Boolean,
+    val youtubePlaylistId: String,
+    val youtubeTitle: String,
+    val channelTitle: String? = null,
+    val itemCount: Int = 0,
+    val syncEnabled: Boolean,
+)
+
+data class AdminPlaylistDiscoveryResponse(
+    val discoveredCount: Int,
+    val skippedCount: Int,
+    val items: List<AdminPlaylistDiscoveryItemDto>,
+)
+
 data class AdminVideoDto(
     val youtubeVideoId: String,
     val position: Int,
@@ -232,6 +252,10 @@ data class CreatePlaylistRequest(
     val navigationVisible: Boolean = true,
     val sortOrder: Int = 0,
     val description: String? = null,
+)
+
+data class DiscoverPlaylistsRequest(
+    val channelId: String? = null,
 )
 
 data class UpdatePlaylistRequest(

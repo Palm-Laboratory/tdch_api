@@ -5,8 +5,10 @@ import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.media.application.AdminMediaCommandService
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDiscoveryResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
 import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
+import kr.or.thejejachurch.api.media.interfaces.dto.DiscoverPlaylistsRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdateVideoMetadataRequest
 import org.springframework.web.bind.annotation.PathVariable
@@ -23,6 +25,16 @@ class AdminMediaCommandController(
     private val adminMediaCommandService: AdminMediaCommandService,
     private val adminProperties: AdminProperties,
 ) {
+    @PostMapping("/playlists/discover")
+    fun discoverPlaylists(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @RequestBody(required = false) request: DiscoverPlaylistsRequest? = null,
+    ): AdminPlaylistDiscoveryResponse {
+        validateAdminKey(adminKey)
+        return adminMediaCommandService.discoverPlaylists(actorId, request)
+    }
+
     @PostMapping("/playlists")
     fun createPlaylist(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,

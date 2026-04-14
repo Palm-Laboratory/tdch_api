@@ -3,8 +3,11 @@ package kr.or.thejejachurch.api.media.interfaces.api
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.media.application.AdminMediaCommandService
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDiscoveryItemDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDiscoveryResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
 import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
+import kr.or.thejejachurch.api.media.interfaces.dto.DiscoverPlaylistsRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdateVideoMetadataRequest
 import org.assertj.core.api.Assertions.assertThat
@@ -68,6 +71,49 @@ class AdminMediaCommandControllerTest {
         )
 
         assertThat(response.siteKey).isEqualTo("sermons")
+    }
+
+    @Test
+    fun `discover playlists delegates to command service`() {
+        val controller = AdminMediaCommandController(
+            adminMediaCommandService = adminMediaCommandService,
+            adminProperties = AdminProperties(syncKey = "secret-key"),
+        )
+        whenever(
+            adminMediaCommandService.discoverPlaylists(
+                eq(1L),
+                eq(DiscoverPlaylistsRequest(channelId = "CHANNEL_1")),
+            ),
+        ).thenReturn(
+            AdminPlaylistDiscoveryResponse(
+                discoveredCount = 1,
+                skippedCount = 0,
+                items = listOf(
+                    AdminPlaylistDiscoveryItemDto(
+                        siteKey = "playlist-vered-1",
+                        menuName = "새벽 기도회",
+                        slug = "playlist-vered-1",
+                        contentKind = "LONG_FORM",
+                        status = "DRAFT",
+                        navigationVisible = false,
+                        youtubePlaylistId = "PL_DISCOVERED_1",
+                        youtubeTitle = "새벽 기도회",
+                        channelTitle = "The 제자교회",
+                        itemCount = 14,
+                        syncEnabled = false,
+                    ),
+                ),
+            ),
+        )
+
+        val response = controller.discoverPlaylists(
+            adminKey = "secret-key",
+            actorId = 1L,
+            request = DiscoverPlaylistsRequest(channelId = "CHANNEL_1"),
+        )
+
+        assertThat(response.discoveredCount).isEqualTo(1)
+        assertThat(response.items.first().youtubePlaylistId).isEqualTo("PL_DISCOVERED_1")
     }
 
     @Test

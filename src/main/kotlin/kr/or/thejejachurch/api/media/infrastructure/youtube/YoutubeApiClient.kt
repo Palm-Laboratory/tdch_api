@@ -23,6 +23,38 @@ class YoutubeApiClient(
         .connectTimeout(CONNECT_TIMEOUT)
         .build()
 
+    override fun getChannelPlaylists(
+        channelId: String,
+        pageToken: String?,
+        maxResults: Int,
+    ): YoutubeChannelPlaylistsPage {
+        require(channelId.isNotBlank()) { "channelId must not be blank." }
+        require(maxResults in 1..MAX_RESULTS_PER_PAGE) { "maxResults must be between 1 and $MAX_RESULTS_PER_PAGE." }
+
+        val responseBody = executeGet(
+            UriComponentsBuilder.fromUriString(YOUTUBE_DATA_API_BASE_URL)
+                .path("/playlists")
+                .queryParam("part", "snippet,contentDetails,status")
+                .queryParam("channelId", channelId)
+                .queryParam("maxResults", maxResults)
+                .apply {
+                    if (!pageToken.isNullOrBlank()) {
+                        queryParam("pageToken", pageToken)
+                    }
+                }
+                .build(true)
+                .toUri(),
+        )
+
+        val root = parseJson(responseBody)
+        val items = root.path("items").mapNotNull(::toChannelPlaylistResource)
+
+        return YoutubeChannelPlaylistsPage(
+            nextPageToken = root.path("nextPageToken").asText(null)?.takeIf { it.isNotBlank() },
+            items = items,
+        )
+    }
+
     override fun getPlaylistItems(
         playlistId: String,
         pageToken: String?,
@@ -122,6 +154,26 @@ class YoutubeApiClient(
             position = node.path("snippet").path("position").asInt(0),
             addedToPlaylistAt = node.path("snippet").path("publishedAt").asOffsetDateTime(),
             videoPublishedAt = node.path("contentDetails").path("videoPublishedAt").asOffsetDateTime(),
+        )
+    }
+
+    private fun toChannelPlaylistResource(node: JsonNode): YoutubeChannelPlaylistResource? {
+        val playlistId = node.path("id").asText("").trim()
+        if (playlistId.isBlank()) {
+            return null
+        }
+
+        val snippet = node.path("snippet")
+        val contentDetails = node.path("contentDetails")
+
+        return YoutubeChannelPlaylistResource(
+            youtubePlaylistId = playlistId,
+            title = snippet.path("title").asText("").trim(),
+            description = snippet.path("description").asNullableText(),
+            channelId = snippet.path("channelId").asNullableText(),
+            channelTitle = snippet.path("channelTitle").asNullableText(),
+            thumbnailUrl = extractThumbnailUrl(snippet.path("thumbnails")),
+            itemCount = contentDetails.path("itemCount").takeIf(JsonNode::canConvertToInt)?.asInt(),
         )
     }
 

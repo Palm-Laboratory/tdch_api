@@ -1,17 +1,22 @@
 package kr.or.thejejachurch.api.media.application
 
+import kr.or.thejejachurch.api.common.config.YoutubeProperties
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.media.domain.ContentKind
 import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.domain.VideoMetadata
 import kr.or.thejejachurch.api.media.domain.YoutubePlaylist
+import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeApiOperations
+import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeChannelPlaylistResource
+import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeChannelPlaylistsPage
 import kr.or.thejejachurch.api.media.domain.YoutubeVideo
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.VideoMetadataRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
+import kr.or.thejejachurch.api.media.interfaces.dto.DiscoverPlaylistsRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
 import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
@@ -34,6 +39,7 @@ class AdminMediaCommandServiceTest {
     private val youtubeVideoRepository: YoutubeVideoRepository = mock()
     private val videoMetadataRepository: VideoMetadataRepository = mock()
     private val adminMediaQueryService: AdminMediaQueryService = mock()
+    private val youtubeApiOperations: YoutubeApiOperations = mock()
 
     private val service = AdminMediaCommandService(
         contentMenuRepository = contentMenuRepository,
@@ -41,7 +47,82 @@ class AdminMediaCommandServiceTest {
         youtubeVideoRepository = youtubeVideoRepository,
         videoMetadataRepository = videoMetadataRepository,
         adminMediaQueryService = adminMediaQueryService,
+        youtubeApiOperations = youtubeApiOperations,
+        youtubeProperties = YoutubeProperties(channelId = "DEFAULT_CHANNEL"),
     )
+
+    @Test
+    fun `discover playlists creates draft menus for unmapped youtube playlists`() {
+        whenever(youtubeApiOperations.getChannelPlaylists("CHANNEL_1", null, 50)).thenReturn(
+            YoutubeChannelPlaylistsPage(
+                nextPageToken = null,
+                items = listOf(
+                    YoutubeChannelPlaylistResource(
+                        youtubePlaylistId = "PL_DISCOVERED_1",
+                        title = "새벽 기도회",
+                        description = "새벽 기도회 재생목록",
+                        channelId = "CHANNEL_1",
+                        channelTitle = "The 제자교회",
+                        thumbnailUrl = "https://example.com/playlist.jpg",
+                        itemCount = 14,
+                    ),
+                    YoutubeChannelPlaylistResource(
+                        youtubePlaylistId = "PL_EXISTING",
+                        title = "이미 연결된 재생목록",
+                        description = null,
+                        channelId = "CHANNEL_1",
+                        channelTitle = "The 제자교회",
+                        thumbnailUrl = null,
+                        itemCount = 3,
+                    ),
+                ),
+            ),
+        )
+        whenever(youtubePlaylistRepository.findByYoutubePlaylistId("PL_DISCOVERED_1")).thenReturn(null)
+        whenever(youtubePlaylistRepository.findByYoutubePlaylistId("PL_EXISTING")).thenReturn(
+            YoutubePlaylist(
+                id = 99L,
+                contentMenuId = 10L,
+                youtubePlaylistId = "PL_EXISTING",
+                title = "이미 연결된 재생목록",
+            )
+        )
+        whenever(contentMenuRepository.findBySiteKey("playlist-vered-1")).thenReturn(null)
+        whenever(contentMenuRepository.findBySlug("playlist-vered-1")).thenReturn(null)
+        whenever(contentMenuRepository.findAll()).thenReturn(emptyList())
+        whenever(contentMenuRepository.save(any())).thenAnswer {
+            val menu = it.getArgument<ContentMenu>(0)
+            ContentMenu(
+                id = 1L,
+                siteKey = menu.siteKey,
+                menuName = menu.menuName,
+                slug = menu.slug,
+                contentKind = menu.contentKind,
+                status = menu.status,
+                active = menu.active,
+                navigationVisible = menu.navigationVisible,
+                sortOrder = menu.sortOrder,
+                description = menu.description,
+                discoveredAt = menu.discoveredAt,
+                publishedAt = menu.publishedAt,
+                lastModifiedBy = menu.lastModifiedBy,
+            )
+        }
+        whenever(youtubePlaylistRepository.save(any())).thenAnswer { it.getArgument<YoutubePlaylist>(0) }
+
+        val response = service.discoverPlaylists(
+            actorId = 7L,
+            request = DiscoverPlaylistsRequest(channelId = "CHANNEL_1"),
+        )
+
+        assertThat(response.discoveredCount).isEqualTo(1)
+        assertThat(response.skippedCount).isEqualTo(1)
+        assertThat(response.items).hasSize(1)
+        assertThat(response.items.first().youtubePlaylistId).isEqualTo("PL_DISCOVERED_1")
+        assertThat(response.items.first().status).isEqualTo("DRAFT")
+        assertThat(response.items.first().navigationVisible).isFalse()
+        assertThat(response.items.first().syncEnabled).isFalse()
+    }
 
     @Test
     fun `create playlist creates unified sermon menu resource`() {
@@ -232,6 +313,56 @@ class AdminMediaCommandServiceTest {
         }
 
         assertThat(exception.message).isEqualTo("이미 사용 중인 slug입니다.")
+    }
+
+    @Test
+    fun `discover playlists uses configured default channel when request is omitted`() {
+        whenever(youtubeApiOperations.getChannelPlaylists("DEFAULT_CHANNEL", null, 50)).thenReturn(
+            YoutubeChannelPlaylistsPage(
+                nextPageToken = null,
+                items = listOf(
+                    YoutubeChannelPlaylistResource(
+                        youtubePlaylistId = "PL_DISCOVERED_DEFAULT",
+                        title = "수요 예배",
+                        description = null,
+                        channelId = "DEFAULT_CHANNEL",
+                        channelTitle = "The 제자교회",
+                        thumbnailUrl = null,
+                        itemCount = 9,
+                    ),
+                ),
+            ),
+        )
+        whenever(youtubePlaylistRepository.findByYoutubePlaylistId("PL_DISCOVERED_DEFAULT")).thenReturn(null)
+        whenever(contentMenuRepository.findAll()).thenReturn(emptyList())
+        whenever(contentMenuRepository.save(any())).thenAnswer {
+            val menu = it.getArgument<ContentMenu>(0)
+            ContentMenu(
+                id = 3L,
+                siteKey = menu.siteKey,
+                menuName = menu.menuName,
+                slug = menu.slug,
+                contentKind = menu.contentKind,
+                status = menu.status,
+                active = menu.active,
+                navigationVisible = menu.navigationVisible,
+                sortOrder = menu.sortOrder,
+                description = menu.description,
+                discoveredAt = menu.discoveredAt,
+                publishedAt = menu.publishedAt,
+                lastModifiedBy = menu.lastModifiedBy,
+            )
+        }
+        whenever(youtubePlaylistRepository.save(any())).thenAnswer { it.getArgument<YoutubePlaylist>(0) }
+
+        val result = service.discoverPlaylists(
+            actorId = 7L,
+            request = null,
+        )
+
+        assertThat(result.discoveredCount).isEqualTo(1)
+        assertThat(result.skippedCount).isEqualTo(0)
+        assertThat(result.items).hasSize(1)
     }
 
     @Test

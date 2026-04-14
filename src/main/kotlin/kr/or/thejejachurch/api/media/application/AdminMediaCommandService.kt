@@ -1,5 +1,6 @@
 package kr.or.thejejachurch.api.media.application
 
+import kr.or.thejejachurch.api.common.config.YoutubeProperties
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.media.domain.ContentKind
 import kr.or.thejejachurch.api.media.domain.ContentMenu
@@ -10,15 +11,21 @@ import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepos
 import kr.or.thejejachurch.api.media.infrastructure.persistence.VideoMetadataRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubePlaylistRepository
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
+import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeApiOperations
+import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeChannelPlaylistResource
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDetailDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDiscoveryItemDto
+import kr.or.thejejachurch.api.media.interfaces.dto.AdminPlaylistDiscoveryResponse
 import kr.or.thejejachurch.api.media.interfaces.dto.AdminVideoMetadataDto
 import kr.or.thejejachurch.api.media.interfaces.dto.CreatePlaylistRequest
+import kr.or.thejejachurch.api.media.interfaces.dto.DiscoverPlaylistsRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdatePlaylistRequest
 import kr.or.thejejachurch.api.media.interfaces.dto.UpdateVideoMetadataRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.text.Normalizer
 
 @Service
 class AdminMediaCommandService(
@@ -27,7 +34,96 @@ class AdminMediaCommandService(
     private val youtubeVideoRepository: YoutubeVideoRepository,
     private val videoMetadataRepository: VideoMetadataRepository,
     private val adminMediaQueryService: AdminMediaQueryService,
+    private val youtubeApiOperations: YoutubeApiOperations,
+    private val youtubeProperties: YoutubeProperties = YoutubeProperties(),
 ) {
+
+    @Transactional
+    fun discoverPlaylists(
+        actorId: Long,
+        request: DiscoverPlaylistsRequest? = null,
+    ): AdminPlaylistDiscoveryResponse {
+        val channelId = request?.channelId.normalizedOrNull()
+            ?: youtubeProperties.channelId.normalizedOrNull()
+            ?: throw IllegalStateException("YOUTUBE_CHANNEL_ID is not configured.")
+
+        val existingMenus = contentMenuRepository.findAll()
+        val reservedSiteKeys = existingMenus.mapTo(mutableSetOf()) { it.siteKey }
+        val reservedSlugs = existingMenus.mapTo(mutableSetOf()) { it.slug }
+        var nextSortOrder = (existingMenus.maxOfOrNull { it.sortOrder } ?: -1) + 1
+        val discoveredItems = mutableListOf<AdminPlaylistDiscoveryItemDto>()
+        var skippedCount = 0
+        var pageToken: String? = null
+
+        do {
+            val page = youtubeApiOperations.getChannelPlaylists(channelId, pageToken, 50)
+
+            page.items.forEach { playlist ->
+                if (youtubePlaylistRepository.findByYoutubePlaylistId(playlist.youtubePlaylistId) != null) {
+                    skippedCount += 1
+                    return@forEach
+                }
+
+                val fallbackSuffix = playlist.youtubePlaylistId.takeLast(7).lowercase()
+                val siteKey = allocateUniqueIdentifier(
+                    baseValue = slugify(playlist.title).ifBlank { "playlist-$fallbackSuffix" },
+                    reserved = reservedSiteKeys,
+                )
+                val slug = allocateUniqueIdentifier(
+                    baseValue = slugify(playlist.title).ifBlank { "playlist-$fallbackSuffix" },
+                    reserved = reservedSlugs,
+                )
+                val now = OffsetDateTime.now()
+                val menuName = playlist.title.ifBlank { "새 재생목록" }
+                val contentKind = inferContentKind(menuName, playlist.description)
+
+                val menu = contentMenuRepository.save(
+                    ContentMenu(
+                        siteKey = siteKey,
+                        menuName = menuName,
+                        slug = slug,
+                        contentKind = contentKind,
+                        status = ContentMenuStatus.DRAFT,
+                        active = false,
+                        navigationVisible = false,
+                        sortOrder = nextSortOrder++,
+                        description = playlist.description.normalizedOrNull(),
+                        discoveredAt = now,
+                        lastModifiedBy = actorId,
+                    ),
+                )
+
+                youtubePlaylistRepository.save(
+                    YoutubePlaylist(
+                        contentMenuId = menu.id ?: throw IllegalStateException("content menu id is missing"),
+                        youtubePlaylistId = playlist.youtubePlaylistId,
+                        title = menuName,
+                        description = playlist.description.normalizedOrNull(),
+                        channelId = playlist.channelId,
+                        channelTitle = playlist.channelTitle,
+                        thumbnailUrl = playlist.thumbnailUrl,
+                        itemCount = playlist.itemCount,
+                        syncEnabled = false,
+                    ),
+                )
+
+                discoveredItems += playlist.toDiscoveryItemDto(
+                    siteKey = siteKey,
+                    menuName = menuName,
+                    slug = slug,
+                    contentKind = contentKind,
+                )
+            }
+
+            pageToken = page.nextPageToken
+        } while (pageToken != null)
+
+        return AdminPlaylistDiscoveryResponse(
+            discoveredCount = discoveredItems.size,
+            skippedCount = skippedCount,
+            items = discoveredItems,
+        )
+    }
 
     @Transactional
     fun createPlaylist(
@@ -157,4 +253,60 @@ class AdminMediaCommandService(
 
     private fun String?.normalizedOrNull(): String? =
         this?.trim()?.takeIf { it.isNotEmpty() }
+
+    private fun inferContentKind(title: String, description: String?): ContentKind {
+        val normalized = listOf(title, description.orEmpty()).joinToString(" ").lowercase()
+        return if (
+            normalized.contains("shorts") ||
+            normalized.contains("short") ||
+            normalized.contains("쇼츠")
+        ) {
+            ContentKind.SHORT
+        } else {
+            ContentKind.LONG_FORM
+        }
+    }
+
+    private fun slugify(value: String): String {
+        val normalized = Normalizer.normalize(value, Normalizer.Form.NFKD)
+            .replace(Regex("\\p{M}+"), "")
+            .lowercase()
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
+
+        return normalized
+    }
+
+    private fun allocateUniqueIdentifier(
+        baseValue: String,
+        reserved: MutableSet<String>,
+    ): String {
+        var candidate = baseValue
+        var suffix = 2
+        while (reserved.contains(candidate)) {
+            candidate = "$baseValue-$suffix"
+            suffix += 1
+        }
+        reserved += candidate
+        return candidate
+    }
+
+    private fun YoutubeChannelPlaylistResource.toDiscoveryItemDto(
+        siteKey: String,
+        menuName: String,
+        slug: String,
+        contentKind: ContentKind,
+    ): AdminPlaylistDiscoveryItemDto = AdminPlaylistDiscoveryItemDto(
+        siteKey = siteKey,
+        menuName = menuName,
+        slug = slug,
+        contentKind = contentKind.name,
+        status = ContentMenuStatus.DRAFT.name,
+        navigationVisible = false,
+        youtubePlaylistId = youtubePlaylistId,
+        youtubeTitle = menuName,
+        channelTitle = channelTitle,
+        itemCount = itemCount ?: 0,
+        syncEnabled = false,
+    )
 }
