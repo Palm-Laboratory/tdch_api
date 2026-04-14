@@ -1,5 +1,12 @@
 package kr.or.thejejachurch.api.navigation.application
 
+<<<<<<< HEAD
+=======
+import kr.or.thejejachurch.api.media.domain.ContentKind
+import kr.or.thejejachurch.api.media.domain.ContentMenu
+import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
+import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
+>>>>>>> dev
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationSet
@@ -45,6 +52,76 @@ class AdminNavigationQueryServiceTest {
         assertThat(response.groups[0].children[0].visible).isFalse()
     }
 
+<<<<<<< HEAD
+=======
+    @Test
+    fun `getContentMenus returns active menus in order`() {
+        whenever(contentMenuRepository.findAllByActiveTrueOrderByIdAsc()).thenReturn(
+            listOf(
+                ContentMenu(
+                    id = 1L,
+                    siteKey = "messages",
+                    menuName = "말씀/설교",
+                    slug = "messages",
+                    contentKind = ContentKind.LONG_FORM,
+                    active = true,
+                ),
+            ),
+        )
+
+        val response = service.getContentMenus()
+
+        assertThat(response.items).hasSize(1)
+        assertThat(response.items[0].siteKey).isEqualTo("messages")
+        assertThat(response.items[0].contentKind).isEqualTo("LONG_FORM")
+    }
+
+    @Test
+    fun `getNavigationItems composes sermon children from active content menus`() {
+        val root = item(id = 1L, key = "sermons", label = "예배 영상", href = "/sermons")
+        whenever(siteNavigationSetRepository.findBySetKeyAndActiveTrue("main")).thenReturn(
+            SiteNavigationSet(id = 1L, setKey = "main", label = "메인 사이트 메뉴"),
+        )
+        whenever(siteNavigationItemRepository.findAllByNavigationSetIdAndVisibleTrueOrderBySortOrderAscIdAsc(1L)).thenReturn(
+            listOf(root),
+        )
+        whenever(contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)).thenReturn(
+            listOf(
+                ContentMenu(
+                    id = 11L,
+                    siteKey = "messages",
+                    menuName = "말씀/설교",
+                    slug = "messages",
+                    contentKind = ContentKind.LONG_FORM,
+                    status = ContentMenuStatus.PUBLISHED,
+                    active = true,
+                    navigationVisible = true,
+                    sortOrder = 10,
+                ),
+                ContentMenu(
+                    id = 12L,
+                    siteKey = "shorts",
+                    menuName = "짧은 영상",
+                    slug = "shorts",
+                    contentKind = ContentKind.SHORT,
+                    status = ContentMenuStatus.PUBLISHED,
+                    active = true,
+                    navigationVisible = true,
+                    sortOrder = 20,
+                ),
+            ),
+        )
+
+        val response = service.getNavigationItems(includeHidden = false)
+
+        assertThat(response.groups).hasSize(1)
+        assertThat(response.groups[0].menuKey).isEqualTo("sermons")
+        assertThat(response.groups[0].children).hasSize(2)
+        assertThat(response.groups[0].children.map { it.menuKey }).containsExactly("messages", "shorts")
+        assertThat(response.groups[0].children.map { it.label }).containsExactly("말씀/설교", "짧은 영상")
+    }
+
+>>>>>>> dev
     private fun item(
         id: Long,
         key: String,

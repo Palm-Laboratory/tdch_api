@@ -8,19 +8,15 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
-import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 
 class AdminAccountAuthServiceTest {
 
     private val adminAccountRepository: AdminAccountRepository = mock()
-    private val adminAccountBootstrapService: AdminAccountBootstrapService = mock()
     private val passwordEncoder = BCryptPasswordEncoder()
     private val service = AdminAccountAuthService(
         adminAccountRepository = adminAccountRepository,
-        adminAccountBootstrapService = adminAccountBootstrapService,
         passwordEncoder = passwordEncoder,
     )
 
@@ -41,7 +37,6 @@ class AdminAccountAuthServiceTest {
         assertThat(result.id).isEqualTo(1L)
         assertThat(result.username).isEqualTo("super-admin")
         assertThat(result.role).isEqualTo(AdminAccountRole.SUPER_ADMIN)
-        verify(adminAccountBootstrapService).ensureBootstrapSuperAccount()
     }
 
     @Test
@@ -64,6 +59,23 @@ class AdminAccountAuthServiceTest {
     }
 
     @Test
+    fun `authenticate does not require bootstrap runtime setup when accounts already exist`() {
+        whenever(adminAccountRepository.findByUsername("super-admin")).thenReturn(
+            AdminAccount(
+                id = 1L,
+                username = "super-admin",
+                displayName = "슈퍼 관리자",
+                passwordHash = passwordEncoder.encode("password-123"),
+                role = AdminAccountRole.SUPER_ADMIN,
+            )
+        )
+
+        service.authenticate("super-admin", "password-123")
+
+        org.mockito.kotlin.verify(adminAccountRepository).findByUsername("super-admin")
+    }
+
+    @Test
     fun `authenticate throws unauthorized when account is inactive`() {
         whenever(adminAccountRepository.findByUsername("admin")).thenReturn(
             AdminAccount(
@@ -80,7 +92,7 @@ class AdminAccountAuthServiceTest {
             service.authenticate("admin", "password-123")
         }
 
-        verify(adminAccountRepository, never()).findByUsername("Admin")
+        org.mockito.kotlin.verify(adminAccountRepository).findByUsername("admin")
     }
 
     @Test

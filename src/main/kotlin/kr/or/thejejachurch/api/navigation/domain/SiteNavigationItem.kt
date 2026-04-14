@@ -31,6 +31,8 @@ class SiteNavigationItem(
     @Enumerated(EnumType.STRING)
     @Column(name = "link_type", nullable = false, length = 20)
     val linkType: NavigationLinkType = NavigationLinkType.INTERNAL,
+    @Column(name = "content_site_key", length = 64)
+    val contentSiteKey: String? = null,
     @Column(nullable = false)
     val visible: Boolean = true,
     @Column(name = "header_visible", nullable = false)

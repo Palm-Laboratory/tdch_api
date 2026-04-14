@@ -9,13 +9,10 @@ import org.springframework.stereotype.Service
 @Service
 class AdminAccountAuthService(
     private val adminAccountRepository: AdminAccountRepository,
-    private val adminAccountBootstrapService: AdminAccountBootstrapService,
     private val passwordEncoder: PasswordEncoder,
 ) {
     fun authenticate(username: String, password: String): AuthenticatedAdminAccount {
-        adminAccountBootstrapService.ensureBootstrapSuperAccount()
-
-        val normalizedUsername = AdminAccountBootstrapService.normalizeUsername(username)
+        val normalizedUsername = normalizeUsername(username)
         if (normalizedUsername.isBlank() || password.isBlank()) {
             throw UnauthorizedException("아이디 또는 비밀번호가 올바르지 않습니다.")
         }
@@ -36,8 +33,6 @@ class AdminAccountAuthService(
     }
 
     fun getCurrentAccount(actorId: Long): AuthenticatedAdminAccount {
-        adminAccountBootstrapService.ensureBootstrapSuperAccount()
-
         val account = adminAccountRepository.findByIdOrNull(actorId)
             ?: throw UnauthorizedException("관리자 인증이 필요합니다.")
 
@@ -52,4 +47,6 @@ class AdminAccountAuthService(
             role = account.role,
         )
     }
+
+    private fun normalizeUsername(value: String?): String = value?.trim()?.lowercase() ?: ""
 }
