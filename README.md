@@ -70,6 +70,15 @@ curl -X POST http://localhost:8080/api/v1/admin/media/sync \
 CORS_ALLOWED_ORIGINS=https://your-project.vercel.app,https://your-domain.com,https://www.your-domain.com
 ```
 
+## Flyway checksum mismatch 대응
+
+이미 적용된 migration 파일은 수정하지 않는 것이 원칙입니다. 과거 migration을 수정하면 로컬 DB에서 Flyway validation이 실패할 수 있습니다.
+
+- 기본 복구 전략: 로컬 DB reset 후 재기동
+- 예외 전략: 현재 DB 구조가 migration 결과와 동일하다는 것을 확인한 경우에만 `repair` 검토
+
+자세한 기준과 복구 절차는 [../docs/flyway-migration-hygiene.md](/Users/hanwool/ground/Palm%20Lab/TDCH/docs/flyway-migration-hygiene.md)를 따릅니다.
+
 ## Oracle VM 운영 배포
 
 Oracle Cloud Infrastructure VM 기준 운영 파일을 함께 관리합니다.
