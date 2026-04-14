@@ -12,9 +12,11 @@ import org.springframework.stereotype.Service
 @Service
 class AdminAccountManagementService(
     private val adminAccountRepository: AdminAccountRepository,
+    private val adminAccountBootstrapService: AdminAccountBootstrapService,
     private val passwordEncoder: PasswordEncoder,
 ) {
     fun getAccount(actorId: Long, accountId: Long): AdminAccountSummary {
+        adminAccountBootstrapService.ensureBootstrapSuperAccount()
         requireSuperAdmin(actorId)
 
         val account = adminAccountRepository.findByIdOrNull(accountId)
@@ -24,6 +26,7 @@ class AdminAccountManagementService(
     }
 
     fun getAccounts(actorId: Long): List<AdminAccountSummary> {
+        adminAccountBootstrapService.ensureBootstrapSuperAccount()
         requireSuperAdmin(actorId)
 
         return adminAccountRepository.findAll()
@@ -35,9 +38,10 @@ class AdminAccountManagementService(
     }
 
     fun createAdminAccount(actorId: Long, command: CreateAdminAccountCommand): AdminAccountSummary {
+        adminAccountBootstrapService.ensureBootstrapSuperAccount()
         requireSuperAdmin(actorId)
 
-        val username = normalizeUsername(command.username)
+        val username = AdminAccountBootstrapService.normalizeUsername(command.username)
         val displayName = command.displayName.trim()
         val password = command.password.trim()
 
@@ -66,12 +70,13 @@ class AdminAccountManagementService(
         accountId: Long,
         command: UpdateAdminAccountCommand,
     ): AdminAccountSummary {
+        adminAccountBootstrapService.ensureBootstrapSuperAccount()
         requireSuperAdmin(actorId)
 
         val account = adminAccountRepository.findByIdOrNull(accountId)
             ?: throw NotFoundException("관리자 계정을 찾을 수 없습니다. id=$accountId")
 
-        val username = normalizeUsername(command.username)
+        val username = AdminAccountBootstrapService.normalizeUsername(command.username)
         val displayName = command.displayName.trim()
         require(username.isNotBlank()) { "관리자 아이디를 입력해 주세요." }
         require(displayName.isNotBlank()) { "관리자 이름을 입력해 주세요." }
@@ -121,6 +126,7 @@ class AdminAccountManagementService(
     }
 
     fun deleteAdminAccount(actorId: Long, accountId: Long) {
+        adminAccountBootstrapService.ensureBootstrapSuperAccount()
         requireSuperAdmin(actorId)
 
         if (actorId == accountId) {
@@ -158,5 +164,3 @@ class AdminAccountManagementService(
             updatedAt = updatedAt,
         )
 }
-
-private fun normalizeUsername(value: String?): String = value?.trim()?.lowercase() ?: ""

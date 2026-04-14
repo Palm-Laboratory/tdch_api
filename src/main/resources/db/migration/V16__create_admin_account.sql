@@ -15,6 +15,7 @@ create table admin_account (
 create index idx_admin_account_active_username
     on admin_account(active, username);
 
+drop trigger if exists trg_admin_account_updated_at on admin_account;
 create trigger trg_admin_account_updated_at
 before update on admin_account
 for each row

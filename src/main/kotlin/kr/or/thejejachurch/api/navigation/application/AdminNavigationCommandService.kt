@@ -1,6 +1,7 @@
 package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
+import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 class AdminNavigationCommandService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val siteNavigationSetRepository: SiteNavigationSetRepository,
+    private val contentMenuRepository: ContentMenuRepository,
 ) {
 
     @Transactional
@@ -52,7 +54,10 @@ class AdminNavigationCommandService(
             throw IllegalArgumentException("이미 기본 랜딩으로 지정된 하위 메뉴가 있습니다.")
         }
 
-        val linkType = parseLinkType(request.linkType)
+        val linkType = runCatching { NavigationLinkType.valueOf(request.linkType) }
+            .getOrElse { throw IllegalArgumentException("지원하지 않는 링크 타입입니다. linkType=${request.linkType}") }
+
+        validateContentReference(request, linkType)
         validateLinkFields(request, linkType)
 
         val saved = siteNavigationItemRepository.save(
@@ -64,6 +69,7 @@ class AdminNavigationCommandService(
                 href = request.href,
                 matchPath = request.matchPath?.trim()?.takeIf { it.isNotEmpty() },
                 linkType = linkType,
+                contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() },
                 visible = request.visible,
                 headerVisible = request.headerVisible,
                 mobileVisible = request.mobileVisible,
@@ -71,7 +77,7 @@ class AdminNavigationCommandService(
                 breadcrumbVisible = request.breadcrumbVisible,
                 defaultLanding = request.defaultLanding,
                 sortOrder = request.sortOrder,
-            ),
+            )
         )
 
         return saved.toAdminNavigationItemDto()
@@ -135,7 +141,10 @@ class AdminNavigationCommandService(
             throw IllegalArgumentException("이미 기본 랜딩으로 지정된 하위 메뉴가 있습니다.")
         }
 
-        val linkType = parseLinkType(request.linkType)
+        val linkType = runCatching { NavigationLinkType.valueOf(request.linkType) }
+            .getOrElse { throw IllegalArgumentException("지원하지 않는 링크 타입입니다. linkType=${request.linkType}") }
+
+        validateContentReference(request, linkType)
         validateLinkFields(request, linkType)
 
         val updated = siteNavigationItemRepository.save(
@@ -148,6 +157,7 @@ class AdminNavigationCommandService(
                 href = request.href,
                 matchPath = request.matchPath?.trim()?.takeIf { it.isNotEmpty() },
                 linkType = linkType,
+                contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() },
                 visible = request.visible,
                 headerVisible = request.headerVisible,
                 mobileVisible = request.mobileVisible,
@@ -157,7 +167,7 @@ class AdminNavigationCommandService(
                 sortOrder = request.sortOrder,
                 createdAt = currentItem.createdAt,
                 updatedAt = currentItem.updatedAt,
-            ),
+            )
         )
 
         return updated.toAdminNavigationItemDto()
@@ -175,9 +185,22 @@ class AdminNavigationCommandService(
         siteNavigationItemRepository.delete(item)
     }
 
-    private fun parseLinkType(raw: String): NavigationLinkType =
-        runCatching { NavigationLinkType.valueOf(raw) }
-            .getOrElse { throw IllegalArgumentException("지원하지 않는 링크 타입입니다. linkType=$raw") }
+    private fun validateContentReference(
+        request: AdminNavigationUpsertRequest,
+        linkType: NavigationLinkType,
+    ) {
+        val contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() }
+        if (linkType == NavigationLinkType.CONTENT_REF) {
+            if (contentSiteKey == null) {
+                throw IllegalArgumentException("CONTENT_REF 메뉴는 contentSiteKey 가 필요합니다.")
+            }
+            if (contentMenuRepository.findBySiteKey(contentSiteKey) == null) {
+                throw IllegalArgumentException("존재하지 않는 콘텐츠 메뉴입니다. contentSiteKey=$contentSiteKey")
+            }
+        } else if (contentSiteKey != null) {
+            throw IllegalArgumentException("contentSiteKey 는 CONTENT_REF 타입에서만 사용할 수 있습니다.")
+        }
+    }
 
     private fun validateLinkFields(
         request: AdminNavigationUpsertRequest,
@@ -203,7 +226,7 @@ class AdminNavigationCommandService(
                 }
             }
 
-            NavigationLinkType.INTERNAL -> Unit
+            else -> Unit
         }
     }
 
@@ -216,6 +239,7 @@ class AdminNavigationCommandService(
         href = href,
         matchPath = matchPath,
         linkType = linkType.name,
+        contentSiteKey = contentSiteKey,
         visible = visible,
         headerVisible = headerVisible,
         mobileVisible = mobileVisible,

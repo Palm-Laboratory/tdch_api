@@ -1,0 +1,90 @@
+insert into site_navigation_item (
+    parent_id,
+    menu_key,
+    label,
+    href,
+    match_path,
+    link_type,
+    content_site_key,
+    visible,
+    header_visible,
+    mobile_visible,
+    lnb_visible,
+    breadcrumb_visible,
+    default_landing,
+    sort_order
+)
+values
+    (null, 'about', '교회 소개', '/about', '/about', 'INTERNAL', null, true, true, true, true, true, false, 10),
+    (null, 'sermons', '예배 영상', '/sermons', '/sermons', 'INTERNAL', null, true, true, true, true, true, false, 20),
+    (null, 'newcomer', '제자 양육', '/newcomer', '/newcomer', 'INTERNAL', null, true, true, true, true, true, false, 30),
+    (null, 'location-contact', '오시는 길/문의', '/about/location', '/about/location', 'INTERNAL', null, true, true, true, true, true, false, 40),
+    (null, 'giving', '헌금 안내', '/about/giving', '/about/giving', 'INTERNAL', null, true, true, true, true, true, false, 50),
+    (null, 'news', '교회 소식', '/news', '/news', 'INTERNAL', null, true, false, false, true, true, false, 60);
+
+insert into site_navigation_item (
+    parent_id,
+    menu_key,
+    label,
+    href,
+    match_path,
+    link_type,
+    content_site_key,
+    visible,
+    header_visible,
+    mobile_visible,
+    lnb_visible,
+    breadcrumb_visible,
+    default_landing,
+    sort_order
+)
+select root.id,
+       child.menu_key,
+       child.label,
+       child.href,
+       child.match_path,
+       child.link_type,
+       child.content_site_key,
+       child.visible,
+       child.header_visible,
+       child.mobile_visible,
+       child.lnb_visible,
+       child.breadcrumb_visible,
+       child.default_landing,
+       child.sort_order
+from (
+    values
+        ('about', 'about-greeting', '인사말/비전', '/about/greeting', '/about/greeting', 'INTERNAL', null, true, true, true, true, true, true, 10),
+        ('about', 'about-pastor', '담임목사 소개', '/about/pastor', '/about/pastor', 'INTERNAL', null, true, true, true, true, true, false, 20),
+        ('about', 'about-service-times', '예배 시간 안내', '/about/service-times', '/about/service-times', 'INTERNAL', null, true, true, true, true, true, false, 30),
+        ('about', 'about-location', '오시는 길', '/about/location', '/about/location', 'INTERNAL', null, true, true, true, true, true, false, 40),
+        ('about', 'about-history', '교회연혁', '/about/history', '/about/history', 'INTERNAL', null, true, true, true, true, true, false, 50),
+        ('about', 'about-giving', '헌금 안내', '/about/giving', '/about/giving', 'INTERNAL', null, true, true, true, true, true, false, 60),
+        ('sermons', 'sermons-messages', '말씀/설교', '/sermons/messages', '/sermons/messages', 'CONTENT_REF', 'messages', true, true, true, true, true, true, 10),
+        ('sermons', 'sermons-better-devotion', '더 좋은 묵상', '/sermons/better-devotion', '/sermons/better-devotion', 'CONTENT_REF', 'better-devotion', true, true, true, true, true, false, 20),
+        ('sermons', 'sermons-its-okay', '그래도 괜찮아', '/sermons/its-okay', '/sermons/its-okay', 'CONTENT_REF', 'its-okay', true, true, true, true, true, false, 30),
+        ('newcomer', 'newcomer-main', '새가족 안내', '/newcomer', '/newcomer', 'INTERNAL', null, true, true, true, true, true, true, 10),
+        ('newcomer', 'newcomer-care', '새가족 양육', '/newcomer/care', '/newcomer/care', 'INTERNAL', null, true, true, true, true, true, false, 20),
+        ('newcomer', 'newcomer-curriculum', '교육 과정', '/newcomer/curriculum', '/newcomer/curriculum', 'INTERNAL', null, true, true, true, true, true, false, 30),
+        ('location-contact', 'location-contact-map', '지도', '/about/location#map', '/about/location', 'ANCHOR', null, true, true, true, true, true, false, 10),
+        ('location-contact', 'location-contact-info', '연락처', '/about/location#contact-info', '/about/location', 'ANCHOR', null, true, true, true, true, true, false, 20),
+        ('giving', 'giving-online', '온라인 헌금방법', '/about/giving', '/about/giving', 'INTERNAL', null, true, true, true, true, true, true, 10),
+        ('news', 'news-notice', '공지', '/news#notice', '/news', 'ANCHOR', null, true, false, false, true, true, false, 10),
+        ('news', 'news-bulletin', '주보', '/news#bulletin', '/news', 'ANCHOR', null, true, false, false, true, true, false, 20)
+) as child(
+    root_key,
+    menu_key,
+    label,
+    href,
+    match_path,
+    link_type,
+    content_site_key,
+    visible,
+    header_visible,
+    mobile_visible,
+    lnb_visible,
+    breadcrumb_visible,
+    default_landing,
+    sort_order
+)
+join site_navigation_item root on root.menu_key = child.root_key;

@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.navigation.application.AdminNavigationCommandService
 import kr.or.thejejachurch.api.navigation.application.AdminNavigationQueryService
+import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetsResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationTreeResponse
@@ -80,6 +81,14 @@ class AdminNavigationController(
     ) {
         validateAdminKey(adminKey)
         adminNavigationCommandService.deleteNavigationItem(id)
+    }
+
+    @GetMapping("/content-menus")
+    fun getContentMenus(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+    ): AdminContentMenusResponse {
+        validateAdminKey(adminKey)
+        return adminNavigationQueryService.getContentMenus()
     }
 
     private fun validateAdminKey(adminKey: String?) {
