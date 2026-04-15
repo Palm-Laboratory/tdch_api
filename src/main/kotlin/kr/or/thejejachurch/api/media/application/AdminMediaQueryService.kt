@@ -237,6 +237,25 @@ class AdminMediaQueryService(
         return if (descending) comparator.reversed() else comparator
     }
 
+    private fun resolveOperationStatus(playlist: YoutubePlaylist?): String {
+        if (playlist?.syncEnabled == false) {
+            return "SYNC_DISABLED"
+        }
+
+        val successAt = playlist?.lastSyncSucceededAt
+        val failureAt = playlist?.lastSyncFailedAt
+
+        if (failureAt != null && (successAt == null || failureAt.isAfter(successAt))) {
+            return "SYNC_FAILED"
+        }
+
+        if (successAt != null) {
+            return "READY"
+        }
+
+        return "PENDING_SYNC"
+    }
+
     private fun ContentMenu.toAdminPlaylistDto(playlist: YoutubePlaylist?): AdminPlaylistDto =
         AdminPlaylistDto(
             id = id ?: throw IllegalStateException("content menu id is missing"),
@@ -262,6 +281,7 @@ class AdminMediaQueryService(
             lastSyncFailedAt = playlist?.lastSyncFailedAt?.toString(),
             lastSyncErrorMessage = playlist?.lastSyncErrorMessage,
             discoverySource = playlist?.discoverySource,
+            operationStatus = resolveOperationStatus(playlist),
         )
 
     private fun ContentMenu.toAdminPlaylistDetailDto(playlist: YoutubePlaylist?): AdminPlaylistDetailDto =
@@ -293,6 +313,7 @@ class AdminMediaQueryService(
             lastSyncFailedAt = playlist?.lastSyncFailedAt?.toString(),
             lastSyncErrorMessage = playlist?.lastSyncErrorMessage,
             discoverySource = playlist?.discoverySource,
+            operationStatus = resolveOperationStatus(playlist),
         )
 
     private fun PlaylistVideo.toAdminVideoDto(video: YoutubeVideo, metadata: VideoMetadata?): AdminVideoDto =

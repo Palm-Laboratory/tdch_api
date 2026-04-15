@@ -99,6 +99,7 @@ data class AdminPlaylistDto(
     val lastSyncFailedAt: String? = null,
     val lastSyncErrorMessage: String? = null,
     val discoverySource: String? = null,
+    val operationStatus: String = "PENDING_SYNC",
 )
 
 data class AdminPlaylistListResponse(
@@ -133,6 +134,7 @@ data class AdminPlaylistDetailDto(
     val lastSyncFailedAt: String? = null,
     val lastSyncErrorMessage: String? = null,
     val discoverySource: String? = null,
+    val operationStatus: String = "PENDING_SYNC",
 )
 
 data class AdminPlaylistDiscoveryItemDto(
