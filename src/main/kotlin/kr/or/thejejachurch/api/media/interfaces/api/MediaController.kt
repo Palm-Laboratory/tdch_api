@@ -34,6 +34,12 @@ class MediaController(
         @RequestParam(defaultValue = "12") @Min(1) @Max(100) size: Int,
     ): MediaListResponse = mediaQueryService.getVideos(slug, page, size)
 
+    @GetMapping("/menus/{slug}/videos/{youtubeVideoId}")
+    fun getVideoBySlug(
+        @PathVariable slug: String,
+        @PathVariable youtubeVideoId: String,
+    ): VideoDetailResponse = mediaQueryService.getVideo(slug, youtubeVideoId)
+
     @GetMapping("/videos/{youtubeVideoId}")
     fun getVideo(
         @PathVariable youtubeVideoId: String,

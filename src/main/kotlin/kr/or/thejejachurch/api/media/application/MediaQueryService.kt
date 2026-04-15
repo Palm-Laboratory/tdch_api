@@ -95,6 +95,30 @@ class MediaQueryService(
             ?: throw NotFoundException("Unknown youtubeVideoId: $youtubeVideoId")
         val metadata = video.id?.let(videoMetadataRepository::findByYoutubeVideoId)
 
+        return toVideoDetailResponse(video, metadata)
+    }
+
+    @Transactional(readOnly = true)
+    fun getVideo(slug: String, youtubeVideoId: String): VideoDetailResponse {
+        val menu = getActiveMenuBySlug(slug)
+        val playlist = menu.id?.let(youtubePlaylistRepository::findByContentMenuIdAndSyncEnabledTrue)
+            ?: throw notFoundVideoDetail(slug, youtubeVideoId)
+        val video = youtubeVideoRepository.findByYoutubeVideoId(youtubeVideoId)
+            ?: throw NotFoundException("Unknown youtubeVideoId: $youtubeVideoId")
+        val videoId = video.id
+            ?: throw notFoundVideoDetail(slug, youtubeVideoId)
+        val playlistVideo = playlist.id?.let { playlistVideoRepository.findByYoutubePlaylistIdAndYoutubeVideoId(it, videoId) }
+            ?.takeIf { it.isActive }
+            ?: throw notFoundVideoDetail(slug, youtubeVideoId)
+        val metadata = videoMetadataRepository.findByYoutubeVideoId(videoId)
+
+        return toVideoDetailResponse(video, metadata)
+    }
+
+    private fun toVideoDetailResponse(
+        video: YoutubeVideo,
+        metadata: VideoMetadata?,
+    ): VideoDetailResponse {
         return VideoDetailResponse(
             youtubeVideoId = video.youtubeVideoId,
             title = video.title,
@@ -172,6 +196,9 @@ class MediaQueryService(
         contentMenuRepository.findBySlug(slug)
             ?.takeIf { it.active }
             ?: throw NotFoundException("Unknown slug: $slug")
+
+    private fun notFoundVideoDetail(slug: String, youtubeVideoId: String): NotFoundException =
+        NotFoundException("Unknown video detail: slug=$slug youtubeVideoId=$youtubeVideoId")
 
     private fun toMenuDto(menu: ContentMenu): MenuDto = MenuDto(
         siteKey = menu.siteKey,
