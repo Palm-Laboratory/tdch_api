@@ -263,6 +263,8 @@ data class UpdatePlaylistRequest(
     val menuName: String,
     @field:NotBlank(message = "slug must not be blank")
     val slug: String,
+    @field:NotBlank(message = "contentKind must not be blank")
+    val contentKind: String,
     val youtubePlaylistId: String? = null,
     val syncEnabled: Boolean,
     val active: Boolean,

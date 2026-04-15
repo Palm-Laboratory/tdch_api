@@ -53,7 +53,7 @@ class AdminMediaCommandController(
         @Valid @RequestBody request: UpdatePlaylistRequest,
     ): AdminPlaylistDetailDto {
         validateAdminKey(adminKey)
-        return adminMediaCommandService.updatePlaylist(siteKey, request)
+        return adminMediaCommandService.updatePlaylist(actorId, siteKey, request)
     }
 
     @PutMapping("/videos/{youtubeVideoId}/metadata")

@@ -174,6 +174,7 @@ class AdminMediaCommandService(
 
     @Transactional
     fun updatePlaylist(
+        actorId: Long,
         siteKey: String,
         request: UpdatePlaylistRequest,
     ): AdminPlaylistDetailDto {
@@ -182,6 +183,7 @@ class AdminMediaCommandService(
 
         val menuName = request.menuName.trim()
         val slug = request.slug.trim().lowercase()
+        val contentKind = ContentKind.valueOf(request.contentKind.trim().uppercase())
 
         require(menuName.isNotBlank()) { "menuName must not be blank" }
         require(slug.isNotBlank()) { "slug must not be blank" }
@@ -195,11 +197,13 @@ class AdminMediaCommandService(
 
         menu.menuName = menuName
         menu.slug = slug
+        menu.contentKind = contentKind
         menu.status = ContentMenuStatus.valueOf(request.status.trim().uppercase())
         menu.active = request.active
         menu.navigationVisible = request.navigationVisible
         menu.sortOrder = request.sortOrder
         menu.description = request.description.normalizedOrNull()
+        menu.lastModifiedBy = actorId
         if (menu.status == ContentMenuStatus.PUBLISHED && menu.publishedAt == null) {
             menu.publishedAt = OffsetDateTime.now()
         }
