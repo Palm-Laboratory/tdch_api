@@ -78,17 +78,18 @@ class YoutubeSyncService(
                 youtubeSyncJobItemRepository.save(item)
                 succeeded += 1
             } catch (ex: Exception) {
+                val errorMessage = resolveSyncErrorMessage(ex)
                 val item = YoutubeSyncJobItem.start(
                     jobId = job.id ?: 0L,
                     contentMenuId = playlist.contentMenuId,
                     youtubePlaylistId = playlist.id,
                     startedAt = OffsetDateTime.now(),
                 )
-                playlist.markSyncFailed(OffsetDateTime.now(), ex.message ?: ex.javaClass.simpleName)
+                playlist.markSyncFailed(OffsetDateTime.now(), errorMessage)
                 youtubePlaylistRepository.save(playlist)
                 item.markFailed(
                     finishedAt = OffsetDateTime.now(),
-                    errorMessage = ex.message ?: ex.javaClass.simpleName,
+                    errorMessage = errorMessage,
                 )
                 youtubeSyncJobItemRepository.save(item)
                 failed += 1
@@ -206,7 +207,7 @@ class YoutubeSyncService(
         playlistItems.forEach { item ->
             val video = videosByYoutubeId[item.videoId] ?: return@forEach
             val videoDbId = video.id ?: return@forEach
-            activeVideoIds += videoDbId
+            val shouldActivateInPlaylist = video.shouldBeActiveInPlaylist()
 
             val existing = existingRowsByVideoId[videoDbId]
             if (existing == null) {
@@ -216,7 +217,7 @@ class YoutubeSyncService(
                         youtubeVideoId = videoDbId,
                         position = item.position,
                         addedToPlaylistAt = item.addedToPlaylistAt,
-                        isActive = true,
+                        isActive = shouldActivateInPlaylist,
                         createdAt = now,
                         updatedAt = now,
                     ),
@@ -224,8 +225,12 @@ class YoutubeSyncService(
             } else {
                 existing.position = item.position
                 existing.addedToPlaylistAt = item.addedToPlaylistAt
-                existing.isActive = true
+                existing.isActive = shouldActivateInPlaylist
                 existing.updatedAt = now
+            }
+
+            if (shouldActivateInPlaylist) {
+                activeVideoIds += videoDbId
             }
         }
 
@@ -288,6 +293,14 @@ class YoutubeSyncService(
         lastSyncErrorMessage = errorMessage
         updatedAt = now
     }
+
+    private fun YoutubeVideo.shouldBeActiveInPlaylist(): Boolean =
+        privacyStatus == "public" &&
+            uploadStatus == "processed" &&
+            embeddable
+
+    private fun resolveSyncErrorMessage(ex: Exception): String =
+        ex.message ?: ex.javaClass.simpleName
 
     private fun YoutubeVideoResource.toEntity(
         menu: ContentMenu,
