@@ -7,7 +7,7 @@ class YoutubeSyncJobMigrationTest {
 
     @Test
     fun `sync job migration creates job and job item tables with key constraints`() {
-        val resource = javaClass.getResource("/db/migration/V12__create_youtube_sync_job_tables.sql")
+        val resource = javaClass.getResource("/db/migration/V11__create_youtube_sync_job_tables.sql")
 
         assertThat(resource).isNotNull()
 

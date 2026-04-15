@@ -61,11 +61,10 @@ class SiteNavigationMigrationContractTest {
                 "V6__create_video_metadata.sql",
                 "V7__seed_content_menus.sql",
                 "V8__alter_video_metadata_scripture_to_text.sql",
-                "V9__add_scripture_body_to_video_metadata.sql",
-                "V10__add_script_body_to_video_metadata.sql",
-                "V11__create_admin_account.sql",
-                "V12__create_youtube_sync_job_tables.sql",
-                "V13__extend_content_menu_for_sermon_navigation.sql",
+                "V9__add_script_body_to_video_metadata.sql",
+                "V10__create_admin_account.sql",
+                "V11__create_youtube_sync_job_tables.sql",
+                "V12__extend_content_menu_for_sermon_navigation.sql",
             )
     }
 
