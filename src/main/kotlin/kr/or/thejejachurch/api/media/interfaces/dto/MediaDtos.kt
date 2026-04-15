@@ -94,6 +94,11 @@ data class AdminPlaylistDto(
     val itemCount: Int,
     val syncEnabled: Boolean,
     val lastSyncedAt: String? = null,
+    val lastDiscoveredAt: String? = null,
+    val lastSyncSucceededAt: String? = null,
+    val lastSyncFailedAt: String? = null,
+    val lastSyncErrorMessage: String? = null,
+    val discoverySource: String? = null,
 )
 
 data class AdminPlaylistListResponse(
@@ -123,6 +128,11 @@ data class AdminPlaylistDetailDto(
     val itemCount: Int,
     val syncEnabled: Boolean,
     val lastSyncedAt: String? = null,
+    val lastDiscoveredAt: String? = null,
+    val lastSyncSucceededAt: String? = null,
+    val lastSyncFailedAt: String? = null,
+    val lastSyncErrorMessage: String? = null,
+    val discoverySource: String? = null,
 )
 
 data class AdminPlaylistDiscoveryItemDto(

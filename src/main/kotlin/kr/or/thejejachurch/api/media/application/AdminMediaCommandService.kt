@@ -27,6 +27,8 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.text.Normalizer
 
+private const val DISCOVERY_SOURCE_MANUAL = "MANUAL"
+
 @Service
 class AdminMediaCommandService(
     private val contentMenuRepository: ContentMenuRepository,
@@ -104,6 +106,8 @@ class AdminMediaCommandService(
                         thumbnailUrl = playlist.thumbnailUrl,
                         itemCount = playlist.itemCount,
                         syncEnabled = false,
+                        lastDiscoveredAt = now,
+                        discoverySource = DISCOVERY_SOURCE_MANUAL,
                     ),
                 )
 

@@ -257,6 +257,11 @@ class AdminMediaQueryService(
                 ?: 0,
             syncEnabled = playlist?.syncEnabled ?: false,
             lastSyncedAt = playlist?.lastSyncedAt?.toString(),
+            lastDiscoveredAt = playlist?.lastDiscoveredAt?.toString(),
+            lastSyncSucceededAt = playlist?.lastSyncSucceededAt?.toString(),
+            lastSyncFailedAt = playlist?.lastSyncFailedAt?.toString(),
+            lastSyncErrorMessage = playlist?.lastSyncErrorMessage,
+            discoverySource = playlist?.discoverySource,
         )
 
     private fun ContentMenu.toAdminPlaylistDetailDto(playlist: YoutubePlaylist?): AdminPlaylistDetailDto =
@@ -283,6 +288,11 @@ class AdminMediaQueryService(
                 ?: 0,
             syncEnabled = playlist?.syncEnabled ?: false,
             lastSyncedAt = playlist?.lastSyncedAt?.toString(),
+            lastDiscoveredAt = playlist?.lastDiscoveredAt?.toString(),
+            lastSyncSucceededAt = playlist?.lastSyncSucceededAt?.toString(),
+            lastSyncFailedAt = playlist?.lastSyncFailedAt?.toString(),
+            lastSyncErrorMessage = playlist?.lastSyncErrorMessage,
+            discoverySource = playlist?.discoverySource,
         )
 
     private fun PlaylistVideo.toAdminVideoDto(video: YoutubeVideo, metadata: VideoMetadata?): AdminVideoDto =

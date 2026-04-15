@@ -34,6 +34,16 @@ class YoutubePlaylist(
     var syncEnabled: Boolean = true,
     @Column(name = "last_synced_at")
     var lastSyncedAt: OffsetDateTime? = null,
+    @Column(name = "last_discovered_at")
+    var lastDiscoveredAt: OffsetDateTime? = null,
+    @Column(name = "last_sync_succeeded_at")
+    var lastSyncSucceededAt: OffsetDateTime? = null,
+    @Column(name = "last_sync_failed_at")
+    var lastSyncFailedAt: OffsetDateTime? = null,
+    @Column(name = "last_sync_error_message", columnDefinition = "text")
+    var lastSyncErrorMessage: String? = null,
+    @Column(name = "discovery_source", length = 20)
+    var discoverySource: String? = null,
     @Column(name = "created_at", nullable = false)
     var createdAt: OffsetDateTime = OffsetDateTime.now(),
     @Column(name = "updated_at", nullable = false)

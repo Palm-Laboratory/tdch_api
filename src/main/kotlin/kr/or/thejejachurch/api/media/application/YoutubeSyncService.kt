@@ -84,6 +84,8 @@ class YoutubeSyncService(
                     youtubePlaylistId = playlist.id,
                     startedAt = OffsetDateTime.now(),
                 )
+                playlist.markSyncFailed(OffsetDateTime.now(), ex.message ?: ex.javaClass.simpleName)
+                youtubePlaylistRepository.save(playlist)
                 item.markFailed(
                     finishedAt = OffsetDateTime.now(),
                     errorMessage = ex.message ?: ex.javaClass.simpleName,
@@ -126,6 +128,7 @@ class YoutubeSyncService(
         upsertPlaylistVideos(playlist, playlistItems, videosByYoutubeId)
         ensureVideoMetadataRows(videosByYoutubeId.values.mapNotNull { it.id })
         updatePlaylistSyncState(playlist, playlistItems.size, videosByYoutubeId.values.firstOrNull())
+        youtubePlaylistRepository.save(playlist)
 
         log.info(
             "YouTube sync completed for siteKey={} playlistId={} items={} videos={}",
@@ -266,11 +269,24 @@ class YoutubeSyncService(
         val now = OffsetDateTime.now()
         playlist.itemCount = itemCount
         playlist.lastSyncedAt = now
+        playlist.lastSyncSucceededAt = now
+        playlist.lastSyncFailedAt = null
+        playlist.lastSyncErrorMessage = null
         playlist.updatedAt = now
         if (representativeVideo != null) {
             playlist.channelId = representativeVideo.channelId
             playlist.channelTitle = representativeVideo.channelTitle
         }
+    }
+
+    private fun YoutubePlaylist.markSyncFailed(
+        now: OffsetDateTime,
+        errorMessage: String,
+    ) {
+        lastSyncSucceededAt = null
+        lastSyncFailedAt = now
+        lastSyncErrorMessage = errorMessage
+        updatedAt = now
     }
 
     private fun YoutubeVideoResource.toEntity(

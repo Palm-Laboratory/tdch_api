@@ -13,6 +13,7 @@ import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeSyncJobRe
 import kr.or.thejejachurch.api.media.infrastructure.persistence.YoutubeVideoRepository
 import kr.or.thejejachurch.api.media.infrastructure.youtube.YoutubeApiOperations
 import kr.or.thejejachurch.api.support.NoOpPlatformTransactionManager
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -20,6 +21,7 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.util.Optional
+import java.time.OffsetDateTime
 
 class YoutubeSyncHistoryPersistenceTest {
 
@@ -130,5 +132,124 @@ class YoutubeSyncHistoryPersistenceTest {
 
         verify(youtubeSyncJobRepository, times(2)).save(any())
         verify(youtubeSyncJobItemRepository, times(1)).save(any())
+    }
+
+    @Test
+    fun `syncAllMenus should persist latest sync success summary on playlist`() {
+        val service = YoutubeSyncService(
+            contentMenuRepository = contentMenuRepository,
+            youtubePlaylistRepository = youtubePlaylistRepository,
+            youtubeVideoRepository = youtubeVideoRepository,
+            playlistVideoRepository = playlistVideoRepository,
+            videoMetadataRepository = videoMetadataRepository,
+            youtubeApiClient = youtubeApiClient,
+            youtubeSyncJobRepository = youtubeSyncJobRepository,
+            youtubeSyncJobItemRepository = youtubeSyncJobItemRepository,
+            transactionManager = NoOpPlatformTransactionManager(),
+        )
+
+        val playlist = YoutubePlaylist(
+            id = 11L,
+            contentMenuId = 1L,
+            youtubePlaylistId = "PL_MESSAGES",
+            title = "말씀/설교",
+            syncEnabled = true,
+            lastSyncedAt = null,
+            lastSyncSucceededAt = null,
+            lastSyncFailedAt = OffsetDateTime.parse("2026-04-14T00:00:00Z"),
+            lastSyncErrorMessage = "quota exceeded",
+            lastDiscoveredAt = OffsetDateTime.parse("2026-04-13T00:00:00Z"),
+            discoverySource = "MANUAL",
+        )
+
+        whenever(youtubePlaylistRepository.findAllBySyncEnabledTrueOrderByIdAsc()).thenReturn(listOf(playlist))
+        whenever(contentMenuRepository.findById(1L)).thenReturn(
+            Optional.of(
+                ContentMenu(
+                    id = 1L,
+                    siteKey = "messages",
+                    menuName = "말씀/설교",
+                    slug = "messages",
+                    contentKind = ContentKind.LONG_FORM,
+                    active = true,
+                ),
+            ),
+        )
+        whenever(youtubeApiClient.getPlaylistItems("PL_MESSAGES", null, 50)).thenReturn(
+            YoutubePlaylistItemsPage(
+                nextPageToken = null,
+                items = emptyList(),
+            ),
+        )
+        whenever(youtubeApiClient.getVideos(emptyList())).thenReturn(emptyList())
+        whenever(youtubeSyncJobRepository.save(any())).thenAnswer { it.getArgument(0) }
+        whenever(youtubeSyncJobItemRepository.save(any())).thenAnswer { it.getArgument(0) }
+        whenever(youtubePlaylistRepository.save(any())).thenAnswer {
+            val saved = it.getArgument<YoutubePlaylist>(0)
+            assertThat(saved.lastSyncSucceededAt).isNotNull()
+            assertThat(saved.lastSyncFailedAt).isNull()
+            assertThat(saved.lastSyncErrorMessage).isNull()
+            saved
+        }
+
+        service.syncAllMenus()
+
+        verify(youtubePlaylistRepository).save(any())
+    }
+
+    @Test
+    fun `syncAllMenus should persist latest sync failure summary on playlist`() {
+        val service = YoutubeSyncService(
+            contentMenuRepository = contentMenuRepository,
+            youtubePlaylistRepository = youtubePlaylistRepository,
+            youtubeVideoRepository = youtubeVideoRepository,
+            playlistVideoRepository = playlistVideoRepository,
+            videoMetadataRepository = videoMetadataRepository,
+            youtubeApiClient = youtubeApiClient,
+            youtubeSyncJobRepository = youtubeSyncJobRepository,
+            youtubeSyncJobItemRepository = youtubeSyncJobItemRepository,
+            transactionManager = NoOpPlatformTransactionManager(),
+        )
+
+        val playlist = YoutubePlaylist(
+            id = 12L,
+            contentMenuId = 1L,
+            youtubePlaylistId = "PL_MESSAGES",
+            title = "말씀/설교",
+            syncEnabled = true,
+            lastSyncedAt = null,
+            lastSyncSucceededAt = OffsetDateTime.parse("2026-04-14T00:00:00Z"),
+            lastSyncFailedAt = null,
+            lastSyncErrorMessage = null,
+            lastDiscoveredAt = OffsetDateTime.parse("2026-04-13T00:00:00Z"),
+            discoverySource = "MANUAL",
+        )
+
+        whenever(youtubePlaylistRepository.findAllBySyncEnabledTrueOrderByIdAsc()).thenReturn(listOf(playlist))
+        whenever(contentMenuRepository.findById(1L)).thenReturn(
+            Optional.of(
+                ContentMenu(
+                    id = 1L,
+                    siteKey = "messages",
+                    menuName = "말씀/설교",
+                    slug = "messages",
+                    contentKind = ContentKind.LONG_FORM,
+                    active = true,
+                ),
+            ),
+        )
+        whenever(youtubeApiClient.getPlaylistItems("PL_MESSAGES", null, 50)).thenThrow(RuntimeException("quota exceeded"))
+        whenever(youtubeSyncJobRepository.save(any())).thenAnswer { it.getArgument(0) }
+        whenever(youtubeSyncJobItemRepository.save(any())).thenAnswer { it.getArgument(0) }
+        whenever(youtubePlaylistRepository.save(any())).thenAnswer {
+            val saved = it.getArgument<YoutubePlaylist>(0)
+            assertThat(saved.lastSyncFailedAt).isNotNull()
+            assertThat(saved.lastSyncErrorMessage).isEqualTo("quota exceeded")
+            saved
+        }
+
+        service.syncAllMenus()
+
+        verify(youtubePlaylistRepository).save(any())
     }
 }
