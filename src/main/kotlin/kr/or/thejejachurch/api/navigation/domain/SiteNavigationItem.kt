@@ -29,6 +29,9 @@ class SiteNavigationItem(
     val linkType: NavigationLinkType = NavigationLinkType.INTERNAL,
     @Column(name = "content_site_key", length = 64)
     val contentSiteKey: String? = null,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "menu_type", nullable = false, length = 20)
+    val menuType: SiteNavigationMenuType = SiteNavigationMenuType.STATIC_PAGE,
     @Column(nullable = false)
     val visible: Boolean = true,
     @Column(name = "header_visible", nullable = false)

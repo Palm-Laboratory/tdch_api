@@ -54,6 +54,7 @@ class FlywayMigrationChecksumManifestTest {
                 "V10__create_admin_account.sql",
                 "V11__create_youtube_sync_job_tables.sql",
                 "V12__extend_content_menu_for_sermon_navigation.sql",
+                "V13__introduce_site_navigation_menu_types.sql",
             )
             .doesNotContain(
                 "V8__seed_site_navigation.sql",

@@ -5,23 +5,42 @@ import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationMenuType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationVideoPage
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationBoardPageRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationStaticPageRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationVideoPageRepository
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.util.Optional
 
 class AdminNavigationQueryServiceTest {
 
     private val contentMenuRepository: ContentMenuRepository = mock()
     private val siteNavigationItemRepository: SiteNavigationItemRepository = mock()
+    private val siteNavigationStaticPageRepository: SiteNavigationStaticPageRepository = mock()
+    private val siteNavigationBoardPageRepository: SiteNavigationBoardPageRepository = mock()
+    private val siteNavigationVideoPageRepository: SiteNavigationVideoPageRepository = mock()
     private val service = AdminNavigationQueryService(
         siteNavigationItemRepository = siteNavigationItemRepository,
         contentMenuRepository = contentMenuRepository,
+        siteNavigationStaticPageRepository = siteNavigationStaticPageRepository,
+        siteNavigationBoardPageRepository = siteNavigationBoardPageRepository,
+        siteNavigationVideoPageRepository = siteNavigationVideoPageRepository,
     )
+
+    init {
+        whenever(siteNavigationStaticPageRepository.findById(any())).thenReturn(Optional.empty())
+        whenever(siteNavigationBoardPageRepository.findById(any())).thenReturn(Optional.empty())
+        whenever(siteNavigationVideoPageRepository.findById(any())).thenReturn(Optional.empty())
+    }
 
     @Test
     fun `getNavigationItems includes hidden items when requested`() {
@@ -101,12 +120,41 @@ class AdminNavigationQueryServiceTest {
         verify(siteNavigationItemRepository).findById(5L)
     }
 
+    @Test
+    fun `getNavigationItem should expose menu type and video page detail fields`() {
+        val item = item(
+            id = 7L,
+            label = "영상 메뉴",
+            href = "/videos",
+            menuType = SiteNavigationMenuType.VIDEO_PAGE,
+        )
+        whenever(siteNavigationItemRepository.findById(7L)).thenReturn(Optional.of(item))
+        whenever(siteNavigationVideoPageRepository.findById(7L)).thenReturn(
+            Optional.of(
+                SiteNavigationVideoPage(
+                    siteNavigationId = 7L,
+                    videoRootKey = "sermons",
+                    landingMode = "ROOT",
+                    contentKindFilter = ContentKind.LONG_FORM,
+                ),
+            ),
+        )
+
+        val response = service.getNavigationItem(7L)
+
+        assertThat(response.menuType).isEqualTo("VIDEO_PAGE")
+        assertThat(response.videoRootKey).isEqualTo("sermons")
+        assertThat(response.landingMode).isEqualTo("ROOT")
+        assertThat(response.contentKindFilter).isEqualTo("LONG_FORM")
+    }
+
     private fun item(
         id: Long,
         label: String,
         href: String,
         parentId: Long? = null,
         visible: Boolean = true,
+        menuType: SiteNavigationMenuType = SiteNavigationMenuType.STATIC_PAGE,
     ): SiteNavigationItem = SiteNavigationItem(
         id = id,
         parentId = parentId,
@@ -114,6 +162,7 @@ class AdminNavigationQueryServiceTest {
         href = href,
         matchPath = href,
         linkType = NavigationLinkType.INTERNAL,
+        menuType = menuType,
         visible = visible,
     )
 }

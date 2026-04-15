@@ -4,9 +4,11 @@ import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
-import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationBoardPageRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationStaticPageRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationVideoPageRepository
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenuDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
@@ -18,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional
 class AdminNavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val contentMenuRepository: ContentMenuRepository,
+    private val siteNavigationStaticPageRepository: SiteNavigationStaticPageRepository,
+    private val siteNavigationBoardPageRepository: SiteNavigationBoardPageRepository,
+    private val siteNavigationVideoPageRepository: SiteNavigationVideoPageRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -31,17 +36,22 @@ class AdminNavigationQueryService(
 
         return AdminNavigationTreeResponse(
             groups = itemsByParentId[null].orEmpty().map { item ->
+                val details = loadNavigationDetailSnapshot(item.id ?: throw IllegalStateException("site_navigation.id is null"))
                 if (item.href == SERMONS_ROOT_HREF) {
-                    toAdminNavigationItemDto(
-                        item = item,
-                        itemsByParentId = itemsByParentId,
-                        overrideChildren = contentMenuRepository
+                    item.toAdminNavigationItemDto(
+                        details = details,
+                        children = contentMenuRepository
                             .findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)
                             .sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
-                            .map(::toAdminSermonNavigationItemDto),
+                            .map(ContentMenu::toAdminSermonNavigationItemDto),
                     )
                 } else {
-                    toAdminNavigationItemDto(item, itemsByParentId)
+                    item.toAdminNavigationItemDto(
+                        details = details,
+                        children = itemsByParentId[item.id].orEmpty().map { child ->
+                            toNavigationTreeItem(child, itemsByParentId)
+                        },
+                    )
                 }
             },
         )
@@ -52,7 +62,7 @@ class AdminNavigationQueryService(
         val item = siteNavigationItemRepository.findById(id).orElse(null)
             ?: throw NotFoundException("내비게이션 항목을 찾을 수 없습니다. id=$id")
 
-        return toAdminNavigationItemDto(item, emptyMap())
+        return toNavigationTreeItem(item, emptyMap())
     }
 
     @Transactional(readOnly = true)
@@ -68,49 +78,26 @@ class AdminNavigationQueryService(
         },
     )
 
-    private fun toAdminNavigationItemDto(
+    private fun toNavigationTreeItem(
         item: SiteNavigationItem,
         itemsByParentId: Map<Long?, List<SiteNavigationItem>>,
         overrideChildren: List<AdminNavigationItemDto>? = null,
-    ): AdminNavigationItemDto = AdminNavigationItemDto(
-        id = item.id ?: throw IllegalStateException("site_navigation.id is null"),
-        parentId = item.parentId,
-        label = item.label,
-        href = item.href,
-        matchPath = item.matchPath,
-        linkType = item.linkType.name,
-        contentSiteKey = item.contentSiteKey,
-        visible = item.visible,
-        headerVisible = item.headerVisible,
-        mobileVisible = item.mobileVisible,
-        lnbVisible = item.lnbVisible,
-        breadcrumbVisible = item.breadcrumbVisible,
-        defaultLanding = item.defaultLanding,
-        sortOrder = item.sortOrder,
-        updatedAt = item.updatedAt,
-        children = overrideChildren ?: itemsByParentId[item.id].orEmpty().map { child ->
-            toAdminNavigationItemDto(child, itemsByParentId)
-        },
-    )
+    ): AdminNavigationItemDto {
+        val details = loadNavigationDetailSnapshot(item.id ?: throw IllegalStateException("site_navigation.id is null"))
+        return item.toAdminNavigationItemDto(
+            details = details,
+            children = overrideChildren ?: itemsByParentId[item.id].orEmpty().map { child ->
+                toNavigationTreeItem(child, itemsByParentId)
+            },
+        )
+    }
 
-    private fun toAdminSermonNavigationItemDto(menu: ContentMenu): AdminNavigationItemDto = AdminNavigationItemDto(
-        id = menu.id ?: throw IllegalStateException("content_menu.id is null"),
-        parentId = null,
-        label = menu.menuName,
-        href = "/sermons/${menu.slug}",
-        matchPath = "/sermons/${menu.slug}",
-        linkType = NavigationLinkType.CONTENT_REF.name,
-        contentSiteKey = menu.siteKey,
-        visible = true,
-        headerVisible = true,
-        mobileVisible = true,
-        lnbVisible = true,
-        breadcrumbVisible = true,
-        defaultLanding = false,
-        sortOrder = menu.sortOrder,
-        updatedAt = menu.updatedAt,
-        children = emptyList(),
-    )
+    private fun loadNavigationDetailSnapshot(siteNavigationId: Long): AdminNavigationDetailSnapshot =
+        AdminNavigationDetailSnapshot(
+            staticPage = siteNavigationStaticPageRepository.findById(siteNavigationId).orElse(null),
+            boardPage = siteNavigationBoardPageRepository.findById(siteNavigationId).orElse(null),
+            videoPage = siteNavigationVideoPageRepository.findById(siteNavigationId).orElse(null),
+        )
 
     companion object {
         private const val SERMONS_ROOT_HREF = "/sermons"

@@ -42,6 +42,8 @@ class ContentMenu(
     var publishedAt: OffsetDateTime? = null,
     @Column(name = "last_modified_by")
     var lastModifiedBy: Long? = null,
+    @Column(name = "video_root_key", nullable = false, length = 64)
+    var videoRootKey: String = "sermons",
     @Column(name = "created_at", nullable = false)
     var createdAt: OffsetDateTime = OffsetDateTime.now(),
     @Column(name = "updated_at", nullable = false)

@@ -1,10 +1,18 @@
 package kr.or.thejejachurch.api.navigation.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
+import kr.or.thejejachurch.api.media.domain.ContentKind
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationBoardPage
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationMenuType
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationStaticPage
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationVideoPage
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationBoardPageRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationStaticPageRepository
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationVideoPageRepository
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationUpsertRequest
 import org.springframework.stereotype.Service
@@ -14,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional
 class AdminNavigationCommandService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val contentMenuRepository: ContentMenuRepository,
+    private val siteNavigationStaticPageRepository: SiteNavigationStaticPageRepository,
+    private val siteNavigationBoardPageRepository: SiteNavigationBoardPageRepository,
+    private val siteNavigationVideoPageRepository: SiteNavigationVideoPageRepository,
 ) {
 
     @Transactional
@@ -26,8 +37,10 @@ class AdminNavigationCommandService(
         validateParent(parent, request.defaultLanding)
 
         val linkType = resolveLinkType(request.linkType)
+        val menuType = parseMenuType(request.menuType)
         validateContentReference(request, linkType)
         validateLinkFields(request, linkType)
+        validateMenuTypeSpecificFields(menuType, request)
 
         if (
             parent != null &&
@@ -46,6 +59,7 @@ class AdminNavigationCommandService(
                 matchPath = request.matchPath?.trim()?.takeIf { it.isNotEmpty() },
                 linkType = linkType,
                 contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() },
+                menuType = menuType,
                 visible = request.visible,
                 headerVisible = request.headerVisible,
                 mobileVisible = request.mobileVisible,
@@ -55,8 +69,9 @@ class AdminNavigationCommandService(
                 sortOrder = request.sortOrder,
             ),
         )
+        persistMenuTypeSpecificDetail(saved.id ?: throw IllegalStateException("site_navigation.id is null"), menuType, request)
 
-        return saved.toAdminNavigationItemDto()
+        return loadNavigationItemDto(saved.id ?: throw IllegalStateException("site_navigation.id is null"))
     }
 
     @Transactional
@@ -91,8 +106,10 @@ class AdminNavigationCommandService(
         }
 
         val linkType = resolveLinkType(request.linkType)
+        val menuType = parseMenuType(request.menuType)
         validateContentReference(request, linkType)
         validateLinkFields(request, linkType)
+        validateMenuTypeSpecificFields(menuType, request)
 
         val updated = siteNavigationItemRepository.save(
             SiteNavigationItem(
@@ -103,6 +120,7 @@ class AdminNavigationCommandService(
                 matchPath = request.matchPath?.trim()?.takeIf { it.isNotEmpty() },
                 linkType = linkType,
                 contentSiteKey = request.contentSiteKey?.trim()?.takeIf { it.isNotEmpty() },
+                menuType = menuType,
                 visible = request.visible,
                 headerVisible = request.headerVisible,
                 mobileVisible = request.mobileVisible,
@@ -114,8 +132,9 @@ class AdminNavigationCommandService(
                 updatedAt = currentItem.updatedAt,
             ),
         )
+        persistMenuTypeSpecificDetail(updated.id ?: throw IllegalStateException("site_navigation.id is null"), menuType, request)
 
-        return updated.toAdminNavigationItemDto()
+        return loadNavigationItemDto(updated.id ?: throw IllegalStateException("site_navigation.id is null"))
     }
 
     @Transactional
@@ -128,6 +147,27 @@ class AdminNavigationCommandService(
         }
 
         siteNavigationItemRepository.delete(item)
+    }
+
+    private fun validateMenuTypeSpecificFields(
+        menuType: SiteNavigationMenuType,
+        request: AdminNavigationUpsertRequest,
+    ) {
+        when (menuType) {
+            SiteNavigationMenuType.BOARD_PAGE -> {
+                if (normalizeOptional(request.boardKey) == null || normalizeOptional(request.listPath) == null) {
+                    throw IllegalArgumentException("BOARD_PAGE 메뉴는 boardKey 와 listPath 가 필요합니다.")
+                }
+            }
+
+            SiteNavigationMenuType.VIDEO_PAGE -> {
+                if (normalizeOptional(request.videoRootKey) == null) {
+                    throw IllegalArgumentException("VIDEO_PAGE 메뉴는 videoRootKey 가 필요합니다.")
+                }
+            }
+
+            SiteNavigationMenuType.STATIC_PAGE -> Unit
+        }
     }
 
     private fun validateParent(
@@ -194,22 +234,85 @@ class AdminNavigationCommandService(
         }
     }
 
-    private fun SiteNavigationItem.toAdminNavigationItemDto(): AdminNavigationItemDto = AdminNavigationItemDto(
-        id = id ?: throw IllegalStateException("site_navigation.id is null"),
-        parentId = parentId,
-        label = label,
-        href = href,
-        matchPath = matchPath,
-        linkType = linkType.name,
-        contentSiteKey = contentSiteKey,
-        visible = visible,
-        headerVisible = headerVisible,
-        mobileVisible = mobileVisible,
-        lnbVisible = lnbVisible,
-        breadcrumbVisible = breadcrumbVisible,
-        defaultLanding = defaultLanding,
-        sortOrder = sortOrder,
-        updatedAt = updatedAt,
-        children = emptyList(),
-    )
+    private fun loadNavigationItemDto(id: Long): AdminNavigationItemDto {
+        val item = siteNavigationItemRepository.findById(id)
+            .orElseThrow { NotFoundException("내비게이션 항목을 찾을 수 없습니다. id=$id") }
+        return item.toAdminNavigationItemDto(
+            details = loadNavigationDetailSnapshot(id),
+            children = emptyList(),
+        )
+    }
+
+    private fun loadNavigationDetailSnapshot(siteNavigationId: Long): AdminNavigationDetailSnapshot =
+        AdminNavigationDetailSnapshot(
+            staticPage = siteNavigationStaticPageRepository.findById(siteNavigationId).orElse(null),
+            boardPage = siteNavigationBoardPageRepository.findById(siteNavigationId).orElse(null),
+            videoPage = siteNavigationVideoPageRepository.findById(siteNavigationId).orElse(null),
+        )
+
+    private fun persistMenuTypeSpecificDetail(
+        siteNavigationId: Long,
+        menuType: SiteNavigationMenuType,
+        request: AdminNavigationUpsertRequest,
+    ) {
+        siteNavigationStaticPageRepository.deleteById(siteNavigationId)
+        siteNavigationBoardPageRepository.deleteById(siteNavigationId)
+        siteNavigationVideoPageRepository.deleteById(siteNavigationId)
+
+        when (menuType) {
+            SiteNavigationMenuType.STATIC_PAGE -> {
+                val pageKey = normalizeOptional(request.pageKey)
+                val pagePath = normalizeOptional(request.pagePath)
+                if (pageKey != null || pagePath != null) {
+                    siteNavigationStaticPageRepository.save(
+                        SiteNavigationStaticPage(
+                            siteNavigationId = siteNavigationId,
+                            pageKey = pageKey,
+                            pagePath = pagePath,
+                        ),
+                    )
+                }
+            }
+
+            SiteNavigationMenuType.BOARD_PAGE -> {
+                siteNavigationBoardPageRepository.save(
+                    SiteNavigationBoardPage(
+                        siteNavigationId = siteNavigationId,
+                        boardKey = normalizeOptional(request.boardKey)
+                            ?: throw IllegalArgumentException("BOARD_PAGE 메뉴는 boardKey 가 필요합니다."),
+                        listPath = normalizeOptional(request.listPath)
+                            ?: throw IllegalArgumentException("BOARD_PAGE 메뉴는 listPath 가 필요합니다."),
+                        categoryKey = normalizeOptional(request.categoryKey),
+                    ),
+                )
+            }
+
+            SiteNavigationMenuType.VIDEO_PAGE -> {
+                siteNavigationVideoPageRepository.save(
+                    SiteNavigationVideoPage(
+                        siteNavigationId = siteNavigationId,
+                        videoRootKey = normalizeOptional(request.videoRootKey)
+                            ?: throw IllegalArgumentException("VIDEO_PAGE 메뉴는 videoRootKey 가 필요합니다."),
+                        landingMode = normalizeOptional(request.landingMode),
+                        contentKindFilter = parseContentKind(request.contentKindFilter),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun parseMenuType(raw: String?): SiteNavigationMenuType =
+        raw?.trim()?.takeIf { it.isNotEmpty() }?.let {
+            runCatching { SiteNavigationMenuType.valueOf(it) }
+                .getOrElse { throw IllegalArgumentException("지원하지 않는 메뉴 타입입니다. menuType=$it") }
+        } ?: SiteNavigationMenuType.STATIC_PAGE
+
+    private fun normalizeOptional(raw: String?): String? =
+        raw?.trim()?.takeIf { it.isNotEmpty() }
+
+    private fun parseContentKind(raw: String?): ContentKind? =
+        normalizeOptional(raw)?.let {
+            runCatching { ContentKind.valueOf(it) }
+                .getOrElse { throw IllegalArgumentException("지원하지 않는 콘텐츠 유형입니다. contentKindFilter=$it") }
+        }
 }

@@ -51,7 +51,7 @@ class SiteNavigationMigrationContractTest {
             }
 
         assertThat(migrationFileNames)
-            .describedAs("A clean baseline should begin with a contiguous V1 site navigation migration sequence")
+            .describedAs("A clean baseline should begin with a contiguous V1 through V13 site navigation migration sequence")
             .containsExactly(
                 "V1__create_site_navigation.sql",
                 "V2__create_content_menu.sql",
@@ -65,7 +65,34 @@ class SiteNavigationMigrationContractTest {
                 "V10__create_admin_account.sql",
                 "V11__create_youtube_sync_job_tables.sql",
                 "V12__extend_content_menu_for_sermon_navigation.sql",
+                "V13__introduce_site_navigation_menu_types.sql",
             )
+    }
+
+    @Test
+    fun `V13 migration should introduce site navigation menu types and type specific detail tables`() {
+        val migrationPath = Path.of(
+            "src",
+            "main",
+            "resources",
+            "db",
+            "migration",
+            "V13__introduce_site_navigation_menu_types.sql",
+        )
+
+        assertThat(Files.exists(migrationPath))
+            .describedAs("Expected a new V13 migration for site navigation menu types at %s", migrationPath)
+            .isTrue()
+
+        val sql = Files.readString(migrationPath).lowercase()
+
+        assertThat(sql).contains("menu_type")
+        assertThat(sql).contains("create table site_navigation_static_page")
+        assertThat(sql).contains("create table site_navigation_board_page")
+        assertThat(sql).contains("create table site_navigation_video_page")
+        assertThat(sql).contains("video_root_key")
+        assertThat(sql).contains("landing_mode")
+        assertThat(sql).contains("content_kind_filter")
     }
 
     private fun versionOf(filename: String): Int =
