@@ -27,12 +27,12 @@ class MediaController(
     @GetMapping("/home")
     fun getHome(): HomeMediaResponse = mediaQueryService.getHome()
 
-    @GetMapping("/menus/{siteKey}/videos")
+    @GetMapping("/menus/{slug}/videos")
     fun getVideos(
-        @PathVariable siteKey: String,
+        @PathVariable slug: String,
         @RequestParam(defaultValue = "0") @Min(0) page: Int,
         @RequestParam(defaultValue = "12") @Min(1) @Max(100) size: Int,
-    ): MediaListResponse = mediaQueryService.getVideos(siteKey, page, size)
+    ): MediaListResponse = mediaQueryService.getVideos(slug, page, size)
 
     @GetMapping("/videos/{youtubeVideoId}")
     fun getVideo(

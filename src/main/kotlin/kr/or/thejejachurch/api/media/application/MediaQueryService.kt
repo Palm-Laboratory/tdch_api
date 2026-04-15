@@ -40,7 +40,7 @@ class MediaQueryService(
         val longFormItems = contentMenuRepository.findAllByActiveTrueOrderByIdAsc()
             .asSequence()
             .filter { it.contentKind == ContentKind.LONG_FORM }
-            .flatMap { menu -> getMenuItems(siteKey = menu.siteKey).asSequence() }
+            .flatMap { menu -> getMenuItemsBySiteKey(menu.siteKey).asSequence() }
             .sortedByDescending { OffsetDateTime.parse(it.publishedAt) }
             .toList()
 
@@ -51,8 +51,8 @@ class MediaQueryService(
     }
 
     @Transactional(readOnly = true)
-    fun getVideos(siteKey: String, page: Int, size: Int): MediaListResponse {
-        val menu = getActiveMenu(siteKey)
+    fun getVideos(slug: String, page: Int, size: Int): MediaListResponse {
+        val menu = getActiveMenuBySlug(slug)
         val playlist = menu.id?.let(youtubePlaylistRepository::findByContentMenuIdAndSyncEnabledTrue)
         if (playlist?.id == null) {
             return MediaListResponse(
@@ -114,8 +114,8 @@ class MediaQueryService(
         )
     }
 
-    private fun getMenuItems(siteKey: String, limit: Int? = null): List<MediaItemDto> {
-        val menu = getActiveMenu(siteKey)
+    private fun getMenuItemsBySiteKey(siteKey: String, limit: Int? = null): List<MediaItemDto> {
+        val menu = getActiveMenuBySiteKey(siteKey)
         val playlist = menu.id?.let(youtubePlaylistRepository::findByContentMenuIdAndSyncEnabledTrue)
             ?: return emptyList()
 
@@ -163,10 +163,15 @@ class MediaQueryService(
         return videoMetadataRepository.findAllByYoutubeVideoIdIn(videoIds).associateBy { it.youtubeVideoId }
     }
 
-    private fun getActiveMenu(siteKey: String): ContentMenu =
+    private fun getActiveMenuBySiteKey(siteKey: String): ContentMenu =
         contentMenuRepository.findBySiteKey(siteKey)
             ?.takeIf { it.active }
             ?: throw NotFoundException("Unknown siteKey: $siteKey")
+
+    private fun getActiveMenuBySlug(slug: String): ContentMenu =
+        contentMenuRepository.findBySlug(slug)
+            ?.takeIf { it.active }
+            ?: throw NotFoundException("Unknown slug: $slug")
 
     private fun toMenuDto(menu: ContentMenu): MenuDto = MenuDto(
         siteKey = menu.siteKey,
