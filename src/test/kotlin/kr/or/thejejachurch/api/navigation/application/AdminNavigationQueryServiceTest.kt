@@ -62,8 +62,13 @@ class AdminNavigationQueryServiceTest {
     }
 
     @Test
-    fun `getNavigationItems uses href sermon root marker instead of menu key`() {
-        val root = item(id = 1L, label = "예배 영상", href = "/sermons")
+    fun `getNavigationItems synthesizes children for sermons video page root`() {
+        val root = item(
+            id = 1L,
+            label = "예배 영상",
+            href = "/sermons",
+            menuType = SiteNavigationMenuType.VIDEO_PAGE,
+        )
         whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(listOf(root))
         whenever(contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)).thenReturn(
             listOf(
@@ -97,6 +102,87 @@ class AdminNavigationQueryServiceTest {
         assertThat(response.groups).hasSize(1)
         assertThat(response.groups[0].children).hasSize(2)
         assertThat(response.groups[0].children.map { it.href }).containsExactly("/sermons/messages", "/sermons/shorts")
+    }
+
+    @Test
+    fun `getNavigationItems should synthesize video page children from menu type instead of sermon href`() {
+        val root = item(
+            id = 2L,
+            label = "영상 메뉴",
+            href = "/video",
+            menuType = SiteNavigationMenuType.VIDEO_PAGE,
+        )
+        whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(listOf(root))
+        whenever(
+            contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED),
+        ).thenReturn(
+            listOf(
+                ContentMenu(
+                    id = 21L,
+                    siteKey = "messages",
+                    menuName = "말씀/설교",
+                    slug = "messages",
+                    contentKind = ContentKind.LONG_FORM,
+                    status = ContentMenuStatus.PUBLISHED,
+                    active = true,
+                    navigationVisible = true,
+                    sortOrder = 10,
+                ),
+                ContentMenu(
+                    id = 22L,
+                    siteKey = "shorts",
+                    menuName = "짧은 영상",
+                    slug = "shorts",
+                    contentKind = ContentKind.SHORT,
+                    status = ContentMenuStatus.PUBLISHED,
+                    active = true,
+                    navigationVisible = true,
+                    sortOrder = 20,
+                ),
+            ),
+        )
+
+        val response = service.getNavigationItems(includeHidden = false)
+
+        assertThat(response.groups).hasSize(1)
+        assertThat(response.groups[0].children).hasSize(2)
+        assertThat(response.groups[0].children.map { it.href }).containsExactly("/video/messages", "/video/shorts")
+        assertThat(response.groups[0].children.map { it.menuType }).containsExactly("VIDEO_PAGE", "VIDEO_PAGE")
+    }
+
+    @Test
+    fun `getNavigationItems should not synthesize video children when sermons href is static page`() {
+        val root = item(
+            id = 3L,
+            label = "예배 영상",
+            href = "/sermons",
+            menuType = SiteNavigationMenuType.STATIC_PAGE,
+        )
+        whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(listOf(root))
+        whenever(
+            contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+                ContentMenuStatus.PUBLISHED,
+            ),
+        ).thenReturn(
+            listOf(
+                ContentMenu(
+                    id = 31L,
+                    siteKey = "messages",
+                    menuName = "말씀/설교",
+                    slug = "messages",
+                    contentKind = ContentKind.LONG_FORM,
+                    status = ContentMenuStatus.PUBLISHED,
+                    active = true,
+                    navigationVisible = true,
+                    sortOrder = 10,
+                ),
+            ),
+        )
+
+        val response = service.getNavigationItems(includeHidden = false)
+
+        assertThat(response.groups).hasSize(1)
+        assertThat(response.groups[0].children).isEmpty()
     }
 
     @Test

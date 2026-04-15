@@ -5,6 +5,7 @@ import kr.or.thejejachurch.api.media.domain.ContentMenu
 import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationMenuType
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationBoardPageRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationStaticPageRepository
@@ -37,13 +38,12 @@ class AdminNavigationQueryService(
         return AdminNavigationTreeResponse(
             groups = itemsByParentId[null].orEmpty().map { item ->
                 val details = loadNavigationDetailSnapshot(item.id ?: throw IllegalStateException("site_navigation.id is null"))
-                if (item.href == SERMONS_ROOT_HREF) {
+                if (item.menuType == SiteNavigationMenuType.VIDEO_PAGE) {
                     item.toAdminNavigationItemDto(
                         details = details,
-                        children = contentMenuRepository
-                            .findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)
+                        children = findVideoMenus(details.videoPage?.videoRootKey)
                             .sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
-                            .map(ContentMenu::toAdminSermonNavigationItemDto),
+                            .map { menu -> menu.toAdminVideoNavigationItemDto(item.href) },
                     )
                 } else {
                     item.toAdminNavigationItemDto(
@@ -99,7 +99,13 @@ class AdminNavigationQueryService(
             videoPage = siteNavigationVideoPageRepository.findById(siteNavigationId).orElse(null),
         )
 
-    companion object {
-        private const val SERMONS_ROOT_HREF = "/sermons"
-    }
+    private fun findVideoMenus(videoRootKey: String?): List<ContentMenu> =
+        videoRootKey?.let {
+            contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+                videoRootKey = it,
+                status = ContentMenuStatus.PUBLISHED,
+            )
+        } ?: contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+            ContentMenuStatus.PUBLISHED,
+        )
 }

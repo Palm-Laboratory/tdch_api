@@ -46,12 +46,12 @@ internal fun SiteNavigationItem.toAdminNavigationItemDto(
     children = children,
 )
 
-internal fun ContentMenu.toAdminSermonNavigationItemDto(): AdminNavigationItemDto = AdminNavigationItemDto(
+internal fun ContentMenu.toAdminVideoNavigationItemDto(rootHref: String): AdminNavigationItemDto = AdminNavigationItemDto(
     id = id ?: throw IllegalStateException("content_menu.id is null"),
     parentId = null,
     label = menuName,
-    href = "/sermons/$slug",
-    matchPath = "/sermons/$slug",
+    href = "${rootHref.trimEnd('/')}/$slug",
+    matchPath = "${rootHref.trimEnd('/')}/$slug",
     linkType = NavigationLinkType.CONTENT_REF.name,
     contentSiteKey = siteKey,
     menuType = SiteNavigationMenuType.VIDEO_PAGE.name,

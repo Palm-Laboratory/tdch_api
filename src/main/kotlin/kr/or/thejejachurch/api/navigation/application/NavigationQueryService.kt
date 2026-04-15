@@ -5,6 +5,8 @@ import kr.or.thejejachurch.api.media.domain.ContentMenuStatus
 import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepository
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationMenuType
+import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationVideoPageRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationGroupDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationItemDto
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 class NavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
     private val contentMenuRepository: ContentMenuRepository,
+    private val siteNavigationVideoPageRepository: SiteNavigationVideoPageRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -24,10 +27,13 @@ class NavigationQueryService(
         val itemsByParentId = items.groupBy { it.parentId }
 
         val groups = itemsByParentId[null].orEmpty().map { root ->
-            val children = if (root.href == SERMONS_ROOT_HREF) {
-                contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)
+            val videoRootKey = root.id
+                ?.let { siteNavigationVideoPageRepository.findById(it).orElse(null) }
+                ?.videoRootKey
+            val children = if (root.menuType == SiteNavigationMenuType.VIDEO_PAGE) {
+                findVideoMenus(videoRootKey)
                     .sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
-                    .map(::toSermonNavigationItemDto)
+                    .map { menu -> toVideoNavigationItemDto(root.href, menu) }
             } else {
                 itemsByParentId[root.id].orEmpty().map(::toNavigationItemDto)
             }
@@ -66,11 +72,11 @@ class NavigationQueryService(
         defaultLanding = item.defaultLanding,
     )
 
-    private fun toSermonNavigationItemDto(menu: ContentMenu): NavigationItemDto = NavigationItemDto(
-        key = "sermons-${menu.slug}",
+    private fun toVideoNavigationItemDto(rootHref: String, menu: ContentMenu): NavigationItemDto = NavigationItemDto(
+        key = "video-${menu.slug}",
         label = menu.menuName,
-        href = "/sermons/${menu.slug}",
-        matchPath = "/sermons/${menu.slug}",
+        href = "${rootHref.trimEnd('/')}/${menu.slug}",
+        matchPath = "${rootHref.trimEnd('/')}/${menu.slug}",
         linkType = NavigationLinkType.CONTENT_REF.name,
         contentSiteKey = menu.siteKey,
         visible = true,
@@ -81,9 +87,15 @@ class NavigationQueryService(
         defaultLanding = false,
     )
 
-    private fun itemKey(item: SiteNavigationItem): String = item.id?.let { "navigation-$it" } ?: item.href
+    private fun findVideoMenus(videoRootKey: String?): List<ContentMenu> =
+        videoRootKey?.let {
+            contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+                videoRootKey = it,
+                status = ContentMenuStatus.PUBLISHED,
+            )
+        } ?: contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+            ContentMenuStatus.PUBLISHED,
+        )
 
-    companion object {
-        private const val SERMONS_ROOT_HREF = "/sermons"
-    }
+    private fun itemKey(item: SiteNavigationItem): String = item.id?.let { "navigation-$it" } ?: item.href
 }
