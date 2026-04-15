@@ -100,6 +100,8 @@ data class AdminPlaylistDto(
     val lastSyncErrorMessage: String? = null,
     val discoverySource: String? = null,
     val operationStatus: String = "PENDING_SYNC",
+    val operationStatusLabel: String = "첫 sync 대기",
+    val operationStatusDescription: String = "아직 유효한 sync 이력이 없습니다.",
 )
 
 data class AdminPlaylistListResponse(
@@ -135,6 +137,8 @@ data class AdminPlaylistDetailDto(
     val lastSyncErrorMessage: String? = null,
     val discoverySource: String? = null,
     val operationStatus: String = "PENDING_SYNC",
+    val operationStatusLabel: String = "첫 sync 대기",
+    val operationStatusDescription: String = "아직 유효한 sync 이력이 없습니다.",
 )
 
 data class AdminPlaylistDiscoveryItemDto(

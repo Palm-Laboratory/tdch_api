@@ -256,6 +256,14 @@ class AdminMediaQueryService(
         return "PENDING_SYNC"
     }
 
+    private fun resolveOperationStatusLabelAndDescription(playlist: YoutubePlaylist?): Pair<String, String> =
+        when (resolveOperationStatus(playlist)) {
+            "SYNC_DISABLED" -> "Sync 꺼짐" to "정기 sync 대상에서 제외되어 있습니다."
+            "SYNC_FAILED" -> "점검 필요" to "최근 sync 실패를 먼저 확인해야 합니다."
+            "READY" -> "정상 운영" to "최근 sync 기준으로 운영 상태가 정상입니다."
+            else -> "첫 sync 대기" to "아직 유효한 sync 이력이 없습니다."
+        }
+
     private fun ContentMenu.toAdminPlaylistDto(playlist: YoutubePlaylist?): AdminPlaylistDto =
         AdminPlaylistDto(
             id = id ?: throw IllegalStateException("content menu id is missing"),
@@ -282,6 +290,8 @@ class AdminMediaQueryService(
             lastSyncErrorMessage = playlist?.lastSyncErrorMessage,
             discoverySource = playlist?.discoverySource,
             operationStatus = resolveOperationStatus(playlist),
+            operationStatusLabel = resolveOperationStatusLabelAndDescription(playlist).first,
+            operationStatusDescription = resolveOperationStatusLabelAndDescription(playlist).second,
         )
 
     private fun ContentMenu.toAdminPlaylistDetailDto(playlist: YoutubePlaylist?): AdminPlaylistDetailDto =
@@ -314,6 +324,8 @@ class AdminMediaQueryService(
             lastSyncErrorMessage = playlist?.lastSyncErrorMessage,
             discoverySource = playlist?.discoverySource,
             operationStatus = resolveOperationStatus(playlist),
+            operationStatusLabel = resolveOperationStatusLabelAndDescription(playlist).first,
+            operationStatusDescription = resolveOperationStatusLabelAndDescription(playlist).second,
         )
 
     private fun PlaylistVideo.toAdminVideoDto(video: YoutubeVideo, metadata: VideoMetadata?): AdminVideoDto =
