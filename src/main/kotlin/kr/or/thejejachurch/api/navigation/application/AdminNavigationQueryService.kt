@@ -39,11 +39,10 @@ class AdminNavigationQueryService(
             groups = itemsByParentId[null].orEmpty().map { item ->
                 val details = loadNavigationDetailSnapshot(item.id ?: throw IllegalStateException("site_navigation.id is null"))
                 if (item.menuType == SiteNavigationMenuType.VIDEO_PAGE) {
+                    val videoMenus = findVideoMenus(details.videoPage?.videoRootKey).sortedForNavigation()
                     item.toAdminNavigationItemDto(
                         details = details,
-                        children = findVideoMenus(details.videoPage?.videoRootKey)
-                            .sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
-                            .map { menu -> menu.toAdminVideoNavigationItemDto(item.href) },
+                        children = videoMenus.map { menu -> menu.toAdminVideoNavigationItemDto(item.href) },
                     )
                 } else {
                     item.toAdminNavigationItemDto(
@@ -100,12 +99,13 @@ class AdminNavigationQueryService(
         )
 
     private fun findVideoMenus(videoRootKey: String?): List<ContentMenu> =
-        videoRootKey?.let {
+        videoRootKey?.takeIf { it.isNotBlank() }?.let {
             contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
                 videoRootKey = it,
                 status = ContentMenuStatus.PUBLISHED,
             )
-        } ?: contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
-            ContentMenuStatus.PUBLISHED,
-        )
+        } ?: emptyList()
+
+    private fun List<ContentMenu>.sortedForNavigation(): List<ContentMenu> =
+        sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
 }

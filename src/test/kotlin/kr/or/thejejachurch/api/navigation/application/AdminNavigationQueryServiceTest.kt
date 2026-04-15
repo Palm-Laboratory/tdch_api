@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import java.util.Optional
 
@@ -70,7 +71,20 @@ class AdminNavigationQueryServiceTest {
             menuType = SiteNavigationMenuType.VIDEO_PAGE,
         )
         whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(listOf(root))
-        whenever(contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)).thenReturn(
+        whenever(siteNavigationVideoPageRepository.findById(1L)).thenReturn(
+            Optional.of(
+                SiteNavigationVideoPage(
+                    siteNavigationId = 1L,
+                    videoRootKey = "sermons",
+                ),
+            ),
+        )
+        whenever(
+            contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+                videoRootKey = "sermons",
+                status = ContentMenuStatus.PUBLISHED,
+            ),
+        ).thenReturn(
             listOf(
                 ContentMenu(
                     id = 11L,
@@ -113,8 +127,19 @@ class AdminNavigationQueryServiceTest {
             menuType = SiteNavigationMenuType.VIDEO_PAGE,
         )
         whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(listOf(root))
+        whenever(siteNavigationVideoPageRepository.findById(2L)).thenReturn(
+            Optional.of(
+                SiteNavigationVideoPage(
+                    siteNavigationId = 2L,
+                    videoRootKey = "sermons",
+                ),
+            ),
+        )
         whenever(
-            contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED),
+            contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+                videoRootKey = "sermons",
+                status = ContentMenuStatus.PUBLISHED,
+            ),
         ).thenReturn(
             listOf(
                 ContentMenu(
@@ -183,6 +208,23 @@ class AdminNavigationQueryServiceTest {
 
         assertThat(response.groups).hasSize(1)
         assertThat(response.groups[0].children).isEmpty()
+    }
+
+    @Test
+    fun `getNavigationItems should not synthesize video children when video detail is missing`() {
+        val root = item(
+            id = 4L,
+            label = "영상 메뉴",
+            href = "/videos",
+            menuType = SiteNavigationMenuType.VIDEO_PAGE,
+        )
+        whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(listOf(root))
+
+        val response = service.getNavigationItems(includeHidden = false)
+
+        assertThat(response.groups).hasSize(1)
+        assertThat(response.groups[0].children).isEmpty()
+        verifyNoInteractions(contentMenuRepository)
     }
 
     @Test

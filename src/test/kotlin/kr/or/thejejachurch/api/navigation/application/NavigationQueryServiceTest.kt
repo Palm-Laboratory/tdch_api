@@ -7,6 +7,7 @@ import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepos
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationMenuType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
+import kr.or.thejejachurch.api.navigation.domain.SiteNavigationVideoPage
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationVideoPageRepository
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -46,7 +47,20 @@ class NavigationQueryServiceTest {
         whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(
             listOf(sermonRoot),
         )
-        whenever(contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED))
+        whenever(siteNavigationVideoPageRepository.findById(10L)).thenReturn(
+            Optional.of(
+                SiteNavigationVideoPage(
+                    siteNavigationId = 10L,
+                    videoRootKey = "sermons",
+                ),
+            ),
+        )
+        whenever(
+            contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+                videoRootKey = "sermons",
+                status = ContentMenuStatus.PUBLISHED,
+            ),
+        )
             .thenReturn(
                 listOf(
                     ContentMenu(
@@ -96,7 +110,20 @@ class NavigationQueryServiceTest {
         whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(
             listOf(videoRoot),
         )
-        whenever(contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED))
+        whenever(siteNavigationVideoPageRepository.findById(11L)).thenReturn(
+            Optional.of(
+                SiteNavigationVideoPage(
+                    siteNavigationId = 11L,
+                    videoRootKey = "sermons",
+                ),
+            ),
+        )
+        whenever(
+            contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
+                videoRootKey = "sermons",
+                status = ContentMenuStatus.PUBLISHED,
+            ),
+        )
             .thenReturn(
                 listOf(
                     ContentMenu(
@@ -165,6 +192,27 @@ class NavigationQueryServiceTest {
 
         assertThat(response.groups).hasSize(1)
         assertThat(response.groups[0].items).isEmpty()
+    }
+
+    @Test
+    fun `getNavigation should not synthesize video children when video detail is missing`() {
+        val videoRoot = item(
+            id = 13L,
+            label = "영상 메뉴",
+            href = "/videos",
+            matchPath = "/videos",
+            menuType = SiteNavigationMenuType.VIDEO_PAGE,
+        )
+
+        whenever(siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()).thenReturn(
+            listOf(videoRoot),
+        )
+
+        val response = service.getNavigation()
+
+        assertThat(response.groups).hasSize(1)
+        assertThat(response.groups[0].items).isEmpty()
+        verifyNoInteractions(contentMenuRepository)
     }
 
     @Test

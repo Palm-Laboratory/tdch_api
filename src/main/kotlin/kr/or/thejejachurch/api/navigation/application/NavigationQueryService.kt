@@ -32,7 +32,7 @@ class NavigationQueryService(
                 ?.videoRootKey
             val children = if (root.menuType == SiteNavigationMenuType.VIDEO_PAGE) {
                 findVideoMenus(videoRootKey)
-                    .sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
+                    .sortedForNavigation()
                     .map { menu -> toVideoNavigationItemDto(root.href, menu) }
             } else {
                 itemsByParentId[root.id].orEmpty().map(::toNavigationItemDto)
@@ -88,14 +88,15 @@ class NavigationQueryService(
     )
 
     private fun findVideoMenus(videoRootKey: String?): List<ContentMenu> =
-        videoRootKey?.let {
+        videoRootKey?.takeIf { it.isNotBlank() }?.let {
             contentMenuRepository.findAllByVideoRootKeyAndActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
                 videoRootKey = it,
                 status = ContentMenuStatus.PUBLISHED,
             )
-        } ?: contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(
-            ContentMenuStatus.PUBLISHED,
-        )
+        } ?: emptyList()
+
+    private fun List<ContentMenu>.sortedForNavigation(): List<ContentMenu> =
+        sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
 
     private fun itemKey(item: SiteNavigationItem): String = item.id?.let { "navigation-$it" } ?: item.href
 }
