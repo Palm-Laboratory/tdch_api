@@ -1,26 +1,11 @@
 package kr.or.thejejachurch.api.navigation.interfaces.dto
 
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.NotNull
 import java.time.OffsetDateTime
-
-data class AdminNavigationSetDto(
-    val id: Long,
-    val setKey: String,
-    val label: String,
-    val description: String?,
-    val active: Boolean,
-)
-
-data class AdminNavigationSetsResponse(
-    val sets: List<AdminNavigationSetDto>,
-)
 
 data class AdminNavigationItemDto(
     val id: Long,
-    val navigationSetId: Long,
     val parentId: Long?,
-    val menuKey: String,
     val label: String,
     val href: String,
     val matchPath: String?,
@@ -54,11 +39,7 @@ data class AdminContentMenusResponse(
 )
 
 data class AdminNavigationUpsertRequest(
-    @field:NotNull
-    val navigationSetId: Long?,
     val parentId: Long? = null,
-    @field:NotBlank
-    val menuKey: String,
     @field:NotBlank
     val label: String,
     @field:NotBlank

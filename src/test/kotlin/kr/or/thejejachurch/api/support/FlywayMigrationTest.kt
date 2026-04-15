@@ -6,10 +6,10 @@ import org.junit.jupiter.api.Test
 class FlywayMigrationTest {
 
     @Test
-    fun `V17 migration creates youtube sync job tables`() {
-        val resource = javaClass.classLoader.getResourceAsStream("db/migration/V17__create_youtube_sync_job_tables.sql")
+    fun `V12 migration creates youtube sync job tables`() {
+        val resource = javaClass.classLoader.getResourceAsStream("db/migration/V12__create_youtube_sync_job_tables.sql")
 
-        assertThat(resource).describedAs("V17 migration should exist on the test classpath").isNotNull
+        assertThat(resource).describedAs("V12 migration should exist on the test classpath").isNotNull
 
         val sql = resource!!.bufferedReader().use { it.readText() }
 

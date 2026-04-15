@@ -7,7 +7,7 @@ class ContentMenuOperatingColumnsMigrationTest {
 
     @Test
     fun `content menu operating columns migration adds sermon navigation fields`() {
-        val resource = javaClass.getResource("/db/migration/V18__extend_content_menu_for_sermon_navigation.sql")
+        val resource = javaClass.getResource("/db/migration/V13__extend_content_menu_for_sermon_navigation.sql")
 
         assertThat(resource).isNotNull()
 

@@ -6,7 +6,6 @@ import kr.or.thejejachurch.api.media.infrastructure.persistence.ContentMenuRepos
 import kr.or.thejejachurch.api.navigation.domain.NavigationLinkType
 import kr.or.thejejachurch.api.navigation.domain.SiteNavigationItem
 import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationItemRepository
-import kr.or.thejejachurch.api.navigation.infrastructure.persistence.SiteNavigationSetRepository
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationGroupDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationItemDto
 import kr.or.thejejachurch.api.navigation.interfaces.dto.NavigationResponse
@@ -16,19 +15,16 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class NavigationQueryService(
     private val siteNavigationItemRepository: SiteNavigationItemRepository,
-    private val siteNavigationSetRepository: SiteNavigationSetRepository,
     private val contentMenuRepository: ContentMenuRepository,
 ) {
 
     @Transactional(readOnly = true)
     fun getNavigation(): NavigationResponse {
-        val mainNavigationSetId = siteNavigationSetRepository.findBySetKeyAndActiveTrue(MAIN_NAVIGATION_SET_KEY)?.id
-            ?: return NavigationResponse(groups = emptyList())
-        val items = siteNavigationItemRepository.findAllByNavigationSetIdAndVisibleTrueOrderBySortOrderAscIdAsc(mainNavigationSetId)
+        val items = siteNavigationItemRepository.findAllByVisibleTrueOrderBySortOrderAscIdAsc()
         val itemsByParentId = items.groupBy { it.parentId }
 
         val groups = itemsByParentId[null].orEmpty().map { root ->
-            val children = if (root.menuKey == SERMONS_ROOT_KEY) {
+            val children = if (root.href == SERMONS_ROOT_HREF) {
                 contentMenuRepository.findAllByActiveTrueAndNavigationVisibleTrueAndStatusOrderBySortOrderAscIdAsc(ContentMenuStatus.PUBLISHED)
                     .sortedWith(compareBy<ContentMenu> { it.sortOrder }.thenBy { it.id ?: Long.MAX_VALUE })
                     .map(::toSermonNavigationItemDto)
@@ -36,7 +32,7 @@ class NavigationQueryService(
                 itemsByParentId[root.id].orEmpty().map(::toNavigationItemDto)
             }
             NavigationGroupDto(
-                key = root.menuKey,
+                key = itemKey(root),
                 label = root.label,
                 href = root.href,
                 matchPath = root.matchPath,
@@ -56,7 +52,7 @@ class NavigationQueryService(
     }
 
     private fun toNavigationItemDto(item: SiteNavigationItem): NavigationItemDto = NavigationItemDto(
-        key = item.menuKey,
+        key = itemKey(item),
         label = item.label,
         href = item.href,
         matchPath = item.matchPath,
@@ -71,7 +67,7 @@ class NavigationQueryService(
     )
 
     private fun toSermonNavigationItemDto(menu: ContentMenu): NavigationItemDto = NavigationItemDto(
-        key = "$SERMONS_ROOT_KEY-${menu.slug}",
+        key = "sermons-${menu.slug}",
         label = menu.menuName,
         href = "/sermons/${menu.slug}",
         matchPath = "/sermons/${menu.slug}",
@@ -85,8 +81,9 @@ class NavigationQueryService(
         defaultLanding = false,
     )
 
+    private fun itemKey(item: SiteNavigationItem): String = item.id?.let { "navigation-$it" } ?: item.href
+
     companion object {
-        private const val MAIN_NAVIGATION_SET_KEY = "main"
-        private const val SERMONS_ROOT_KEY = "sermons"
+        private const val SERMONS_ROOT_HREF = "/sermons"
     }
 }

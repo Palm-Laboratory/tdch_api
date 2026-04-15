@@ -10,3 +10,7 @@ create table content_menu (
     constraint chk_content_menu_kind
         check (content_kind in ('LONG_FORM', 'SHORT'))
 );
+
+alter table site_navigation
+    add constraint fk_site_navigation_content_site_key
+        foreign key (content_site_key) references content_menu(site_key);

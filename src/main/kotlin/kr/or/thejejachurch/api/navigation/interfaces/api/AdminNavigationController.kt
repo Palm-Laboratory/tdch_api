@@ -6,12 +6,11 @@ import kr.or.thejejachurch.api.navigation.application.AdminNavigationCommandServ
 import kr.or.thejejachurch.api.navigation.application.AdminNavigationQueryService
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminContentMenusResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationItemDto
-import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationSetsResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationTreeResponse
 import kr.or.thejejachurch.api.navigation.interfaces.dto.AdminNavigationUpsertRequest
 import jakarta.validation.Valid
-import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -28,14 +27,6 @@ class AdminNavigationController(
     private val adminNavigationCommandService: AdminNavigationCommandService,
     private val adminProperties: AdminProperties,
 ) {
-
-    @GetMapping("/sets")
-    fun getSets(
-        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
-    ): AdminNavigationSetsResponse {
-        validateAdminKey(adminKey)
-        return adminNavigationQueryService.getNavigationSets()
-    }
 
     @GetMapping("/items")
     fun getItems(

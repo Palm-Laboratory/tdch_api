@@ -11,17 +11,13 @@ import jakarta.persistence.Table
 import java.time.OffsetDateTime
 
 @Entity
-@Table(name = "site_navigation_item")
+@Table(name = "site_navigation")
 class SiteNavigationItem(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-    @Column(name = "navigation_set_id", nullable = false)
-    val navigationSetId: Long,
     @Column(name = "parent_id")
     val parentId: Long? = null,
-    @Column(name = "menu_key", nullable = false, length = 64)
-    val menuKey: String,
     @Column(nullable = false, length = 100)
     val label: String,
     @Column(nullable = false, length = 255)

@@ -41,7 +41,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 메뉴는 역할별로 나뉩니다.
 
 - `content_menu`: 설교/영상 콘텐츠 카테고리
-- `site_navigation_item`: 헤더/모바일 메뉴/브레드크럼/LNB용 사이트 메뉴
+- `site_navigation`: 헤더/모바일 메뉴/브레드크럼/LNB용 사이트 메뉴
 
 `content_menu` 는 Flyway/관리자 기능을 통해 관리하고, 실제 `youtube_playlist` 연결은 관리자 생성/발견 플로우로 운영합니다.
 

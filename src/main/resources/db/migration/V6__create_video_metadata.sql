@@ -4,6 +4,7 @@ create table video_metadata (
     preacher varchar(120),
     scripture varchar(255),
     service_type varchar(100),
+    scripture_body text,
     summary text,
     tags text[] not null default '{}',
     visible boolean not null default true,

@@ -8,11 +8,11 @@ class ContentMenuSermonNavigationMigrationTest {
     @Test
     fun `content menu sermon navigation migration adds operating columns and indexes`() {
         val resource = javaClass.classLoader.getResourceAsStream(
-            "db/migration/V18__extend_content_menu_for_sermon_navigation.sql",
+            "db/migration/V13__extend_content_menu_for_sermon_navigation.sql",
         )
 
         assertThat(resource)
-            .describedAs("V18 migration should exist on the test classpath")
+            .describedAs("V13 migration should exist on the test classpath")
             .isNotNull()
 
         val sql = resource!!.bufferedReader().use { it.readText() }.lowercase()
