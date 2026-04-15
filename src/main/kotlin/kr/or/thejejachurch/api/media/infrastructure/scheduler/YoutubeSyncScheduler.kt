@@ -9,7 +9,8 @@ class YoutubeSyncScheduler(
     private val youtubeSyncService: YoutubeSyncService,
 ) {
 
-    @Scheduled(cron = "0 */30 * * * *")
+    // 운영 정책에 맞춰 YouTube sync는 매일 06:00, 23:00에 실행한다.
+    @Scheduled(cron = "0 0 6,23 * * *")
     fun sync() {
         youtubeSyncService.syncAllMenus()
     }
