@@ -153,7 +153,8 @@ class MenuManagementService(
             }
 
             val normalizedSlug = normalizeSlug(node.slug, node.label)
-            ensureSlugAvailable(normalizedSlug, item.id, parentId)
+            val effectiveSlug = if (item.id == null) normalizedSlug else item.slug
+            ensureSlugAvailable(effectiveSlug, item.id, parentId)
 
             val resolvedType = if (item.isAuto) item.type else node.type
             validatePlacement(
@@ -169,7 +170,7 @@ class MenuManagementService(
             item.type = resolvedType
             item.status = normalizeStatus(node, item, parentId)
             item.label = normalizedLabel
-            item.slug = normalizedSlug
+            item.slug = effectiveSlug
             item.sortOrder = index
             item.depth = depth
             item.path = ""
