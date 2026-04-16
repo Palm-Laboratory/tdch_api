@@ -5,9 +5,7 @@
 ## 현재 범위
 
 - 헬스체크 API
-- 미디어 조회 API 뼈대
-- 사이트 메뉴 조회 API
-- 유튜브 재생목록 기반 DB 스키마
+- 관리자 인증/계정 관리 API
 - Flyway 마이그레이션
 
 ## 로컬 준비
@@ -32,35 +30,17 @@ cp .env.example .env
 DB_URL=jdbc:postgresql://localhost:5432/thejejachurch
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
-YOUTUBE_API_KEY=your-key
-YOUTUBE_CHANNEL_ID=your-channel-id
 ADMIN_SYNC_KEY=your-admin-key
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
-메뉴는 역할별로 나뉩니다.
-
-- `content_menu`: 설교/영상 콘텐츠 카테고리
-- `site_navigation`: 헤더/모바일 메뉴/브레드크럼/LNB용 사이트 메뉴
-
-`content_menu` 는 Flyway/관리자 기능을 통해 관리하고, 실제 `youtube_playlist` 연결은 관리자 생성/발견 플로우로 운영합니다.
-
 ## 초기 엔드포인트
 
 - `GET /api/v1/health`
-- `GET /api/v1/navigation`
-- `GET /api/v1/media/menus`
-- `GET /api/v1/media/home`
-- `GET /api/v1/media/menus/{siteKey}/videos`
-- `GET /api/v1/media/videos/{youtubeVideoId}`
-- `POST /api/v1/admin/media/sync`
-
-수동 sync 실행 예시:
-
-```bash
-curl -X POST http://localhost:8080/api/v1/admin/media/sync \
-  -H "X-Admin-Key: your-admin-key"
-```
+- `POST /api/v1/admin/auth/login`
+- `POST /api/v1/admin/auth/logout`
+- `GET /api/v1/admin/accounts`
+- `POST /api/v1/admin/accounts`
 
 운영 CORS 예시:
 
@@ -70,10 +50,10 @@ CORS_ALLOWED_ORIGINS=https://your-project.vercel.app,https://your-domain.com,htt
 
 ## Flyway checksum mismatch 대응
 
-이미 적용된 migration 파일은 수정하지 않는 것이 원칙입니다. 과거 migration을 수정하면 로컬 DB에서 Flyway validation이 실패할 수 있습니다.
+현재는 `admin_account` 기준의 단일 baseline migration만 유지합니다.
 
-- 기본 복구 전략: 로컬 DB reset 후 재기동
-- 예외 전략: 현재 DB 구조가 migration 결과와 동일하다는 것을 확인한 경우에만 `repair` 검토
+- 기본 복구 전략: 관리자 계정 외 테이블 제거 후 Flyway history 초기화
+- 예외 전략: 현재 DB 구조가 baseline과 동일하다는 것을 확인한 경우에만 `repair` 검토
 
 자세한 기준과 복구 절차는 [../docs/flyway-migration-hygiene.md](/Users/hanwool/ground/Palm%20Lab/TDCH/docs/flyway-migration-hygiene.md)를 따릅니다.
 

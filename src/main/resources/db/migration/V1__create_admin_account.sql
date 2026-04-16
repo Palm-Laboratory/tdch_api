@@ -1,4 +1,12 @@
-create table admin_account (
+create or replace function set_current_timestamp_updated_at()
+returns trigger as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$ language plpgsql;
+
+create table if not exists admin_account (
     id bigserial primary key,
     username varchar(50) not null unique,
     password_hash varchar(100) not null,
@@ -12,7 +20,7 @@ create table admin_account (
         check (role in ('SUPER_ADMIN', 'ADMIN'))
 );
 
-create index idx_admin_account_active_username
+create index if not exists idx_admin_account_active_username
     on admin_account(active, username);
 
 drop trigger if exists trg_admin_account_updated_at on admin_account;

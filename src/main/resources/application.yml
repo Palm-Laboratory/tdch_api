@@ -21,10 +21,6 @@ management:
       exposure:
         include: health,info
 
-youtube:
-  api-key: ${YOUTUBE_API_KEY:}
-  channel-id: ${YOUTUBE_CHANNEL_ID:}
-
 admin:
   sync-key: ${ADMIN_SYNC_KEY:}
 
