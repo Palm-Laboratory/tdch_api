@@ -1,0 +1,10 @@
+package kr.or.thejejachurch.api.youtube.infrastructure.persistence
+
+import kr.or.thejejachurch.api.youtube.domain.YouTubePlaylistItem
+import org.springframework.data.jpa.repository.JpaRepository
+
+interface YouTubePlaylistItemRepository : JpaRepository<YouTubePlaylistItem, Long> {
+    fun findAllByPlaylistIdOrderByPositionAsc(playlistId: Long): List<YouTubePlaylistItem>
+    fun findAllByVideoId(videoId: Long): List<YouTubePlaylistItem>
+    fun deleteAllByPlaylistId(playlistId: Long)
+}

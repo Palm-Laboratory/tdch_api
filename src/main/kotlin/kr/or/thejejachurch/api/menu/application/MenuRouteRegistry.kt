@@ -11,6 +11,10 @@ object MenuRouteRegistry {
         "newcomer.guide" to "/newcomer/guide",
         "newcomer.care" to "/newcomer/care",
         "newcomer.disciples" to "/newcomer/disciples",
+        "commission.summary" to "/commission/summary",
+        "commission.nextgen" to "/commission/nextgen",
+        "commission.culture" to "/commission/culture",
+        "commission.ethnic" to "/commission/ethnic",
     )
 
     fun resolveStaticRoute(staticPageKey: String?): String? = staticPageKey?.let(staticRoutes::get)

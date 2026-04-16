@@ -64,7 +64,11 @@ class PublicMenuService(
 
     @Transactional(readOnly = true)
     fun getVideoDetail(slug: String): PublicVideoDetail {
-        val menu = menuItemRepository.findBySlug(slug)
+        val menu = menuItemRepository.findByTypeAndStatusAndSlug(
+            type = MenuType.YOUTUBE_PLAYLIST,
+            status = MenuStatus.PUBLISHED,
+            slug = slug,
+        )
             ?: throw NotFoundException("재생목록을 찾을 수 없습니다. slug=$slug")
         return buildVideoDetail(menu)
     }
