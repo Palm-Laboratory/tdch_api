@@ -1,16 +1,16 @@
-package kr.or.thejejachurch.api.sermon.interfaces.dto
+package kr.or.thejejachurch.api.media.video.interfaces.dto
 
-import kr.or.thejejachurch.api.sermon.application.AdminSermonDetail
-import kr.or.thejejachurch.api.sermon.application.AdminSermonSummary
-import kr.or.thejejachurch.api.sermon.application.PublicSermonDetail
-import kr.or.thejejachurch.api.sermon.application.PublicSermonList
-import kr.or.thejejachurch.api.sermon.application.PublicSermonPlaylistLink
-import kr.or.thejejachurch.api.sermon.application.PublicSermonSummary
-import kr.or.thejejachurch.api.sermon.application.UpdateSermonMetaCommand
+import kr.or.thejejachurch.api.media.video.application.AdminMediaVideoDetail
+import kr.or.thejejachurch.api.media.video.application.AdminMediaVideoSummary
+import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoDetail
+import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoList
+import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoPlaylistLink
+import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoSummary
+import kr.or.thejejachurch.api.media.video.application.UpdateMediaVideoMetaCommand
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import java.time.OffsetDateTime
 
-data class PublicSermonSummaryDto(
+data class PublicMediaVideoSummaryDto(
     val videoId: String,
     val title: String,
     val preacherName: String?,
@@ -22,18 +22,18 @@ data class PublicSermonSummaryDto(
     val href: String,
 )
 
-data class PublicSermonListResponse(
+data class PublicMediaVideoListResponse(
     val form: YouTubeContentForm,
-    val featured: PublicSermonSummaryDto?,
-    val items: List<PublicSermonSummaryDto>,
+    val featured: PublicMediaVideoSummaryDto?,
+    val items: List<PublicMediaVideoSummaryDto>,
 )
 
-data class PublicSermonPlaylistLinkDto(
+data class PublicMediaVideoPlaylistLinkDto(
     val label: String,
     val href: String,
 )
 
-data class PublicSermonDetailResponse(
+data class PublicMediaVideoDetailResponse(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -46,11 +46,11 @@ data class PublicSermonDetailResponse(
     val summary: String?,
     val description: String?,
     val contentForm: YouTubeContentForm,
-    val playlists: List<PublicSermonPlaylistLinkDto>,
-    val related: List<PublicSermonSummaryDto>,
+    val playlists: List<PublicMediaVideoPlaylistLinkDto>,
+    val related: List<PublicMediaVideoSummaryDto>,
 )
 
-data class AdminSermonSummaryDto(
+data class AdminMediaVideoSummaryDto(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -62,11 +62,11 @@ data class AdminSermonSummaryDto(
     val scriptureReference: String?,
 )
 
-data class AdminSermonListResponse(
-    val items: List<AdminSermonSummaryDto>,
+data class AdminMediaVideoListResponse(
+    val items: List<AdminMediaVideoSummaryDto>,
 )
 
-data class AdminSermonDetailResponse(
+data class AdminMediaVideoDetailResponse(
     val videoId: String,
     val sourceTitle: String,
     val sourceDescription: String?,
@@ -84,7 +84,7 @@ data class AdminSermonDetailResponse(
     val contentForm: YouTubeContentForm,
 )
 
-data class UpdateSermonMetaRequest(
+data class UpdateMediaVideoMetaRequest(
     val displayTitle: String? = null,
     val preacherName: String? = null,
     val displayPublishedAt: OffsetDateTime? = null,
@@ -96,8 +96,8 @@ data class UpdateSermonMetaRequest(
     val thumbnailOverrideUrl: String? = null,
 )
 
-fun PublicSermonSummary.toDto(): PublicSermonSummaryDto =
-    PublicSermonSummaryDto(
+fun PublicMediaVideoSummary.toDto(): PublicMediaVideoSummaryDto =
+    PublicMediaVideoSummaryDto(
         videoId = videoId,
         title = title,
         preacherName = preacherName,
@@ -109,21 +109,21 @@ fun PublicSermonSummary.toDto(): PublicSermonSummaryDto =
         href = href,
     )
 
-fun PublicSermonList.toDto(): PublicSermonListResponse =
-    PublicSermonListResponse(
+fun PublicMediaVideoList.toDto(): PublicMediaVideoListResponse =
+    PublicMediaVideoListResponse(
         form = form,
         featured = featured?.toDto(),
         items = items.map { it.toDto() },
     )
 
-fun PublicSermonPlaylistLink.toDto(): PublicSermonPlaylistLinkDto =
-    PublicSermonPlaylistLinkDto(
+fun PublicMediaVideoPlaylistLink.toDto(): PublicMediaVideoPlaylistLinkDto =
+    PublicMediaVideoPlaylistLinkDto(
         label = label,
         href = href,
     )
 
-fun PublicSermonDetail.toDto(): PublicSermonDetailResponse =
-    PublicSermonDetailResponse(
+fun PublicMediaVideoDetail.toDto(): PublicMediaVideoDetailResponse =
+    PublicMediaVideoDetailResponse(
         videoId = videoId,
         title = title,
         sourceTitle = sourceTitle,
@@ -140,8 +140,8 @@ fun PublicSermonDetail.toDto(): PublicSermonDetailResponse =
         related = related.map { it.toDto() },
     )
 
-fun AdminSermonSummary.toDto(): AdminSermonSummaryDto =
-    AdminSermonSummaryDto(
+fun AdminMediaVideoSummary.toDto(): AdminMediaVideoSummaryDto =
+    AdminMediaVideoSummaryDto(
         videoId = videoId,
         title = title,
         sourceTitle = sourceTitle,
@@ -153,8 +153,8 @@ fun AdminSermonSummary.toDto(): AdminSermonSummaryDto =
         scriptureReference = scriptureReference,
     )
 
-fun AdminSermonDetail.toDto(): AdminSermonDetailResponse =
-    AdminSermonDetailResponse(
+fun AdminMediaVideoDetail.toDto(): AdminMediaVideoDetailResponse =
+    AdminMediaVideoDetailResponse(
         videoId = videoId,
         sourceTitle = sourceTitle,
         sourceDescription = sourceDescription,
@@ -172,8 +172,8 @@ fun AdminSermonDetail.toDto(): AdminSermonDetailResponse =
         contentForm = contentForm,
     )
 
-fun UpdateSermonMetaRequest.toCommand(): UpdateSermonMetaCommand =
-    UpdateSermonMetaCommand(
+fun UpdateMediaVideoMetaRequest.toCommand(): UpdateMediaVideoMetaCommand =
+    UpdateMediaVideoMetaCommand(
         displayTitle = displayTitle,
         preacherName = preacherName,
         displayPublishedAt = displayPublishedAt,

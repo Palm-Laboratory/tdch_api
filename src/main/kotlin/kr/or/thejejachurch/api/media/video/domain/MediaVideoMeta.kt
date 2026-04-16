@@ -1,4 +1,4 @@
-package kr.or.thejejachurch.api.sermon.domain
+package kr.or.thejejachurch.api.media.video.domain
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -9,8 +9,8 @@ import jakarta.persistence.Table
 import java.time.OffsetDateTime
 
 @Entity
-@Table(name = "sermon_video_meta")
-class SermonVideoMeta(
+@Table(name = "media_video_meta")
+class MediaVideoMeta(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,

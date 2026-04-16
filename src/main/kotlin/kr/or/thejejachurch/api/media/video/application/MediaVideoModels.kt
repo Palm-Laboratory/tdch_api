@@ -1,9 +1,9 @@
-package kr.or.thejejachurch.api.sermon.application
+package kr.or.thejejachurch.api.media.video.application
 
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import java.time.OffsetDateTime
 
-data class PublicSermonSummary(
+data class PublicMediaVideoSummary(
     val videoId: String,
     val title: String,
     val preacherName: String?,
@@ -15,18 +15,18 @@ data class PublicSermonSummary(
     val href: String,
 )
 
-data class PublicSermonList(
+data class PublicMediaVideoList(
     val form: YouTubeContentForm,
-    val featured: PublicSermonSummary?,
-    val items: List<PublicSermonSummary>,
+    val featured: PublicMediaVideoSummary?,
+    val items: List<PublicMediaVideoSummary>,
 )
 
-data class PublicSermonPlaylistLink(
+data class PublicMediaVideoPlaylistLink(
     val label: String,
     val href: String,
 )
 
-data class PublicSermonDetail(
+data class PublicMediaVideoDetail(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -39,11 +39,11 @@ data class PublicSermonDetail(
     val summary: String?,
     val description: String?,
     val contentForm: YouTubeContentForm,
-    val playlists: List<PublicSermonPlaylistLink>,
-    val related: List<PublicSermonSummary>,
+    val playlists: List<PublicMediaVideoPlaylistLink>,
+    val related: List<PublicMediaVideoSummary>,
 )
 
-data class AdminSermonSummary(
+data class AdminMediaVideoSummary(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -55,7 +55,7 @@ data class AdminSermonSummary(
     val scriptureReference: String?,
 )
 
-data class AdminSermonDetail(
+data class AdminMediaVideoDetail(
     val videoId: String,
     val sourceTitle: String,
     val sourceDescription: String?,
@@ -73,7 +73,7 @@ data class AdminSermonDetail(
     val contentForm: YouTubeContentForm,
 )
 
-data class UpdateSermonMetaCommand(
+data class UpdateMediaVideoMetaCommand(
     val displayTitle: String?,
     val preacherName: String?,
     val displayPublishedAt: OffsetDateTime?,

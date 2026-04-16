@@ -1,12 +1,12 @@
-package kr.or.thejejachurch.api.sermon.interfaces.api
+package kr.or.thejejachurch.api.media.video.interfaces.api
 
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
-import kr.or.thejejachurch.api.sermon.application.SermonService
-import kr.or.thejejachurch.api.sermon.interfaces.dto.AdminSermonListResponse
-import kr.or.thejejachurch.api.sermon.interfaces.dto.UpdateSermonMetaRequest
-import kr.or.thejejachurch.api.sermon.interfaces.dto.toCommand
-import kr.or.thejejachurch.api.sermon.interfaces.dto.toDto
+import kr.or.thejejachurch.api.media.video.application.MediaVideoService
+import kr.or.thejejachurch.api.media.video.interfaces.dto.AdminMediaVideoListResponse
+import kr.or.thejejachurch.api.media.video.interfaces.dto.UpdateMediaVideoMetaRequest
+import kr.or.thejejachurch.api.media.video.interfaces.dto.toCommand
+import kr.or.thejejachurch.api.media.video.interfaces.dto.toDto
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -18,39 +18,39 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/v1/admin/sermons")
-class SermonAdminController(
-    private val sermonService: SermonService,
+@RequestMapping("/api/v1/admin/media/videos")
+class MediaVideoAdminController(
+    private val mediaVideoService: MediaVideoService,
     private val adminProperties: AdminProperties,
 ) {
     @GetMapping
-    fun getSermons(
+    fun getVideos(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
         @RequestParam(required = false) form: YouTubeContentForm?,
-    ): AdminSermonListResponse {
+    ): AdminMediaVideoListResponse {
         validateAdminKey(adminKey)
-        return AdminSermonListResponse(
-            items = sermonService.getAdminSermons(form).map { it.toDto() },
+        return AdminMediaVideoListResponse(
+            items = mediaVideoService.getAdminMediaVideos(form).map { it.toDto() },
         )
     }
 
     @GetMapping("/{videoId}")
-    fun getSermonDetail(
+    fun getVideoDetail(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
         @PathVariable videoId: String,
     ) = run {
         validateAdminKey(adminKey)
-        sermonService.getAdminSermonDetail(videoId).toDto()
+        mediaVideoService.getAdminMediaVideoDetail(videoId).toDto()
     }
 
     @PutMapping("/{videoId}")
-    fun updateSermonMeta(
+    fun updateVideoMeta(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
         @PathVariable videoId: String,
-        @RequestBody request: UpdateSermonMetaRequest,
+        @RequestBody request: UpdateMediaVideoMetaRequest,
     ) = run {
         validateAdminKey(adminKey)
-        sermonService.updateAdminSermonMeta(videoId, request.toCommand()).toDto()
+        mediaVideoService.updateAdminMediaVideoMeta(videoId, request.toCommand()).toDto()
     }
 
     private fun validateAdminKey(adminKey: String?) {

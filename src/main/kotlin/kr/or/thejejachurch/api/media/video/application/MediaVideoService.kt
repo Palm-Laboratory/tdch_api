@@ -1,9 +1,9 @@
-package kr.or.thejejachurch.api.sermon.application
+package kr.or.thejejachurch.api.media.video.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
-import kr.or.thejejachurch.api.sermon.domain.SermonVideoMeta
-import kr.or.thejejachurch.api.sermon.infrastructure.persistence.SermonVideoMetaRepository
+import kr.or.thejejachurch.api.media.video.domain.MediaVideoMeta
+import kr.or.thejejachurch.api.media.video.infrastructure.persistence.MediaVideoMetaRepository
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.domain.YouTubePrivacyStatus
 import kr.or.thejejachurch.api.youtube.domain.YouTubeSyncStatus
@@ -16,21 +16,21 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
 
 @Service
-class SermonService(
+class MediaVideoService(
     private val youTubeVideoRepository: YouTubeVideoRepository,
-    private val sermonVideoMetaRepository: SermonVideoMetaRepository,
+    private val mediaVideoMetaRepository: MediaVideoMetaRepository,
     private val youTubePlaylistItemRepository: YouTubePlaylistItemRepository,
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
     private val menuItemRepository: MenuItemRepository,
 ) {
     @Transactional(readOnly = true)
-    fun getPublicSermons(form: YouTubeContentForm): PublicSermonList {
+    fun getPublicMediaVideos(form: YouTubeContentForm): PublicMediaVideoList {
         val videos = loadDisplayableVideos()
             .filter { it.video.contentForm == form }
             .sortedByDescending { effectivePublishedAt(it.video, it.meta) ?: OffsetDateTime.MIN }
 
         val summaries = videos.map { toPublicSummary(it.video, it.meta) }
-        return PublicSermonList(
+        return PublicMediaVideoList(
             form = form,
             featured = if (form == YouTubeContentForm.LONGFORM) summaries.firstOrNull() else null,
             items = if (form == YouTubeContentForm.LONGFORM) summaries.drop(1) else summaries,
@@ -38,10 +38,10 @@ class SermonService(
     }
 
     @Transactional(readOnly = true)
-    fun getPublicSermonDetail(videoId: String): PublicSermonDetail {
+    fun getPublicMediaVideoDetail(videoId: String): PublicMediaVideoDetail {
         val video = youTubeVideoRepository.findByVideoId(videoId)
             ?: throw NotFoundException("영상을 찾을 수 없습니다. videoId=$videoId")
-        val meta = sermonVideoMetaRepository.findByVideoId(video.id!!)
+        val meta = mediaVideoMetaRepository.findByVideoId(video.id!!)
         if (!isDisplayable(video, meta)) {
             throw NotFoundException("공개된 영상을 찾을 수 없습니다. videoId=$videoId")
         }
@@ -52,7 +52,7 @@ class SermonService(
                 val menu = menuItemRepository.findAllByOrderBySortOrderAscIdAsc()
                     .firstOrNull { it.playlistId == playlist.id }
                     ?: return@mapNotNull null
-                PublicSermonPlaylistLink(
+                PublicMediaVideoPlaylistLink(
                     label = menu.label,
                     href = "/videos/${menu.slug}",
                 )
@@ -65,7 +65,7 @@ class SermonService(
             .take(6)
             .map { toPublicSummary(it.video, it.meta) }
 
-        return PublicSermonDetail(
+        return PublicMediaVideoDetail(
             videoId = video.videoId,
             title = meta?.displayTitle?.takeIf { it.isNotBlank() } ?: video.title,
             sourceTitle = video.title,
@@ -84,12 +84,12 @@ class SermonService(
     }
 
     @Transactional(readOnly = true)
-    fun getAdminSermons(form: YouTubeContentForm?): List<AdminSermonSummary> =
+    fun getAdminMediaVideos(form: YouTubeContentForm?): List<AdminMediaVideoSummary> =
         loadAllVideos()
             .filter { form == null || it.video.contentForm == form }
             .sortedByDescending { effectivePublishedAt(it.video, it.meta) ?: OffsetDateTime.MIN }
             .map { (video, meta) ->
-                AdminSermonSummary(
+                AdminMediaVideoSummary(
                     videoId = video.videoId,
                     title = meta?.displayTitle?.takeIf { it.isNotBlank() } ?: video.title,
                     sourceTitle = video.title,
@@ -103,12 +103,12 @@ class SermonService(
             }
 
     @Transactional(readOnly = true)
-    fun getAdminSermonDetail(videoId: String): AdminSermonDetail {
+    fun getAdminMediaVideoDetail(videoId: String): AdminMediaVideoDetail {
         val video = youTubeVideoRepository.findByVideoId(videoId)
             ?: throw NotFoundException("영상을 찾을 수 없습니다. videoId=$videoId")
-        val meta = sermonVideoMetaRepository.findByVideoId(video.id!!)
+        val meta = mediaVideoMetaRepository.findByVideoId(video.id!!)
 
-        return AdminSermonDetail(
+        return AdminMediaVideoDetail(
             videoId = video.videoId,
             sourceTitle = video.title,
             sourceDescription = video.description,
@@ -128,11 +128,11 @@ class SermonService(
     }
 
     @Transactional
-    fun updateAdminSermonMeta(videoId: String, command: UpdateSermonMetaCommand): AdminSermonDetail {
+    fun updateAdminMediaVideoMeta(videoId: String, command: UpdateMediaVideoMetaCommand): AdminMediaVideoDetail {
         val video = youTubeVideoRepository.findByVideoId(videoId)
             ?: throw NotFoundException("영상을 찾을 수 없습니다. videoId=$videoId")
-        val existing = sermonVideoMetaRepository.findByVideoId(video.id!!)
-        val meta = existing ?: SermonVideoMeta(videoId = video.id)
+        val existing = mediaVideoMetaRepository.findByVideoId(video.id!!)
+        val meta = existing ?: MediaVideoMeta(videoId = video.id)
 
         meta.displayTitle = command.displayTitle?.trim()?.ifBlank { null }
         meta.preacherName = command.preacherName?.trim()?.ifBlank { null }
@@ -144,12 +144,12 @@ class SermonService(
         meta.summary = command.summary?.trim()?.ifBlank { null }
         meta.thumbnailOverrideUrl = command.thumbnailOverrideUrl?.trim()?.ifBlank { null }
 
-        sermonVideoMetaRepository.save(meta)
-        return getAdminSermonDetail(videoId)
+        mediaVideoMetaRepository.save(meta)
+        return getAdminMediaVideoDetail(videoId)
     }
 
     private fun loadAllVideos(): List<VideoWithMeta> {
-        val metasByVideoId = sermonVideoMetaRepository.findAll().associateBy { it.videoId }
+        val metasByVideoId = mediaVideoMetaRepository.findAll().associateBy { it.videoId }
         return youTubeVideoRepository.findAll()
             .map { video -> VideoWithMeta(video = video, meta = metasByVideoId[video.id]) }
     }
@@ -157,19 +157,19 @@ class SermonService(
     private fun loadDisplayableVideos(): List<VideoWithMeta> =
         loadAllVideos().filter { isDisplayable(it.video, it.meta) }
 
-    private fun isDisplayable(video: YouTubeVideo, meta: SermonVideoMeta?): Boolean =
+    private fun isDisplayable(video: YouTubeVideo, meta: MediaVideoMeta?): Boolean =
         video.syncStatus == YouTubeSyncStatus.ACTIVE &&
             video.privacyStatus != YouTubePrivacyStatus.PRIVATE &&
             !(meta?.hidden ?: false)
 
-    private fun effectivePublishedAt(video: YouTubeVideo, meta: SermonVideoMeta?): OffsetDateTime? =
+    private fun effectivePublishedAt(video: YouTubeVideo, meta: MediaVideoMeta?): OffsetDateTime? =
         meta?.displayPublishedAt ?: video.publishedAt
 
-    private fun effectiveThumbnailUrl(video: YouTubeVideo, meta: SermonVideoMeta?): String? =
+    private fun effectiveThumbnailUrl(video: YouTubeVideo, meta: MediaVideoMeta?): String? =
         meta?.thumbnailOverrideUrl ?: video.thumbnailUrl
 
-    private fun toPublicSummary(video: YouTubeVideo, meta: SermonVideoMeta?): PublicSermonSummary =
-        PublicSermonSummary(
+    private fun toPublicSummary(video: YouTubeVideo, meta: MediaVideoMeta?): PublicMediaVideoSummary =
+        PublicMediaVideoSummary(
             videoId = video.videoId,
             title = meta?.displayTitle?.takeIf { it.isNotBlank() } ?: video.title,
             preacherName = meta?.preacherName,
@@ -179,14 +179,14 @@ class SermonService(
             summary = meta?.summary ?: video.description,
             contentForm = video.contentForm,
             href = if (video.contentForm == YouTubeContentForm.SHORTFORM) {
-                "/sermons/shorts/${video.videoId}"
+                "/media/videos/shorts/${video.videoId}"
             } else {
-                "/sermons/${video.videoId}"
+                "/media/videos/${video.videoId}"
             },
         )
 
     private data class VideoWithMeta(
         val video: YouTubeVideo,
-        val meta: SermonVideoMeta?,
+        val meta: MediaVideoMeta?,
     )
 }

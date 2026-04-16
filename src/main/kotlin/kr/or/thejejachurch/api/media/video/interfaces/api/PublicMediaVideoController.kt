@@ -1,7 +1,7 @@
-package kr.or.thejejachurch.api.sermon.interfaces.api
+package kr.or.thejejachurch.api.media.video.interfaces.api
 
-import kr.or.thejejachurch.api.sermon.application.SermonService
-import kr.or.thejejachurch.api.sermon.interfaces.dto.toDto
+import kr.or.thejejachurch.api.media.video.application.MediaVideoService
+import kr.or.thejejachurch.api.media.video.interfaces.dto.toDto
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -10,17 +10,17 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/v1/public/sermons")
-class PublicSermonController(
-    private val sermonService: SermonService,
+@RequestMapping("/api/v1/public/media/videos")
+class PublicMediaVideoController(
+    private val mediaVideoService: MediaVideoService,
 ) {
     @GetMapping
-    fun getSermons(
+    fun getVideos(
         @RequestParam(required = false, defaultValue = "LONGFORM") form: YouTubeContentForm,
-    ) = sermonService.getPublicSermons(form).toDto()
+    ) = mediaVideoService.getPublicMediaVideos(form).toDto()
 
     @GetMapping("/{videoId}")
-    fun getSermonDetail(
+    fun getVideoDetail(
         @PathVariable videoId: String,
-    ) = sermonService.getPublicSermonDetail(videoId).toDto()
+    ) = mediaVideoService.getPublicMediaVideoDetail(videoId).toDto()
 }
