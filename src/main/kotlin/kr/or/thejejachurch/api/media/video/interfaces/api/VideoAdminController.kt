@@ -2,9 +2,9 @@ package kr.or.thejejachurch.api.media.video.interfaces.api
 
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
-import kr.or.thejejachurch.api.media.video.application.MediaVideoService
-import kr.or.thejejachurch.api.media.video.interfaces.dto.AdminMediaVideoListResponse
-import kr.or.thejejachurch.api.media.video.interfaces.dto.UpdateMediaVideoMetaRequest
+import kr.or.thejejachurch.api.media.video.application.VideoService
+import kr.or.thejejachurch.api.media.video.interfaces.dto.AdminVideoListResponse
+import kr.or.thejejachurch.api.media.video.interfaces.dto.UpdateVideoMetaRequest
 import kr.or.thejejachurch.api.media.video.interfaces.dto.toCommand
 import kr.or.thejejachurch.api.media.video.interfaces.dto.toDto
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
@@ -18,19 +18,19 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/v1/admin/media/videos")
-class MediaVideoAdminController(
-    private val mediaVideoService: MediaVideoService,
+@RequestMapping("/api/v1/admin/videos")
+class VideoAdminController(
+    private val videoService: VideoService,
     private val adminProperties: AdminProperties,
 ) {
     @GetMapping
     fun getVideos(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
         @RequestParam(required = false) form: YouTubeContentForm?,
-    ): AdminMediaVideoListResponse {
+    ): AdminVideoListResponse {
         validateAdminKey(adminKey)
-        return AdminMediaVideoListResponse(
-            items = mediaVideoService.getAdminMediaVideos(form).map { it.toDto() },
+        return AdminVideoListResponse(
+            items = videoService.getAdminVideos(form).map { it.toDto() },
         )
     }
 
@@ -40,17 +40,17 @@ class MediaVideoAdminController(
         @PathVariable videoId: String,
     ) = run {
         validateAdminKey(adminKey)
-        mediaVideoService.getAdminMediaVideoDetail(videoId).toDto()
+        videoService.getAdminVideoDetail(videoId).toDto()
     }
 
     @PutMapping("/{videoId}")
     fun updateVideoMeta(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
         @PathVariable videoId: String,
-        @RequestBody request: UpdateMediaVideoMetaRequest,
+        @RequestBody request: UpdateVideoMetaRequest,
     ) = run {
         validateAdminKey(adminKey)
-        mediaVideoService.updateAdminMediaVideoMeta(videoId, request.toCommand()).toDto()
+        videoService.updateAdminVideoMeta(videoId, request.toCommand()).toDto()
     }
 
     private fun validateAdminKey(adminKey: String?) {

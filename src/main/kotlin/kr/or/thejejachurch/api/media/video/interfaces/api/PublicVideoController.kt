@@ -1,0 +1,42 @@
+package kr.or.thejejachurch.api.media.video.interfaces.api
+
+import kr.or.thejejachurch.api.media.video.application.VideoService
+import kr.or.thejejachurch.api.media.video.interfaces.dto.toDto
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+
+@RestController
+@RequestMapping("/api/v1/public/videos")
+class PublicVideoController(
+    private val videoService: VideoService,
+) {
+    @GetMapping("/items")
+    fun getPlaylistVideosByPath(
+        @RequestParam path: String,
+    ) = videoService.getPublicPlaylistVideosByPath(path).toDto()
+
+    @GetMapping("/detail")
+    fun getPlaylistVideoDetailByPath(
+        @RequestParam path: String,
+        @RequestParam videoId: String,
+    ) = videoService.getPublicPlaylistVideoDetailByPath(path, videoId).toDto()
+
+    @GetMapping("/by-id/{videoId}")
+    fun getVideoHref(
+        @PathVariable videoId: String,
+    ) = mapOf("href" to videoService.resolvePublicVideoHref(videoId))
+
+    @GetMapping("/{slug}/items")
+    fun getPlaylistVideos(
+        @PathVariable slug: String,
+    ) = videoService.getPublicPlaylistVideos(slug).toDto()
+
+    @GetMapping("/{slug}/{videoId}")
+    fun getPlaylistVideoDetail(
+        @PathVariable slug: String,
+        @PathVariable videoId: String,
+    ) = videoService.getPublicPlaylistVideoDetail(slug, videoId).toDto()
+}

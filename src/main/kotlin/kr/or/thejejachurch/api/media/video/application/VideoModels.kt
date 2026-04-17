@@ -3,7 +3,7 @@ package kr.or.thejejachurch.api.media.video.application
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import java.time.OffsetDateTime
 
-data class PublicMediaVideoSummary(
+data class PublicVideoSummary(
     val videoId: String,
     val title: String,
     val preacherName: String?,
@@ -15,18 +15,18 @@ data class PublicMediaVideoSummary(
     val href: String,
 )
 
-data class PublicMediaVideoList(
+data class PublicVideoList(
     val form: YouTubeContentForm,
-    val featured: PublicMediaVideoSummary?,
-    val items: List<PublicMediaVideoSummary>,
+    val featured: PublicVideoSummary?,
+    val items: List<PublicVideoSummary>,
 )
 
-data class PublicMediaVideoPlaylistLink(
+data class PublicVideoPlaylistLink(
     val label: String,
     val href: String,
 )
 
-data class PublicMediaVideoDetail(
+data class PublicVideoDetail(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -39,11 +39,11 @@ data class PublicMediaVideoDetail(
     val summary: String?,
     val description: String?,
     val contentForm: YouTubeContentForm,
-    val playlists: List<PublicMediaVideoPlaylistLink>,
-    val related: List<PublicMediaVideoSummary>,
+    val playlists: List<PublicVideoPlaylistLink>,
+    val related: List<PublicVideoSummary>,
 )
 
-data class AdminMediaVideoSummary(
+data class AdminVideoSummary(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -55,7 +55,7 @@ data class AdminMediaVideoSummary(
     val scriptureReference: String?,
 )
 
-data class AdminMediaVideoDetail(
+data class AdminVideoDetail(
     val videoId: String,
     val sourceTitle: String,
     val sourceDescription: String?,
@@ -71,9 +71,10 @@ data class AdminMediaVideoDetail(
     val summary: String?,
     val thumbnailOverrideUrl: String?,
     val contentForm: YouTubeContentForm,
+    val publicHref: String?,
 )
 
-data class UpdateMediaVideoMetaCommand(
+data class UpdateVideoMetaCommand(
     val displayTitle: String?,
     val preacherName: String?,
     val displayPublishedAt: OffsetDateTime?,

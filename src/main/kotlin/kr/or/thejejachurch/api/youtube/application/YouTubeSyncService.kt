@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import kr.or.thejejachurch.api.common.config.YouTubeProperties
 import kr.or.thejejachurch.api.menu.application.AdminYouTubePlaylistSummary
+import kr.or.thejejachurch.api.menu.application.MenuSlugSupport
 import kr.or.thejejachurch.api.menu.application.YouTubeSyncSummary
 import kr.or.thejejachurch.api.menu.domain.MenuItem
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
@@ -122,6 +123,13 @@ class YouTubeSyncService(
                     menu.label = persistedPlaylist.title
                     updatedMenus += 1
                 }
+                val normalizedSlug = generateUniqueSlug(persistedPlaylist.title, menu.id)
+                if (menu.slug.isBlank() || requiresAutoSlugMigration(menu.slug)) {
+                    if (menu.slug != normalizedSlug) {
+                        menu.slug = normalizedSlug
+                        updatedMenus += 1
+                    }
+                }
                 if (menu.status == MenuStatus.ARCHIVED && persistedPlaylist.syncStatus == YouTubeSyncStatus.ACTIVE) {
                     menu.status = MenuStatus.DRAFT
                     restoredMenus += 1
@@ -176,7 +184,9 @@ class YouTubeSyncService(
         playlistItemsByPlaylistId.forEach { (playlistId, itemPayloads) ->
             val persistedPlaylist = persistedPlaylistsByPlaylistId[playlistId] ?: return@forEach
             youTubePlaylistItemRepository.deleteAllByPlaylistId(persistedPlaylist.id!!)
-            itemPayloads.forEach { itemPayload ->
+            youTubePlaylistItemRepository.flush()
+
+            deduplicatePlaylistItems(itemPayloads).forEach { itemPayload ->
                 val persistedVideo = persistedVideosByVideoId[itemPayload.videoId] ?: return@forEach
                 youTubePlaylistItemRepository.save(
                     YouTubePlaylistItem(
@@ -355,6 +365,18 @@ class YouTubeSyncService(
         return items.sortedBy { it.position }
     }
 
+    private fun deduplicatePlaylistItems(items: List<PlaylistItemPayload>): List<PlaylistItemPayload> {
+        val deduplicated = linkedMapOf<String, PlaylistItemPayload>()
+
+        items.sortedBy { it.position }.forEach { item ->
+            deduplicated.putIfAbsent(item.videoId, item)
+        }
+
+        return deduplicated.values.mapIndexed { index, item ->
+            item.copy(position = index)
+        }
+    }
+
     private fun fetchVideosByIds(videoIds: List<String>): List<VideoPayload> {
         if (videoIds.isEmpty()) {
             return emptyList()
@@ -451,21 +473,19 @@ class YouTubeSyncService(
             ?.takeIf { it.isNotBlank() }
             ?.let { Duration.parse(it).seconds.toInt() }
 
-    private fun generateUniqueSlug(label: String): String {
-        val baseSlug = label
-            .lowercase()
-            .replace(Regex("[^a-z0-9가-힣]+"), "-")
-            .replace(Regex("-+"), "-")
-            .trim('-')
-            .ifBlank { "playlist" }
+    private fun generateUniqueSlug(label: String, currentMenuId: Long? = null): String {
+        val baseSlug = MenuSlugSupport.slugifyToAscii(label).ifBlank { "playlist" }
         var candidate = baseSlug
         var suffix = 1
-        while (menuItemRepository.findBySlug(candidate) != null) {
+        while (menuItemRepository.findBySlug(candidate)?.id?.let { it != currentMenuId } == true) {
             suffix += 1
             candidate = "$baseSlug-$suffix"
         }
         return candidate
     }
+
+    private fun requiresAutoSlugMigration(slug: String): Boolean =
+        slug != MenuSlugSupport.slugifyToAscii(slug)
 
     private fun recomputeMenuPaths() {
         val items = menuItemRepository.findAllByOrderBySortOrderAscIdAsc()

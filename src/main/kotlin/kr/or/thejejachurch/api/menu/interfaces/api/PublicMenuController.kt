@@ -25,4 +25,9 @@ class PublicMenuController(
     fun getVideoDetail(
         @PathVariable slug: String,
     ) = publicMenuService.getVideoDetail(slug).toDto()
+
+    @GetMapping("/videos")
+    fun getVideoDetailByPath(
+        @RequestParam path: String,
+    ) = publicMenuService.getVideoDetailByPath(path).toDto()
 }

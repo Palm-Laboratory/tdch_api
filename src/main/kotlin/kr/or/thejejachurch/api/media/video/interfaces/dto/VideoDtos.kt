@@ -1,16 +1,16 @@
 package kr.or.thejejachurch.api.media.video.interfaces.dto
 
-import kr.or.thejejachurch.api.media.video.application.AdminMediaVideoDetail
-import kr.or.thejejachurch.api.media.video.application.AdminMediaVideoSummary
-import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoDetail
-import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoList
-import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoPlaylistLink
-import kr.or.thejejachurch.api.media.video.application.PublicMediaVideoSummary
-import kr.or.thejejachurch.api.media.video.application.UpdateMediaVideoMetaCommand
+import kr.or.thejejachurch.api.media.video.application.AdminVideoDetail
+import kr.or.thejejachurch.api.media.video.application.AdminVideoSummary
+import kr.or.thejejachurch.api.media.video.application.PublicVideoDetail
+import kr.or.thejejachurch.api.media.video.application.PublicVideoList
+import kr.or.thejejachurch.api.media.video.application.PublicVideoPlaylistLink
+import kr.or.thejejachurch.api.media.video.application.PublicVideoSummary
+import kr.or.thejejachurch.api.media.video.application.UpdateVideoMetaCommand
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import java.time.OffsetDateTime
 
-data class PublicMediaVideoSummaryDto(
+data class PublicVideoSummaryDto(
     val videoId: String,
     val title: String,
     val preacherName: String?,
@@ -22,18 +22,18 @@ data class PublicMediaVideoSummaryDto(
     val href: String,
 )
 
-data class PublicMediaVideoListResponse(
+data class PublicVideoListResponse(
     val form: YouTubeContentForm,
-    val featured: PublicMediaVideoSummaryDto?,
-    val items: List<PublicMediaVideoSummaryDto>,
+    val featured: PublicVideoSummaryDto?,
+    val items: List<PublicVideoSummaryDto>,
 )
 
-data class PublicMediaVideoPlaylistLinkDto(
+data class PublicVideoPlaylistLinkDto(
     val label: String,
     val href: String,
 )
 
-data class PublicMediaVideoDetailResponse(
+data class PublicVideoDetailResponse(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -46,11 +46,11 @@ data class PublicMediaVideoDetailResponse(
     val summary: String?,
     val description: String?,
     val contentForm: YouTubeContentForm,
-    val playlists: List<PublicMediaVideoPlaylistLinkDto>,
-    val related: List<PublicMediaVideoSummaryDto>,
+    val playlists: List<PublicVideoPlaylistLinkDto>,
+    val related: List<PublicVideoSummaryDto>,
 )
 
-data class AdminMediaVideoSummaryDto(
+data class AdminVideoSummaryDto(
     val videoId: String,
     val title: String,
     val sourceTitle: String,
@@ -62,11 +62,11 @@ data class AdminMediaVideoSummaryDto(
     val scriptureReference: String?,
 )
 
-data class AdminMediaVideoListResponse(
-    val items: List<AdminMediaVideoSummaryDto>,
+data class AdminVideoListResponse(
+    val items: List<AdminVideoSummaryDto>,
 )
 
-data class AdminMediaVideoDetailResponse(
+data class AdminVideoDetailResponse(
     val videoId: String,
     val sourceTitle: String,
     val sourceDescription: String?,
@@ -82,9 +82,10 @@ data class AdminMediaVideoDetailResponse(
     val summary: String?,
     val thumbnailOverrideUrl: String?,
     val contentForm: YouTubeContentForm,
+    val publicHref: String?,
 )
 
-data class UpdateMediaVideoMetaRequest(
+data class UpdateVideoMetaRequest(
     val displayTitle: String? = null,
     val preacherName: String? = null,
     val displayPublishedAt: OffsetDateTime? = null,
@@ -96,8 +97,8 @@ data class UpdateMediaVideoMetaRequest(
     val thumbnailOverrideUrl: String? = null,
 )
 
-fun PublicMediaVideoSummary.toDto(): PublicMediaVideoSummaryDto =
-    PublicMediaVideoSummaryDto(
+fun PublicVideoSummary.toDto(): PublicVideoSummaryDto =
+    PublicVideoSummaryDto(
         videoId = videoId,
         title = title,
         preacherName = preacherName,
@@ -109,21 +110,21 @@ fun PublicMediaVideoSummary.toDto(): PublicMediaVideoSummaryDto =
         href = href,
     )
 
-fun PublicMediaVideoList.toDto(): PublicMediaVideoListResponse =
-    PublicMediaVideoListResponse(
+fun PublicVideoList.toDto(): PublicVideoListResponse =
+    PublicVideoListResponse(
         form = form,
         featured = featured?.toDto(),
         items = items.map { it.toDto() },
     )
 
-fun PublicMediaVideoPlaylistLink.toDto(): PublicMediaVideoPlaylistLinkDto =
-    PublicMediaVideoPlaylistLinkDto(
+fun PublicVideoPlaylistLink.toDto(): PublicVideoPlaylistLinkDto =
+    PublicVideoPlaylistLinkDto(
         label = label,
         href = href,
     )
 
-fun PublicMediaVideoDetail.toDto(): PublicMediaVideoDetailResponse =
-    PublicMediaVideoDetailResponse(
+fun PublicVideoDetail.toDto(): PublicVideoDetailResponse =
+    PublicVideoDetailResponse(
         videoId = videoId,
         title = title,
         sourceTitle = sourceTitle,
@@ -140,8 +141,8 @@ fun PublicMediaVideoDetail.toDto(): PublicMediaVideoDetailResponse =
         related = related.map { it.toDto() },
     )
 
-fun AdminMediaVideoSummary.toDto(): AdminMediaVideoSummaryDto =
-    AdminMediaVideoSummaryDto(
+fun AdminVideoSummary.toDto(): AdminVideoSummaryDto =
+    AdminVideoSummaryDto(
         videoId = videoId,
         title = title,
         sourceTitle = sourceTitle,
@@ -153,8 +154,8 @@ fun AdminMediaVideoSummary.toDto(): AdminMediaVideoSummaryDto =
         scriptureReference = scriptureReference,
     )
 
-fun AdminMediaVideoDetail.toDto(): AdminMediaVideoDetailResponse =
-    AdminMediaVideoDetailResponse(
+fun AdminVideoDetail.toDto(): AdminVideoDetailResponse =
+    AdminVideoDetailResponse(
         videoId = videoId,
         sourceTitle = sourceTitle,
         sourceDescription = sourceDescription,
@@ -170,10 +171,11 @@ fun AdminMediaVideoDetail.toDto(): AdminMediaVideoDetailResponse =
         summary = summary,
         thumbnailOverrideUrl = thumbnailOverrideUrl,
         contentForm = contentForm,
+        publicHref = publicHref,
     )
 
-fun UpdateMediaVideoMetaRequest.toCommand(): UpdateMediaVideoMetaCommand =
-    UpdateMediaVideoMetaCommand(
+fun UpdateVideoMetaRequest.toCommand(): UpdateVideoMetaCommand =
+    UpdateVideoMetaCommand(
         displayTitle = displayTitle,
         preacherName = preacherName,
         displayPublishedAt = displayPublishedAt,

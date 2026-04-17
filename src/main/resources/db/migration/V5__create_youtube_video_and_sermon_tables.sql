@@ -1,3 +1,13 @@
+-- Current baseline for the YouTube sync domain.
+-- - youtube_video: canonical synced video records from the channel
+-- - youtube_playlist_item: playlist membership + ordering
+-- - media_video_meta: public/admin display metadata for each synced video
+--
+-- Notes
+-- - (playlist_id, video_id) is intentionally unique: one video may appear only once per playlist.
+-- - (playlist_id, position) is intentionally unique: playlist ordering is normalized during sync.
+-- - Legacy installs may still have sermon_video_meta; V6 handles that rename path.
+
 create table if not exists youtube_video (
     id bigserial primary key,
     channel_id bigint not null references youtube_channel(id) on delete cascade,
@@ -53,7 +63,7 @@ before update on youtube_playlist_item
 for each row
 execute function set_current_timestamp_updated_at();
 
-create table if not exists sermon_video_meta (
+create table if not exists media_video_meta (
     id bigserial primary key,
     video_id bigint not null unique references youtube_video(id) on delete cascade,
     display_title varchar(300),
@@ -69,11 +79,11 @@ create table if not exists sermon_video_meta (
     updated_at timestamptz not null default now()
 );
 
-create index if not exists idx_sermon_video_meta_hidden on sermon_video_meta(hidden);
-create index if not exists idx_sermon_video_meta_display_published_at on sermon_video_meta(display_published_at desc);
+create index if not exists idx_media_video_meta_hidden on media_video_meta(hidden);
+create index if not exists idx_media_video_meta_display_published_at on media_video_meta(display_published_at desc);
 
-drop trigger if exists trg_sermon_video_meta_updated_at on sermon_video_meta;
-create trigger trg_sermon_video_meta_updated_at
-before update on sermon_video_meta
+drop trigger if exists trg_media_video_meta_updated_at on media_video_meta;
+create trigger trg_media_video_meta_updated_at
+before update on media_video_meta
 for each row
 execute function set_current_timestamp_updated_at();

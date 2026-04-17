@@ -65,22 +65,23 @@ class PublicMenuService(
 
     @Transactional(readOnly = true)
     fun getVideoDetail(slug: String): PublicVideoDetail {
+        val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
+        val itemsById = publishedItems.associateBy { it.id!! }
         val menu = menuItemRepository.findByTypeAndStatusAndSlug(
             type = MenuType.YOUTUBE_PLAYLIST,
             status = MenuStatus.PUBLISHED,
             slug = slug,
         )
             ?: throw NotFoundException("재생목록을 찾을 수 없습니다. slug=$slug")
-        return buildVideoDetail(menu)
+        return buildVideoDetail(menu, publishedItems, itemsById)
     }
 
     @Transactional(readOnly = true)
     fun getVideoDetailByPath(path: String): PublicVideoDetail {
-        val menu = resolvePublishedMenu(path)
-        if (menu.type != MenuType.YOUTUBE_PLAYLIST) {
-            throw NotFoundException("공개된 재생목록을 찾을 수 없습니다. path=$path")
-        }
-        return buildVideoDetail(menu)
+        val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
+        val itemsById = publishedItems.associateBy { it.id!! }
+        val menu = resolvePublishedVideoMenu(path, publishedItems, itemsById)
+        return buildVideoDetail(menu, publishedItems, itemsById)
     }
 
     @Transactional(readOnly = true)
@@ -121,14 +122,17 @@ class PublicMenuService(
         )
     }
 
-    private fun buildVideoDetail(menu: MenuItem): PublicVideoDetail {
+    private fun buildVideoDetail(
+        menu: MenuItem,
+        publishedItems: List<MenuItem>,
+        itemsById: Map<Long, MenuItem>,
+    ): PublicVideoDetail {
         if (menu.type != MenuType.YOUTUBE_PLAYLIST || menu.status != MenuStatus.PUBLISHED) {
             throw NotFoundException("공개된 재생목록을 찾을 수 없습니다. menuId=${menu.id}")
         }
 
         val playlist = menu.playlistId?.let { youTubePlaylistRepository.findByIdOrNull(it) }
             ?: throw NotFoundException("유튜브 재생목록 정보를 찾을 수 없습니다. menuId=${menu.id}")
-        val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
 
         val siblings = menu.parentId?.let { parentId ->
             publishedItems
@@ -137,7 +141,7 @@ class PublicMenuService(
             .map {
                 VideoSiblingLink(
                     label = it.label,
-                    href = buildStableHref(it),
+                    href = buildStableHref(it, itemsById),
                 )
             }
         }.orEmpty()
@@ -151,7 +155,7 @@ class PublicMenuService(
             sourceTitle = playlist.title,
             playlistId = playlist.playlistId,
             slug = menu.slug,
-            fullPath = buildStableHref(menu),
+            fullPath = buildStableHref(menu, itemsById),
             description = playlist.description,
             thumbnailUrl = playlist.thumbnailUrl,
             itemCount = playlist.itemCount,
@@ -168,7 +172,7 @@ class PublicMenuService(
         when (item.type) {
             MenuType.STATIC -> buildMenuPath(item, itemsById)
             MenuType.BOARD -> item.boardKey?.trim()?.takeIf { it.isNotBlank() }?.let { "/news#$it" } ?: "/news"
-            MenuType.YOUTUBE_PLAYLIST -> buildStableHref(item)
+            MenuType.YOUTUBE_PLAYLIST -> buildStableHref(item, itemsById)
             MenuType.EXTERNAL_LINK -> item.externalUrl ?: "/"
             MenuType.FOLDER,
             MenuType.YOUTUBE_PLAYLIST_GROUP -> resolveDefaultLandingHref(item, childrenByParent, itemsById) ?: "/"
@@ -194,11 +198,23 @@ class PublicMenuService(
     private fun normalizeMatchPath(href: String): String? =
         href.takeIf { !it.startsWith("http://") && !it.startsWith("https://") }?.substringBefore('#')
 
-    private fun buildStableHref(item: MenuItem): String =
+    private fun buildStableHref(item: MenuItem, itemsById: Map<Long, MenuItem>): String =
         when (item.type) {
-            MenuType.YOUTUBE_PLAYLIST -> "/videos/${item.slug}"
+            MenuType.YOUTUBE_PLAYLIST -> buildVideoPath(item, itemsById)
             else -> "/"
         }
+
+    private fun buildVideoPath(item: MenuItem, itemsById: Map<Long, MenuItem>): String {
+        val segments = mutableListOf<String>()
+        var current: MenuItem? = item
+
+        while (current != null) {
+            segments += current.slug
+            current = current.parentId?.let(itemsById::get)
+        }
+
+        return "/videos/${segments.asReversed().joinToString("/")}"
+    }
 
     private fun buildMenuPath(item: MenuItem, itemsById: Map<Long, MenuItem>): String {
         val segments = mutableListOf<String>()
@@ -241,6 +257,20 @@ class PublicMenuService(
             return "/"
         }
         return if (trimmed.startsWith("/")) trimmed else "/$trimmed"
+    }
+
+    private fun resolvePublishedVideoMenu(
+        path: String,
+        publishedItems: List<MenuItem>,
+        itemsById: Map<Long, MenuItem>,
+    ): MenuItem {
+        val normalizedPath = normalizeLookupPath(path)
+
+        return publishedItems
+            .firstOrNull { item ->
+                item.type == MenuType.YOUTUBE_PLAYLIST && buildVideoPath(item, itemsById) == normalizedPath
+            }
+            ?: throw NotFoundException("공개된 재생목록을 찾을 수 없습니다. path=$path")
     }
 }
 

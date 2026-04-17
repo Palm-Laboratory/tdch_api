@@ -10,7 +10,7 @@ import java.time.OffsetDateTime
 
 @Entity
 @Table(name = "media_video_meta")
-class MediaVideoMeta(
+class VideoMeta(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
