@@ -97,8 +97,8 @@ class MenuManagementService(
             val siblingSlugs = linkedSetOf<String>()
 
             siblings.forEach { node ->
-                val normalizedSlug = normalizeSlug(node.slug, node.label)
-                if (!siblingSlugs.add(normalizedSlug)) {
+                val normalizedSlug = normalizeExplicitSlug(node.slug)
+                if (normalizedSlug != null && !siblingSlugs.add(normalizedSlug)) {
                     throw IllegalArgumentException("같은 메뉴 아래에 중복된 slug가 있습니다: $normalizedSlug")
                 }
 
@@ -135,7 +135,7 @@ class MenuManagementService(
                 ?: MenuItem(
                     type = node.type,
                     label = node.label.trim(),
-                    slug = normalizeSlug(node.slug, node.label),
+                    slug = "",
                 )
 
             val menuId = item.id
@@ -152,9 +152,11 @@ class MenuManagementService(
                 throw IllegalArgumentException("메뉴 이름은 비어 있을 수 없습니다.")
             }
 
-            val normalizedSlug = normalizeSlug(node.slug, node.label)
-            val effectiveSlug = if (item.id == null) normalizedSlug else item.slug
-            ensureSlugAvailable(effectiveSlug, item.id, parentId)
+            val effectiveSlug = resolveEffectiveSlug(
+                node = node,
+                item = item,
+                parentId = parentId,
+            )
 
             val resolvedType = if (item.isAuto) item.type else node.type
             validatePlacement(
@@ -373,27 +375,99 @@ class MenuManagementService(
     }
 
     private fun ensureSlugAvailable(slug: String, currentId: Long?, parentId: Long?) {
+        if (!isSlugAvailable(slug, currentId, parentId)) {
+            throw IllegalArgumentException("같은 메뉴 아래에서 이미 사용 중인 slug 입니다: $slug")
+        }
+    }
+
+    private fun isSlugAvailable(slug: String, currentId: Long?, parentId: Long?): Boolean {
         val existing = if (parentId == null) {
             menuItemRepository.findRootBySlug(slug)
         } else {
             menuItemRepository.findByParentIdAndSlug(parentId, slug)
         }
-        if (existing != null && existing.id != currentId) {
-            throw IllegalArgumentException("같은 메뉴 아래에서 이미 사용 중인 slug 입니다: $slug")
-        }
+        return existing == null || existing.id == currentId
     }
 
-    private fun normalizeSlug(rawSlug: String?, rawLabel: String): String {
-        val base = rawSlug?.trim()?.ifBlank { rawLabel } ?: rawLabel
-        val normalized = base
-            .lowercase()
-            .replace(Regex("[^a-z0-9가-힣]+"), "-")
-            .replace(Regex("-+"), "-")
-            .trim('-')
+    private fun resolveEffectiveSlug(node: MenuTreeNodeInput, item: MenuItem, parentId: Long?): String =
+        when {
+            item.isAuto -> item.slug
+            node.slug.isBlank() -> generateAvailableSlug(node.label, item.id, parentId)
+            else -> normalizeExplicitSlug(node.slug)?.also { normalized ->
+                ensureSlugAvailable(normalized, item.id, parentId)
+            } ?: throw IllegalArgumentException("slug를 생성할 수 없습니다.")
+        }
+
+    private fun generateAvailableSlug(rawLabel: String, currentId: Long?, parentId: Long?): String {
+        val base = slugifyToAscii(rawLabel).ifBlank { "menu" }
+        var sequence = 1
+        var candidate = base
+
+        while (!isSlugAvailable(candidate, currentId, parentId)) {
+            sequence += 1
+            candidate = "$base-$sequence"
+        }
+
+        return candidate
+    }
+
+    private fun normalizeExplicitSlug(rawSlug: String?): String? {
+        val trimmed = rawSlug?.trim() ?: return null
+        if (trimmed.isBlank()) {
+            return null
+        }
+
+        val normalized = slugifyToAscii(trimmed)
         if (normalized.isBlank()) {
-            throw IllegalArgumentException("slug를 생성할 수 없습니다.")
+            throw IllegalArgumentException("slug는 영문, 숫자, 하이픈으로 구성할 수 있는 값이어야 합니다.")
         }
         return normalized
+    }
+
+    private fun slugifyToAscii(rawText: String): String {
+        val builder = StringBuilder()
+        var pendingSeparator = false
+
+        fun flushSeparator() {
+            if (pendingSeparator && builder.isNotEmpty()) {
+                builder.append('-')
+            }
+            pendingSeparator = false
+        }
+
+        rawText.trim().forEach { ch ->
+            when {
+                ch.isAsciiLetter() || ch.isDigit() -> {
+                    flushSeparator()
+                    builder.append(ch.lowercaseChar())
+                }
+
+                ch in '\uAC00'..'\uD7A3' -> {
+                    val romanized = romanizeHangulSyllable(ch)
+                    if (romanized.isNotBlank()) {
+                        flushSeparator()
+                        builder.append(romanized)
+                    }
+                }
+
+                else -> pendingSeparator = builder.isNotEmpty()
+            }
+        }
+
+        return builder.toString().trim('-')
+    }
+
+    private fun romanizeHangulSyllable(ch: Char): String {
+        val syllableIndex = ch.code - HANGUL_BASE_CODE
+        val choseongIndex = syllableIndex / HANGUL_CHOSEONG_INTERVAL
+        val jungseongIndex = (syllableIndex % HANGUL_CHOSEONG_INTERVAL) / HANGUL_JONGSEONG_COUNT
+        val jongseongIndex = syllableIndex % HANGUL_JONGSEONG_COUNT
+
+        return buildString {
+            append(HANGUL_INITIAL_ROMANIZATION[choseongIndex])
+            append(HANGUL_VOWEL_ROMANIZATION[jungseongIndex])
+            append(HANGUL_FINAL_ROMANIZATION[jongseongIndex])
+        }
     }
 
     private fun requireActiveAdmin(actorId: Long) {
@@ -403,5 +477,29 @@ class MenuManagementService(
         if (!actor.active) {
             throw ForbiddenException("비활성화된 계정은 메뉴를 관리할 수 없습니다.")
         }
+    }
+
+    private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
+
+    companion object {
+        private const val HANGUL_BASE_CODE = 0xAC00
+        private const val HANGUL_CHOSEONG_INTERVAL = 588
+        private const val HANGUL_JONGSEONG_COUNT = 28
+
+        private val HANGUL_INITIAL_ROMANIZATION = arrayOf(
+            "g", "kk", "n", "d", "tt", "r", "m", "b", "pp", "s",
+            "ss", "", "j", "jj", "ch", "k", "t", "p", "h",
+        )
+
+        private val HANGUL_VOWEL_ROMANIZATION = arrayOf(
+            "a", "ae", "ya", "yae", "eo", "e", "yeo", "ye", "o", "wa",
+            "wae", "oe", "yo", "u", "wo", "we", "wi", "yu", "eu", "ui", "i",
+        )
+
+        private val HANGUL_FINAL_ROMANIZATION = arrayOf(
+            "", "k", "k", "ks", "n", "nj", "nh", "t", "l", "lk",
+            "lm", "lb", "ls", "lt", "lp", "lh", "m", "p", "ps", "t",
+            "t", "ng", "t", "t", "k", "t", "p", "h",
+        )
     }
 }

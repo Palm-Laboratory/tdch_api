@@ -19,14 +19,15 @@ class PublicMenuService(
     fun getNavigation(): PublicNavigationResponse {
         val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
         val childrenByParent = publishedItems.groupBy { it.parentId }
+        val itemsById = publishedItems.associateBy { it.id!! }
         val rootItems = childrenByParent[null].orEmpty()
             .sortedWith(compareBy<MenuItem> { it.sortOrder }.thenBy { it.id })
 
         val groups = rootItems.map { root ->
             val directChildren = childrenByParent[root.id].orEmpty()
                 .sortedWith(compareBy<MenuItem> { it.sortOrder }.thenBy { it.id })
-            val groupHref = resolveHref(root, childrenByParent)
-            val defaultLandingHref = resolveDefaultLandingHref(root, childrenByParent)
+            val groupHref = resolveHref(root, childrenByParent, itemsById)
+            val defaultLandingHref = resolveDefaultLandingHref(root, childrenByParent, itemsById)
             NavigationGroupDto(
                 key = root.slug,
                 label = root.label,
@@ -40,7 +41,7 @@ class PublicMenuService(
                 breadcrumbVisible = true,
                 defaultLandingHref = defaultLandingHref,
                 items = directChildren.map { child ->
-                    val href = resolveHref(child, childrenByParent)
+                    val href = resolveHref(child, childrenByParent, itemsById)
                     NavigationItemDto(
                         key = child.slug,
                         label = child.label,
@@ -86,11 +87,12 @@ class PublicMenuService(
     fun resolveMenuPath(path: String): PublicResolvedMenuPage {
         val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
         val childrenByParent = publishedItems.groupBy { it.parentId }
+        val itemsById = publishedItems.associateBy { it.id!! }
         val normalizedPath = normalizeLookupPath(path)
         val menu = resolvePublishedMenu(normalizedPath)
 
         if (menu.type == MenuType.FOLDER || menu.type == MenuType.YOUTUBE_PLAYLIST_GROUP) {
-            val redirectTo = resolveDefaultLandingHref(menu, childrenByParent)
+            val redirectTo = resolveDefaultLandingHref(menu, childrenByParent, itemsById)
                 ?: throw NotFoundException("연결된 공개 페이지를 찾을 수 없습니다. path=$path")
 
             return PublicResolvedMenuPage(
@@ -109,7 +111,7 @@ class PublicMenuService(
             type = menu.type,
             label = menu.label,
             slug = menu.slug,
-            fullPath = resolveHref(menu, childrenByParent),
+            fullPath = resolveHref(menu, childrenByParent, itemsById),
             parentLabel = menu.parentId?.let { parentId ->
                 publishedItems.firstOrNull { it.id == parentId }?.label
             },
@@ -161,19 +163,21 @@ class PublicMenuService(
     private fun resolveHref(
         item: MenuItem,
         childrenByParent: Map<Long?, List<MenuItem>>,
+        itemsById: Map<Long, MenuItem>,
     ): String =
         when (item.type) {
-            MenuType.STATIC -> MenuRouteRegistry.resolveStaticRoute(item.staticPageKey) ?: "/"
+            MenuType.STATIC -> buildMenuPath(item, itemsById)
             MenuType.BOARD -> item.boardKey?.trim()?.takeIf { it.isNotBlank() }?.let { "/news#$it" } ?: "/news"
             MenuType.YOUTUBE_PLAYLIST -> buildStableHref(item)
             MenuType.EXTERNAL_LINK -> item.externalUrl ?: "/"
             MenuType.FOLDER,
-            MenuType.YOUTUBE_PLAYLIST_GROUP -> resolveDefaultLandingHref(item, childrenByParent) ?: "/"
+            MenuType.YOUTUBE_PLAYLIST_GROUP -> resolveDefaultLandingHref(item, childrenByParent, itemsById) ?: "/"
         }
 
     private fun resolveDefaultLandingHref(
         item: MenuItem,
         childrenByParent: Map<Long?, List<MenuItem>>,
+        itemsById: Map<Long, MenuItem>,
     ): String? {
         val firstChild = childrenByParent[item.id]
             .orEmpty()
@@ -181,7 +185,7 @@ class PublicMenuService(
             .firstOrNull()
             ?: return null
 
-        return resolveHref(firstChild, childrenByParent)
+        return resolveHref(firstChild, childrenByParent, itemsById)
     }
 
     private fun resolveLinkType(item: MenuItem): NavigationLinkType =
@@ -195,6 +199,18 @@ class PublicMenuService(
             MenuType.YOUTUBE_PLAYLIST -> "/videos/${item.slug}"
             else -> "/"
         }
+
+    private fun buildMenuPath(item: MenuItem, itemsById: Map<Long, MenuItem>): String {
+        val segments = mutableListOf<String>()
+        var current: MenuItem? = item
+
+        while (current != null) {
+            segments += current.slug
+            current = current.parentId?.let(itemsById::get)
+        }
+
+        return "/${segments.asReversed().joinToString("/")}"
+    }
 
     private fun resolvePublishedMenu(path: String): MenuItem {
         val normalizedPath = normalizeLookupPath(path)
