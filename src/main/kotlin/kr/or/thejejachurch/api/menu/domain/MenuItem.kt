@@ -29,6 +29,8 @@ class MenuItem(
     var label: String,
     @Column(name = "label_customized", nullable = false)
     var labelCustomized: Boolean = false,
+    @Column(name = "slug_customized", nullable = false)
+    var slugCustomized: Boolean = false,
     @Column(nullable = false, length = 100)
     var slug: String,
     @Column(name = "static_page_key", length = 100)

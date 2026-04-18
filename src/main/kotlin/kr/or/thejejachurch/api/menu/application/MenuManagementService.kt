@@ -24,6 +24,11 @@ class MenuManagementService(
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
     private val objectMapper: ObjectMapper,
 ) {
+    private data class ResolvedSlug(
+        val value: String,
+        val customized: Boolean,
+    )
+
     @Transactional(readOnly = true)
     fun getAdminSnapshot(actorId: Long): AdminMenuSnapshot {
         requireActiveAdmin(actorId)
@@ -153,10 +158,19 @@ class MenuManagementService(
                 throw IllegalArgumentException("메뉴 이름은 비어 있을 수 없습니다.")
             }
 
-            val effectiveSlug = resolveEffectiveSlug(
+            val playlistSourceTitle = if (item.type == MenuType.YOUTUBE_PLAYLIST) {
+                item.playlistId?.let { playlistId ->
+                    youTubePlaylistRepository.findByIdOrNull(playlistId)?.title
+                }
+            } else {
+                null
+            }
+
+            val resolvedSlug = resolveEffectiveSlug(
                 node = node,
                 item = item,
                 parentId = parentId,
+                autoSlugBaseLabel = playlistSourceTitle,
             )
 
             val resolvedType = if (item.isAuto) item.type else node.type
@@ -173,7 +187,8 @@ class MenuManagementService(
             item.type = resolvedType
             item.status = normalizeStatus(node, item, parentId)
             item.label = normalizedLabel
-            item.slug = effectiveSlug
+            item.slug = resolvedSlug.value
+            item.slugCustomized = resolvedSlug.customized
             item.sortOrder = index
             item.depth = depth
             item.path = ""
@@ -233,10 +248,7 @@ class MenuManagementService(
                     item.externalUrl = null
                     item.openInNewTab = false
                     item.playlistContentForm = node.playlistContentForm ?: item.playlistContentForm ?: YouTubeContentForm.LONGFORM
-                    val sourceTitle = item.playlistId?.let { playlistId ->
-                        youTubePlaylistRepository.findByIdOrNull(playlistId)?.title
-                    }
-                    item.labelCustomized = sourceTitle?.let { normalizedLabel != it } ?: false
+                    item.labelCustomized = playlistSourceTitle?.let { normalizedLabel != it } ?: false
                 }
             }
 
@@ -360,6 +372,7 @@ class MenuManagementService(
                         slug = item.slug,
                         isAuto = item.isAuto,
                         labelCustomized = item.labelCustomized,
+                        slugCustomized = item.slugCustomized,
                         staticPageKey = item.staticPageKey,
                         boardKey = item.boardKey,
                         externalUrl = item.externalUrl,
@@ -393,14 +406,47 @@ class MenuManagementService(
         return existing == null || existing.id == currentId
     }
 
-    private fun resolveEffectiveSlug(node: MenuTreeNodeInput, item: MenuItem, parentId: Long?): String =
+    private fun resolveEffectiveSlug(
+        node: MenuTreeNodeInput,
+        item: MenuItem,
+        parentId: Long?,
+        autoSlugBaseLabel: String? = null,
+    ): ResolvedSlug =
         when {
-            item.isAuto -> item.slug
-            node.slug.isBlank() -> generateAvailableSlug(node.label, item.id, parentId)
+            item.isAuto -> resolveAutoSlug(node, item, parentId, autoSlugBaseLabel)
+            node.slug.isBlank() -> ResolvedSlug(
+                value = generateAvailableSlug(node.label, item.id, parentId),
+                customized = false,
+            )
             else -> normalizeExplicitSlug(node.slug)?.also { normalized ->
                 ensureSlugAvailable(normalized, item.id, parentId)
+            }?.let { normalized ->
+                ResolvedSlug(value = normalized, customized = false)
             } ?: throw IllegalArgumentException("slug를 생성할 수 없습니다.")
         }
+
+    private fun resolveAutoSlug(
+        node: MenuTreeNodeInput,
+        item: MenuItem,
+        parentId: Long?,
+        autoSlugBaseLabel: String?,
+    ): ResolvedSlug {
+        if (node.slugCustomized && node.slug.isNotBlank()) {
+            val normalized = normalizeExplicitSlug(node.slug)
+                ?: throw IllegalArgumentException("slug를 생성할 수 없습니다.")
+            ensureSlugAvailable(normalized, item.id, parentId)
+            return ResolvedSlug(value = normalized, customized = true)
+        }
+
+        return ResolvedSlug(
+            value = generateAvailableSlug(
+                rawLabel = autoSlugBaseLabel?.takeIf { it.isNotBlank() } ?: node.label,
+                currentId = item.id,
+                parentId = parentId,
+            ),
+            customized = false,
+        )
+    }
 
     private fun generateAvailableSlug(rawLabel: String, currentId: Long?, parentId: Long?): String {
         val base = MenuSlugSupport.slugifyToAscii(rawLabel).ifBlank { "menu" }

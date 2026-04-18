@@ -125,7 +125,7 @@ class YouTubeSyncService(
                     updatedMenus += 1
                 }
                 val normalizedSlug = generateUniqueSlug(persistedPlaylist.title, menu.id)
-                if (menu.slug.isBlank() || requiresAutoSlugMigration(menu.slug)) {
+                if (!menu.slugCustomized) {
                     if (menu.slug != normalizedSlug) {
                         menu.slug = normalizedSlug
                         updatedMenus += 1
