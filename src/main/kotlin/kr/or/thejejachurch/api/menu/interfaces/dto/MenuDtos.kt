@@ -10,6 +10,7 @@ import kr.or.thejejachurch.api.menu.application.PublicVideoDetail
 import kr.or.thejejachurch.api.menu.application.YouTubeSyncSummary
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
+import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.domain.YouTubeSyncStatus
 
 data class ReplaceMenuTreeRequest(
@@ -27,6 +28,7 @@ data class MenuTreeNodeRequest(
     val externalUrl: String? = null,
     val openInNewTab: Boolean = false,
     val isAuto: Boolean = false,
+    val playlistContentForm: YouTubeContentForm? = null,
     val children: List<MenuTreeNodeRequest> = emptyList(),
 )
 
@@ -47,6 +49,7 @@ data class AdminMenuTreeNodeDto(
     val thumbnailUrl: String?,
     val itemCount: Int?,
     val syncStatus: YouTubeSyncStatus?,
+    val playlistContentForm: YouTubeContentForm?,
     val parentId: Long?,
     val children: List<AdminMenuTreeNodeDto>,
 )
@@ -67,6 +70,7 @@ data class AdminYouTubePlaylistDto(
     val parentLabel: String?,
     val thumbnailUrl: String?,
     val itemCount: Int,
+    val playlistContentForm: YouTubeContentForm,
 )
 
 data class AdminYouTubePlaylistsResponse(
@@ -126,6 +130,7 @@ private fun MenuTreeNodeRequest.toCommand(): MenuTreeNodeInput =
         externalUrl = externalUrl,
         openInNewTab = openInNewTab,
         isAuto = isAuto,
+        playlistContentForm = playlistContentForm,
         children = children.map { it.toCommand() },
     )
 
@@ -150,6 +155,7 @@ fun MenuTreeNode.toDto(): AdminMenuTreeNodeDto =
         thumbnailUrl = thumbnailUrl,
         itemCount = itemCount,
         syncStatus = syncStatus,
+        playlistContentForm = playlistContentForm,
         parentId = parentId,
         children = children.map { it.toDto() },
     )
@@ -167,6 +173,7 @@ fun AdminYouTubePlaylistSummary.toDto(): AdminYouTubePlaylistDto =
         parentLabel = parentLabel,
         thumbnailUrl = thumbnailUrl,
         itemCount = itemCount,
+        playlistContentForm = playlistContentForm,
     )
 
 fun PublicNavigationResponse.toDto(): PublicNavigationResponse = this

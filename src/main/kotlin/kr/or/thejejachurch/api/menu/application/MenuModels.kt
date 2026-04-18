@@ -2,6 +2,7 @@ package kr.or.thejejachurch.api.menu.application
 
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
+import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.domain.YouTubeSyncStatus
 
 data class MenuTreeNodeInput(
@@ -15,6 +16,7 @@ data class MenuTreeNodeInput(
     val externalUrl: String? = null,
     val openInNewTab: Boolean = false,
     val isAuto: Boolean = false,
+    val playlistContentForm: YouTubeContentForm? = null,
     val children: List<MenuTreeNodeInput> = emptyList(),
 )
 
@@ -35,6 +37,7 @@ data class MenuTreeNode(
     val thumbnailUrl: String? = null,
     val itemCount: Int? = null,
     val syncStatus: YouTubeSyncStatus? = null,
+    val playlistContentForm: YouTubeContentForm? = null,
     val parentId: Long? = null,
     val children: List<MenuTreeNode> = emptyList(),
 )
@@ -55,6 +58,7 @@ data class AdminYouTubePlaylistSummary(
     val parentLabel: String?,
     val thumbnailUrl: String?,
     val itemCount: Int,
+    val playlistContentForm: YouTubeContentForm,
 )
 
 data class YouTubeSyncSummary(

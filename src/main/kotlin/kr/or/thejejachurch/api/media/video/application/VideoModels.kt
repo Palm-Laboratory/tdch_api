@@ -19,6 +19,10 @@ data class PublicVideoList(
     val form: YouTubeContentForm,
     val featured: PublicVideoSummary?,
     val items: List<PublicVideoSummary>,
+    val currentPage: Int,
+    val pageSize: Int,
+    val totalItems: Int,
+    val totalPages: Int,
 )
 
 data class PublicVideoPlaylistLink(

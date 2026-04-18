@@ -115,6 +115,7 @@ class YouTubeSyncService(
                         slug = generateUniqueSlug(persistedPlaylist.title),
                         playlistId = persistedPlaylist.id,
                         isAuto = true,
+                        playlistContentForm = YouTubeContentForm.LONGFORM,
                     )
                 )
                 createdMenus += 1
@@ -271,6 +272,7 @@ class YouTubeSyncService(
                     parentLabel = parent?.label,
                     thumbnailUrl = playlist.thumbnailUrl,
                     itemCount = playlist.itemCount,
+                    playlistContentForm = menu.playlistContentForm ?: YouTubeContentForm.LONGFORM,
                 )
             }
     }

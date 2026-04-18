@@ -10,6 +10,7 @@ import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuRevisionRepository
+import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -220,6 +221,7 @@ class MenuManagementService(
                     item.boardKey = null
                     item.externalUrl = null
                     item.openInNewTab = false
+                    item.playlistContentForm = null
                 }
 
                 MenuType.YOUTUBE_PLAYLIST -> {
@@ -230,6 +232,7 @@ class MenuManagementService(
                     item.boardKey = null
                     item.externalUrl = null
                     item.openInNewTab = false
+                    item.playlistContentForm = node.playlistContentForm ?: item.playlistContentForm ?: YouTubeContentForm.LONGFORM
                     val sourceTitle = item.playlistId?.let { playlistId ->
                         youTubePlaylistRepository.findByIdOrNull(playlistId)?.title
                     }
@@ -366,6 +369,7 @@ class MenuManagementService(
                         thumbnailUrl = playlist?.thumbnailUrl,
                         itemCount = playlist?.itemCount,
                         syncStatus = playlist?.syncStatus,
+                        playlistContentForm = item.playlistContentForm,
                         parentId = item.parentId,
                         children = build(item.id),
                     )

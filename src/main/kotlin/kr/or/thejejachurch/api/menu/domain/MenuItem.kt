@@ -1,5 +1,6 @@
 package kr.or.thejejachurch.api.menu.domain
 
+import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -48,6 +49,9 @@ class MenuItem(
     var sortOrder: Int = 0,
     @Column(name = "is_auto", nullable = false)
     var isAuto: Boolean = false,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "playlist_content_form", length = 16)
+    var playlistContentForm: YouTubeContentForm? = null,
     @Column(name = "created_at", nullable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now(),
     @Column(name = "updated_at", nullable = false)

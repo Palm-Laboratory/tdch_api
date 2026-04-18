@@ -27,18 +27,22 @@ class VideoService(
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
     private val menuItemRepository: MenuItemRepository,
 ) {
-    @Transactional(readOnly = true)
-    fun getPublicPlaylistVideos(slug: String): PublicVideoList {
-        val context = loadPlaylistContext(slug)
-        val summaries = loadPlaylistSummaries(context.menu)
-
-        return toPublicVideoList(summaries)
+    companion object {
+        private const val MAX_PAGE_SIZE = 24
     }
 
     @Transactional(readOnly = true)
-    fun getPublicPlaylistVideosByPath(path: String): PublicVideoList {
+    fun getPublicPlaylistVideos(slug: String, page: Int, size: Int): PublicVideoList {
+        val context = loadPlaylistContext(slug)
+        val summaries = loadPlaylistSummaries(context.menu)
+
+        return toPublicVideoList(context.menu, summaries, page, size)
+    }
+
+    @Transactional(readOnly = true)
+    fun getPublicPlaylistVideosByPath(path: String, page: Int, size: Int): PublicVideoList {
         val menu = resolvePublishedPlaylistMenuByPath(path)
-        return toPublicVideoList(loadPlaylistSummaries(menu))
+        return toPublicVideoList(menu, loadPlaylistSummaries(menu), page, size)
     }
 
     @Transactional(readOnly = true)
@@ -194,12 +198,32 @@ class VideoService(
     private fun loadDisplayableVideos(): List<VideoWithMeta> =
         loadAllVideos().filter { isDisplayable(it.video, it.meta) }
 
-    private fun toPublicVideoList(summaries: List<PublicVideoSummary>): PublicVideoList =
-        PublicVideoList(
-            form = summaries.firstOrNull()?.contentForm ?: YouTubeContentForm.LONGFORM,
-            featured = summaries.firstOrNull(),
-            items = summaries.drop(1),
+    private fun toPublicVideoList(
+        menu: MenuItem,
+        summaries: List<PublicVideoSummary>,
+        page: Int,
+        size: Int,
+    ): PublicVideoList {
+        val resolvedPageSize = size.coerceIn(1, MAX_PAGE_SIZE)
+        val resolvedPage = page.coerceAtLeast(1)
+        val featured = summaries.firstOrNull()
+        val remaining = summaries.drop(1)
+        val totalItems = remaining.size
+        val totalPages = if (totalItems == 0) 1 else ((totalItems - 1) / resolvedPageSize) + 1
+        val safePage = resolvedPage.coerceAtMost(totalPages)
+        val fromIndex = ((safePage - 1) * resolvedPageSize).coerceAtMost(totalItems)
+        val toIndex = (fromIndex + resolvedPageSize).coerceAtMost(totalItems)
+
+        return PublicVideoList(
+            form = menu.playlistContentForm ?: YouTubeContentForm.LONGFORM,
+            featured = featured,
+            items = remaining.subList(fromIndex, toIndex),
+            currentPage = safePage,
+            pageSize = resolvedPageSize,
+            totalItems = totalItems,
+            totalPages = totalPages,
         )
+    }
 
     private fun isDisplayable(video: YouTubeVideo, meta: VideoMeta?): Boolean =
         video.syncStatus == YouTubeSyncStatus.ACTIVE &&

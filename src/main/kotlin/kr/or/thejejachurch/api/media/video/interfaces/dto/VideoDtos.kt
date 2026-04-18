@@ -26,6 +26,10 @@ data class PublicVideoListResponse(
     val form: YouTubeContentForm,
     val featured: PublicVideoSummaryDto?,
     val items: List<PublicVideoSummaryDto>,
+    val currentPage: Int,
+    val pageSize: Int,
+    val totalItems: Int,
+    val totalPages: Int,
 )
 
 data class PublicVideoPlaylistLinkDto(
@@ -115,6 +119,10 @@ fun PublicVideoList.toDto(): PublicVideoListResponse =
         form = form,
         featured = featured?.toDto(),
         items = items.map { it.toDto() },
+        currentPage = currentPage,
+        pageSize = pageSize,
+        totalItems = totalItems,
+        totalPages = totalPages,
     )
 
 fun PublicVideoPlaylistLink.toDto(): PublicVideoPlaylistLinkDto =

@@ -16,7 +16,9 @@ class PublicVideoController(
     @GetMapping("/items")
     fun getPlaylistVideosByPath(
         @RequestParam path: String,
-    ) = videoService.getPublicPlaylistVideosByPath(path).toDto()
+        @RequestParam(defaultValue = "1") page: Int,
+        @RequestParam(defaultValue = "6") size: Int,
+    ) = videoService.getPublicPlaylistVideosByPath(path, page, size).toDto()
 
     @GetMapping("/detail")
     fun getPlaylistVideoDetailByPath(
@@ -32,7 +34,9 @@ class PublicVideoController(
     @GetMapping("/{slug}/items")
     fun getPlaylistVideos(
         @PathVariable slug: String,
-    ) = videoService.getPublicPlaylistVideos(slug).toDto()
+        @RequestParam(defaultValue = "1") page: Int,
+        @RequestParam(defaultValue = "6") size: Int,
+    ) = videoService.getPublicPlaylistVideos(slug, page, size).toDto()
 
     @GetMapping("/{slug}/{videoId}")
     fun getPlaylistVideoDetail(
