@@ -5,6 +5,7 @@ import kr.or.thejejachurch.api.menu.domain.MenuItem
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
+import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -159,6 +160,7 @@ class PublicMenuService(
             description = playlist.description,
             thumbnailUrl = playlist.thumbnailUrl,
             itemCount = playlist.itemCount,
+            contentForm = menu.playlistContentForm ?: YouTubeContentForm.LONGFORM,
             groupLabel = groupLabel,
             siblings = siblings,
         )

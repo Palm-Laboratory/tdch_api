@@ -85,6 +85,7 @@ data class PublicVideoDetail(
     val description: String?,
     val thumbnailUrl: String?,
     val itemCount: Int,
+    val contentForm: YouTubeContentForm,
     val groupLabel: String?,
     val siblings: List<VideoSiblingLink>,
 )

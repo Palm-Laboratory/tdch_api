@@ -86,6 +86,7 @@ data class PublicVideoDetailResponse(
     val description: String?,
     val thumbnailUrl: String?,
     val itemCount: Int,
+    val contentForm: YouTubeContentForm,
     val groupLabel: String?,
     val siblings: List<PublicVideoSiblingDto>,
 )
@@ -188,6 +189,7 @@ fun PublicVideoDetail.toDto(): PublicVideoDetailResponse =
         description = description,
         thumbnailUrl = thumbnailUrl,
         itemCount = itemCount,
+        contentForm = contentForm,
         groupLabel = groupLabel,
         siblings = siblings.map { PublicVideoSiblingDto(label = it.label, href = it.href) },
     )

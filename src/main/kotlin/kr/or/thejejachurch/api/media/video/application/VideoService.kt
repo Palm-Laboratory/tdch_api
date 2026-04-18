@@ -204,20 +204,21 @@ class VideoService(
         page: Int,
         size: Int,
     ): PublicVideoList {
+        val form = menu.playlistContentForm ?: YouTubeContentForm.LONGFORM
         val resolvedPageSize = size.coerceIn(1, MAX_PAGE_SIZE)
         val resolvedPage = page.coerceAtLeast(1)
-        val featured = summaries.firstOrNull()
-        val remaining = summaries.drop(1)
-        val totalItems = remaining.size
+        val featured = if (form == YouTubeContentForm.LONGFORM) summaries.firstOrNull() else null
+        val pagedSource = summaries
+        val totalItems = pagedSource.size
         val totalPages = if (totalItems == 0) 1 else ((totalItems - 1) / resolvedPageSize) + 1
         val safePage = resolvedPage.coerceAtMost(totalPages)
         val fromIndex = ((safePage - 1) * resolvedPageSize).coerceAtMost(totalItems)
         val toIndex = (fromIndex + resolvedPageSize).coerceAtMost(totalItems)
 
         return PublicVideoList(
-            form = menu.playlistContentForm ?: YouTubeContentForm.LONGFORM,
+            form = form,
             featured = featured,
-            items = remaining.subList(fromIndex, toIndex),
+            items = pagedSource.subList(fromIndex, toIndex),
             currentPage = safePage,
             pageSize = resolvedPageSize,
             totalItems = totalItems,
