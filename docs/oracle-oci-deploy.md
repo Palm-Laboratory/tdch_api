@@ -1,6 +1,8 @@
 # Oracle OCI Deploy Guide
 
-`tdch_api`를 `Oracle Cloud Infrastructure` 단일 VM에 배포하고 운영할 때 사용하는 현재 기준 문서다.
+`tdch_api`를 `Oracle Cloud Infrastructure` 단일 VM에 배포하고 운영할 때 사용하는 현재 기준 요약 문서다.
+
+처음 서버를 세팅할 때부터 GHCR, GitHub Actions, 스키마 변경 배포, 점검/복구까지 포함한 전체 절차는 [oracle-oci-operations-manual.md](./oracle-oci-operations-manual.md)를 우선 참고한다.
 
 대상 구조:
 
@@ -61,6 +63,12 @@ cp .env.production.example /tmp/tdch.env
 scp /tmp/tdch.env <oci-user>@<oci-host>:<deploy-path>/.env
 scp deploy/docker-compose.prod.yml <oci-user>@<oci-host>:<deploy-path>/docker-compose.prod.yml
 ```
+
+주의:
+
+- 이 `APP_IMAGE` 값은 수동 실행이나 초기 부트스트랩용 기본값이다.
+- GitHub Actions 자동 배포는 이 값을 직접 수정하지 않고, 해당 배포에서 막 빌드한 `sha-<commit>` 이미지를 일회성 환경 변수로 주입해서 배포한다.
+- 저장소가 개인 계정에서 Organization으로 이동되면 GHCR owner도 같이 바뀔 수 있으므로 `<github-owner>`는 현재 패키지 owner 기준으로 맞춰야 한다.
 
 ## 3. PostgreSQL + 앱 기동
 
@@ -147,14 +155,33 @@ curl https://<api-domain>/api/v1/health
 - `OCI_USERNAME=<oci-user>`
 - `OCI_DEPLOY_PATH=<deploy-path>`
 
-`GHCR_TOKEN`은 최소 `read:packages` 권한이 있는 토큰을 사용한다.
+`GHCR_TOKEN`은 이 워크플로에서 두 용도로 쓰인다.
+
+- GitHub Actions runner에서 GHCR push
+- 운영 VM에서 GHCR pull
+
+따라서 최소 권한은 `write:packages`다. private 저장소/패키지 환경이면 보통 `repo`도 같이 준다.
 
 배포 워크플로는 다음 순서로 동작한다.
 
 1. 테스트 실행
-2. GHCR 이미지 빌드 및 push
+2. GHCR 이미지 `latest`와 `sha-<commit>`를 같이 빌드 및 push
 3. 운영 VM에 `docker-compose.prod.yml` 업로드
-4. SSH 접속 후 `docker compose pull && up -d --remove-orphans`
+4. SSH 접속 후 해당 배포의 `sha-<commit>` 이미지를 직접 `docker pull`
+5. 같은 `sha-<commit>` 이미지를 사용해 `docker compose up -d --remove-orphans`
+
+운영상 의미:
+
+- `.env`의 `APP_IMAGE`를 매 배포마다 사람이 바꿀 필요는 없다.
+- 자동 배포는 항상 그 배포에서 생성한 immutable `sha-<commit>` 태그를 사용한다.
+- `.env`의 `latest`는 수동 복구/초기 기동 시 fallback 값으로 유지하면 된다.
+
+GHCR owner가 바뀌는 대표 상황:
+
+- 저장소를 개인 계정에서 Organization으로 이전한 경우
+- 패키지를 다른 owner namespace로 다시 push한 경우
+
+이 경우에는 `<deploy-path>/.env`의 `APP_IMAGE` 기본값, GitHub Packages의 실제 package owner, GitHub Actions가 push한 태그 경로가 서로 같은 owner를 가리키는지 같이 확인해야 한다.
 
 ## 7. 운영 검증 체크리스트
 
