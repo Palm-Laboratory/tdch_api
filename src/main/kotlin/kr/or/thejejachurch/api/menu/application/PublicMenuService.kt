@@ -80,8 +80,9 @@ class PublicMenuService(
     @Transactional(readOnly = true)
     fun getVideoDetailByPath(path: String): PublicVideoDetail {
         val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
+        val childrenByParent = publishedItems.groupBy { it.parentId }
         val itemsById = publishedItems.associateBy { it.id!! }
-        val menu = resolvePublishedVideoMenu(path, publishedItems, itemsById)
+        val menu = resolvePublishedVideoMenu(path, childrenByParent)
         return buildVideoDetail(menu, publishedItems, itemsById)
     }
 
@@ -91,7 +92,7 @@ class PublicMenuService(
         val childrenByParent = publishedItems.groupBy { it.parentId }
         val itemsById = publishedItems.associateBy { it.id!! }
         val normalizedPath = normalizeLookupPath(path)
-        val menu = resolvePublishedMenu(normalizedPath)
+        val menu = resolvePublishedMenu(normalizedPath, childrenByParent)
 
         if (menu.type == MenuType.FOLDER || menu.type == MenuType.YOUTUBE_PLAYLIST_GROUP) {
             val redirectTo = resolveDefaultLandingHref(menu, childrenByParent, itemsById)
@@ -114,9 +115,7 @@ class PublicMenuService(
             label = menu.label,
             slug = menu.slug,
             fullPath = resolveHref(menu, childrenByParent, itemsById),
-            parentLabel = menu.parentId?.let { parentId ->
-                publishedItems.firstOrNull { it.id == parentId }?.label
-            },
+            parentLabel = menu.parentId?.let(itemsById::get)?.label,
             staticPageKey = menu.staticPageKey,
             boardKey = menu.boardKey,
             redirectTo = null,
@@ -148,7 +147,7 @@ class PublicMenuService(
         }.orEmpty()
 
         val groupLabel = menu.parentId?.let { parentId ->
-            menuItemRepository.findByIdOrNull(parentId)?.label
+            itemsById[parentId]?.label
         }
 
         return PublicVideoDetail(
@@ -230,28 +229,10 @@ class PublicMenuService(
         return "/${segments.asReversed().joinToString("/")}"
     }
 
-    private fun resolvePublishedMenu(path: String): MenuItem {
-        val normalizedPath = normalizeLookupPath(path)
-        val segments = normalizedPath.trim('/').split('/').filter { it.isNotBlank() }
-        val rootSlug = segments.firstOrNull()
-            ?: throw NotFoundException("공개 메뉴를 찾을 수 없습니다. path=$path")
-
-        val root = menuItemRepository.findRootBySlug(rootSlug)
-            ?.takeIf { it.status == MenuStatus.PUBLISHED }
-            ?: throw NotFoundException("공개 메뉴를 찾을 수 없습니다. path=$path")
-
-        if (segments.size == 1) {
-            return root
-        }
-
-        if (segments.size > 2) {
-            throw NotFoundException("공개 메뉴를 찾을 수 없습니다. path=$path")
-        }
-
-        return menuItemRepository.findByParentIdAndSlug(root.id!!, segments[1])
-            ?.takeIf { it.status == MenuStatus.PUBLISHED }
-            ?: throw NotFoundException("공개 메뉴를 찾을 수 없습니다. path=$path")
-    }
+    private fun resolvePublishedMenu(
+        path: String,
+        childrenByParent: Map<Long?, List<MenuItem>>,
+    ): MenuItem = resolvePublishedPath(path, childrenByParent)
 
     private fun normalizeLookupPath(path: String): String {
         val trimmed = path.substringBefore('?').substringBefore('#').trim()
@@ -263,16 +244,33 @@ class PublicMenuService(
 
     private fun resolvePublishedVideoMenu(
         path: String,
-        publishedItems: List<MenuItem>,
-        itemsById: Map<Long, MenuItem>,
+        childrenByParent: Map<Long?, List<MenuItem>>,
+    ): MenuItem = resolvePublishedPath(path.removePrefix("/videos"), childrenByParent)
+        .takeIf { it.type == MenuType.YOUTUBE_PLAYLIST }
+        ?: throw NotFoundException("공개된 재생목록을 찾을 수 없습니다. path=$path")
+
+    private fun resolvePublishedPath(
+        path: String,
+        childrenByParent: Map<Long?, List<MenuItem>>,
     ): MenuItem {
         val normalizedPath = normalizeLookupPath(path)
+        val segments = normalizedPath.trim('/').split('/').filter { it.isNotBlank() }
+        if (segments.isEmpty()) {
+            throw NotFoundException("공개 메뉴를 찾을 수 없습니다. path=$path")
+        }
 
-        return publishedItems
-            .firstOrNull { item ->
-                item.type == MenuType.YOUTUBE_PLAYLIST && buildVideoPath(item, itemsById) == normalizedPath
-            }
-            ?: throw NotFoundException("공개된 재생목록을 찾을 수 없습니다. path=$path")
+        var parentId: Long? = null
+        var current: MenuItem? = null
+
+        for (segment in segments) {
+            current = childrenByParent[parentId]
+                .orEmpty()
+                .firstOrNull { it.slug == segment }
+                ?: throw NotFoundException("공개 메뉴를 찾을 수 없습니다. path=$path")
+            parentId = current.id
+        }
+
+        return current ?: throw NotFoundException("공개 메뉴를 찾을 수 없습니다. path=$path")
     }
 }
 
