@@ -5,6 +5,7 @@ import kr.or.thejejachurch.api.media.video.application.AdminVideoSummary
 import kr.or.thejejachurch.api.media.video.application.PublicVideoDetail
 import kr.or.thejejachurch.api.media.video.application.PublicVideoList
 import kr.or.thejejachurch.api.media.video.application.PublicVideoPlaylistLink
+import kr.or.thejejachurch.api.media.video.application.PublicShortformPlaylistWindow
 import kr.or.thejejachurch.api.media.video.application.PublicVideoSummary
 import kr.or.thejejachurch.api.media.video.application.UpdateVideoMetaCommand
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
@@ -37,6 +38,15 @@ data class PublicVideoPlaylistLinkDto(
     val href: String,
 )
 
+data class PublicShortformPlaylistWindowDto(
+    val items: List<PublicVideoSummaryDto>,
+    val currentIndexInWindow: Int,
+    val currentPage: Int,
+    val pageSize: Int,
+    val totalItems: Int,
+    val totalPages: Int,
+)
+
 data class PublicVideoDetailResponse(
     val videoId: String,
     val title: String,
@@ -52,6 +62,7 @@ data class PublicVideoDetailResponse(
     val contentForm: YouTubeContentForm,
     val playlists: List<PublicVideoPlaylistLinkDto>,
     val related: List<PublicVideoSummaryDto>,
+    val shortformPlaylist: PublicShortformPlaylistWindowDto?,
 )
 
 data class AdminVideoSummaryDto(
@@ -131,6 +142,16 @@ fun PublicVideoPlaylistLink.toDto(): PublicVideoPlaylistLinkDto =
         href = href,
     )
 
+fun PublicShortformPlaylistWindow.toDto(): PublicShortformPlaylistWindowDto =
+    PublicShortformPlaylistWindowDto(
+        items = items.map { it.toDto() },
+        currentIndexInWindow = currentIndexInWindow,
+        currentPage = currentPage,
+        pageSize = pageSize,
+        totalItems = totalItems,
+        totalPages = totalPages,
+    )
+
 fun PublicVideoDetail.toDto(): PublicVideoDetailResponse =
     PublicVideoDetailResponse(
         videoId = videoId,
@@ -147,6 +168,7 @@ fun PublicVideoDetail.toDto(): PublicVideoDetailResponse =
         contentForm = contentForm,
         playlists = playlists.map { it.toDto() },
         related = related.map { it.toDto() },
+        shortformPlaylist = shortformPlaylist?.toDto(),
     )
 
 fun AdminVideoSummary.toDto(): AdminVideoSummaryDto =

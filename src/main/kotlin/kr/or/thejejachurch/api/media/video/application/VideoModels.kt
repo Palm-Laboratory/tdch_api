@@ -30,6 +30,15 @@ data class PublicVideoPlaylistLink(
     val href: String,
 )
 
+data class PublicShortformPlaylistWindow(
+    val items: List<PublicVideoSummary>,
+    val currentIndexInWindow: Int,
+    val currentPage: Int,
+    val pageSize: Int,
+    val totalItems: Int,
+    val totalPages: Int,
+)
+
 data class PublicVideoDetail(
     val videoId: String,
     val title: String,
@@ -45,6 +54,7 @@ data class PublicVideoDetail(
     val contentForm: YouTubeContentForm,
     val playlists: List<PublicVideoPlaylistLink>,
     val related: List<PublicVideoSummary>,
+    val shortformPlaylist: PublicShortformPlaylistWindow?,
 )
 
 data class AdminVideoSummary(

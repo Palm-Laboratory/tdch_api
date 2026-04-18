@@ -29,6 +29,7 @@ class VideoService(
 ) {
     companion object {
         private const val MAX_PAGE_SIZE = 24
+        private const val SHORTFORM_DETAIL_PAGE_SIZE = 8
     }
 
     @Transactional(readOnly = true)
@@ -59,13 +60,15 @@ class VideoService(
 
     private fun buildPlaylistVideoDetail(menu: MenuItem, videoId: String): PublicVideoDetail {
         val orderedVideos = loadOrderedPlaylistVideos(menu)
-        val target = orderedVideos.firstOrNull { it.video.videoId == videoId }
+        val orderedSummaries = orderedVideos
+            .map { toPublicSummary(it.video, it.meta, buildPlaylistVideoHref(menu, it.video.videoId)) }
+        val targetIndex = orderedVideos.indexOfFirst { it.video.videoId == videoId }
+        val target = orderedVideos.getOrNull(targetIndex)
             ?: throw NotFoundException("재생목록에서 영상을 찾을 수 없습니다. menuId=${menu.id}, videoId=$videoId")
 
-        val related = orderedVideos
-            .filter { it.video.videoId != videoId }
+        val related = orderedSummaries
+            .filter { it.videoId != videoId }
             .take(6)
-            .map { toPublicSummary(it.video, it.meta, buildPlaylistVideoHref(menu, it.video.videoId)) }
 
         return PublicVideoDetail(
             videoId = target.video.videoId,
@@ -82,6 +85,12 @@ class VideoService(
             contentForm = target.video.contentForm,
             playlists = buildPlaylistLinks(target.video.id!!, menu.id!!),
             related = related,
+            shortformPlaylist =
+                if (target.video.contentForm == YouTubeContentForm.SHORTFORM) {
+                    buildShortformPlaylistWindow(orderedSummaries, targetIndex)
+                } else {
+                    null
+                },
         )
     }
 
@@ -189,14 +198,48 @@ class VideoService(
     private fun loadOrderedPlaylistVideos(menu: MenuItem): List<VideoWithMeta> {
         val playlistId = menu.playlistId
             ?: throw NotFoundException("재생목록 정보가 연결되지 않았습니다. menuId=${menu.id}")
-        val displayableByVideoId = loadDisplayableVideos().associateBy { it.video.id!! }
+        val playlistItems = youTubePlaylistItemRepository.findAllByPlaylistIdOrderByPositionAsc(playlistId)
+        if (playlistItems.isEmpty()) {
+            return emptyList()
+        }
 
-        return youTubePlaylistItemRepository.findAllByPlaylistIdOrderByPositionAsc(playlistId)
-            .mapNotNull { playlistItem -> displayableByVideoId[playlistItem.videoId] }
+        val videoIds = playlistItems.map { it.videoId }.distinct()
+        val videosById = youTubeVideoRepository.findAllById(videoIds).associateBy { it.id!! }
+        val metasByVideoId = videoMetaRepository.findAllByVideoIdIn(videoIds).associateBy { it.videoId }
+
+        return playlistItems.mapNotNull { playlistItem ->
+            val video = videosById[playlistItem.videoId] ?: return@mapNotNull null
+            val meta = metasByVideoId[playlistItem.videoId]
+            val candidate = VideoWithMeta(video = video, meta = meta)
+
+            if (isDisplayable(candidate.video, candidate.meta)) {
+                candidate
+            } else {
+                null
+            }
+        }
     }
 
-    private fun loadDisplayableVideos(): List<VideoWithMeta> =
-        loadAllVideos().filter { isDisplayable(it.video, it.meta) }
+    private fun buildShortformPlaylistWindow(
+        summaries: List<PublicVideoSummary>,
+        currentIndex: Int,
+    ): PublicShortformPlaylistWindow {
+        val pageSize = SHORTFORM_DETAIL_PAGE_SIZE.coerceIn(1, MAX_PAGE_SIZE)
+        val totalItems = summaries.size
+        val totalPages = if (totalItems == 0) 1 else ((totalItems - 1) / pageSize) + 1
+        val currentPage = (currentIndex / pageSize) + 1
+        val fromIndex = ((currentPage - 1) * pageSize).coerceAtMost(totalItems)
+        val toIndex = (fromIndex + pageSize).coerceAtMost(totalItems)
+
+        return PublicShortformPlaylistWindow(
+            items = summaries.subList(fromIndex, toIndex),
+            currentIndexInWindow = currentIndex - fromIndex,
+            currentPage = currentPage,
+            pageSize = pageSize,
+            totalItems = totalItems,
+            totalPages = totalPages,
+        )
+    }
 
     private fun toPublicVideoList(
         menu: MenuItem,
