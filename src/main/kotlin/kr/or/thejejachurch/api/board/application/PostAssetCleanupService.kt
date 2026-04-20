@@ -1,0 +1,31 @@
+package kr.or.thejejachurch.api.board.application
+
+import kr.or.thejejachurch.api.board.infrastructure.persistence.PostAssetRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.OffsetDateTime
+
+@Service
+class PostAssetCleanupService(
+    private val postAssetRepository: PostAssetRepository,
+    private val attachmentStorage: AttachmentStorage,
+    private val clock: Clock,
+) {
+    @Transactional
+    fun cleanupStaleTemporaryAssets(): Long {
+        val cutoff = OffsetDateTime.now(clock).minusHours(72)
+        val staleAssets = postAssetRepository.findAllByPostIdIsNullAndCreatedAtBefore(cutoff)
+
+        if (staleAssets.isEmpty()) {
+            return 0L
+        }
+
+        staleAssets.forEach { asset ->
+            attachmentStorage.delete(asset.storedPath)
+        }
+        postAssetRepository.deleteAll(staleAssets)
+
+        return staleAssets.size.toLong()
+    }
+}
