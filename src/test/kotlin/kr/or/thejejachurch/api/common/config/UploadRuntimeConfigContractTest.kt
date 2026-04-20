@@ -1,0 +1,84 @@
+package kr.or.thejejachurch.api.common.config
+
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.springframework.boot.context.properties.ConfigurationProperties
+import java.nio.file.Files
+import java.nio.file.Path
+
+class UploadRuntimeConfigContractTest {
+
+    @Test
+    fun `application yml should define upload multipart and base url defaults`() {
+        val content = readMainResource("application.yml")
+        val localContent = readMainResource("application-local.yml")
+
+        assertThat(content).contains("spring:")
+        assertThat(content).contains("servlet:")
+        assertThat(content).contains("multipart:")
+        assertThat(content).contains("enabled: true")
+        assertThat(content).contains("max-file-size: 10MB")
+        assertThat(content).contains("max-request-size: 12MB")
+        assertThat(content).contains("file-size-threshold: 2MB")
+        assertThat(content).contains("tdch.uploads.root-path: \${TDCH_UPLOAD_ROOT:/opt/tdch/uploads}")
+        assertThat(content).contains(
+            "tdch.uploads.public-base-url: \${TDCH_UPLOAD_PUBLIC_BASE_URL:https://api.tdch.co.kr/media}",
+        )
+        assertThat(content).contains("https://tdch.co.kr")
+        assertThat(content).contains("https://www.tdch.co.kr")
+        assertThat(content).doesNotContain("http://localhost:3000")
+        assertThat(content).doesNotContain("http://127.0.0.1:3000")
+        assertThat(localContent).contains("http://localhost:3000")
+        assertThat(localContent).contains("http://127.0.0.1:3000")
+    }
+
+    @Test
+    fun `upload properties class should exist and be enabled by the application`() {
+        assertThat(Path.of("src/main/resources/application-prod.yml")).exists()
+
+        val uploadPropertiesClass = loadUploadPropertiesClass()
+        val annotation = uploadPropertiesClass.getAnnotation(ConfigurationProperties::class.java)
+
+        assertThat(annotation).isNotNull
+        assertThat(annotation.prefix).isEqualTo("tdch.uploads")
+
+        val apiApplication = Files.readString(Path.of("src/main/kotlin/kr/or/thejejachurch/api/ApiApplication.kt"))
+        assertThat(apiApplication).contains(uploadPropertiesClass.simpleName)
+        assertThat(apiApplication).contains("@EnableConfigurationProperties(")
+    }
+
+    @Test
+    fun `web config should be upload only cors and production origins should be represented in defaults`() {
+        val webConfig = readMainSource("WebConfig.kt")
+        val corsProperties = readMainSource("CorsProperties.kt")
+
+        assertThat(webConfig).doesNotContain("addMapping(\"/api/**\")")
+        assertThat(webConfig).doesNotContain("allowedHeaders(\"*\")")
+        assertThat(webConfig).contains("addMapping(\"/api/v1/admin/uploads\")")
+        assertThat(webConfig).contains("allowedMethods(\"POST\", \"OPTIONS\")")
+        assertThat(webConfig).contains("allowedHeaders(\"Content-Type\", \"X-Upload-Token\")")
+        assertThat(webConfig).contains("allowCredentials(false)")
+        assertThat(webConfig).contains("maxAge(600)")
+
+        assertThat(corsProperties).contains("https://tdch.co.kr")
+        assertThat(corsProperties).contains("https://www.tdch.co.kr")
+    }
+
+    private fun loadUploadPropertiesClass(): Class<*> {
+        val candidates = listOf(
+            "kr.or.thejejachurch.api.common.config.UploadProperties",
+            "kr.or.thejejachurch.api.common.config.TdchUploadsProperties",
+        )
+
+        return candidates.firstNotNullOfOrNull { className ->
+            runCatching { Class.forName(className) }.getOrNull()
+        } ?: throw AssertionError(
+            "Expected an upload properties class named UploadProperties or TdchUploadsProperties",
+        )
+    }
+
+    private fun readMainResource(fileName: String): String = Files.readString(Path.of("src/main/resources", fileName))
+
+    private fun readMainSource(fileName: String): String =
+        Files.readString(Path.of("src/main/kotlin/kr/or/thejejachurch/api/common/config", fileName))
+}

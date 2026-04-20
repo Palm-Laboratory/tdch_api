@@ -19,10 +19,11 @@ class WebConfig(
             return
         }
 
-        registry.addMapping("/api/**")
+        registry.addMapping("/api/v1/admin/uploads")
             .allowedOrigins(*allowedOrigins.toTypedArray())
-            .allowedMethods("GET", "POST", "OPTIONS")
-            .allowedHeaders("*")
-            .maxAge(3600)
+            .allowedMethods("POST", "OPTIONS")
+            .allowedHeaders("Content-Type", "X-Upload-Token")
+            .allowCredentials(false)
+            .maxAge(600)
     }
 }
