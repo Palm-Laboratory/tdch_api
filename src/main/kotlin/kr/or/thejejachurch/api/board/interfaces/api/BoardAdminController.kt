@@ -1,0 +1,243 @@
+package kr.or.thejejachurch.api.board.interfaces.api
+
+import kr.or.thejejachurch.api.board.application.BoardAdminBoardSummary
+import kr.or.thejejachurch.api.board.application.BoardAdminPostDetail
+import kr.or.thejejachurch.api.board.application.BoardAdminPostSaveResult
+import kr.or.thejejachurch.api.board.application.BoardAdminPostSummary
+import kr.or.thejejachurch.api.board.application.BoardAdminService
+import kr.or.thejejachurch.api.board.application.BoardPostSaveCommand
+import kr.or.thejejachurch.api.board.domain.BoardType
+import kr.or.thejejachurch.api.board.domain.PostAssetKind
+import kr.or.thejejachurch.api.common.config.AdminProperties
+import kr.or.thejejachurch.api.common.error.ForbiddenException
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
+
+@RestController
+@RequestMapping("/api/v1/admin/boards")
+class BoardAdminController(
+    private val boardAdminService: BoardAdminService,
+    private val adminProperties: AdminProperties,
+) {
+    @GetMapping
+    fun listBoards(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+    ): BoardAdminListBoardsResponse {
+        validateAdminKey(adminKey)
+
+        return BoardAdminListBoardsResponse(
+            boards = boardAdminService.listBoards(actorId).map { it.toResponse() },
+        )
+    }
+
+    @GetMapping("/{slug}/posts")
+    fun listPosts(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable slug: String,
+    ): BoardAdminListPostsResponse {
+        validateAdminKey(adminKey)
+
+        return BoardAdminListPostsResponse(
+            posts = boardAdminService.listPosts(actorId, slug).map { it.toResponse() },
+        )
+    }
+
+    @GetMapping("/{slug}/posts/{postId}")
+    fun getPost(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable slug: String,
+        @PathVariable postId: Long,
+    ): BoardAdminPostDetailResponse {
+        validateAdminKey(adminKey)
+
+        return boardAdminService.getPost(actorId, slug, postId).toResponse()
+    }
+
+    @PostMapping("/{slug}/posts")
+    fun createPost(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable slug: String,
+        @RequestBody request: BoardPostSaveRequest,
+    ): BoardAdminPostSaveResponse {
+        validateAdminKey(adminKey)
+
+        return boardAdminService.createPost(
+            actorId = actorId,
+            boardSlug = slug,
+            command = request.toCommand(),
+        ).toResponse()
+    }
+
+    @PutMapping("/{slug}/posts/{postId}")
+    fun updatePost(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable slug: String,
+        @PathVariable postId: Long,
+        @RequestBody request: BoardPostSaveRequest,
+    ): BoardAdminPostSaveResponse {
+        validateAdminKey(adminKey)
+
+        return boardAdminService.updatePost(
+            actorId = actorId,
+            boardSlug = slug,
+            postId = postId,
+            command = request.toCommand(),
+        ).toResponse()
+    }
+
+    @DeleteMapping("/{slug}/posts/{postId}")
+    fun deletePost(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @PathVariable slug: String,
+        @PathVariable postId: Long,
+    ) {
+        validateAdminKey(adminKey)
+        boardAdminService.deletePost(actorId, slug, postId)
+    }
+
+    private fun validateAdminKey(adminKey: String?) {
+        val configuredKey = adminProperties.syncKey.trim()
+        if (configuredKey.isBlank()) {
+            throw IllegalStateException("ADMIN_SYNC_KEY is not configured.")
+        }
+
+        if (adminKey.isNullOrBlank() || adminKey != configuredKey) {
+            throw ForbiddenException("관리자 키가 올바르지 않습니다.")
+        }
+    }
+}
+
+data class BoardPostSaveRequest(
+    val title: String,
+    val contentJson: String,
+    val contentHtml: String? = null,
+    val isPublic: Boolean = true,
+    val assetIds: List<Long> = emptyList(),
+) {
+    fun toCommand(): BoardPostSaveCommand =
+        BoardPostSaveCommand(
+            title = title,
+            contentJson = contentJson,
+            contentHtml = contentHtml,
+            isPublic = isPublic,
+            assetIds = assetIds,
+        )
+}
+
+data class BoardAdminListBoardsResponse(
+    val boards: List<BoardAdminBoardResponse>,
+)
+
+data class BoardAdminBoardResponse(
+    val id: Long?,
+    val slug: String,
+    val title: String,
+    val type: BoardType,
+    val description: String?,
+)
+
+data class BoardAdminListPostsResponse(
+    val posts: List<BoardAdminPostSummaryResponse>,
+)
+
+data class BoardAdminPostSummaryResponse(
+    val id: Long?,
+    val boardId: Long,
+    val title: String,
+    val isPublic: Boolean,
+    val authorId: Long,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+)
+
+data class BoardAdminPostDetailResponse(
+    val id: Long?,
+    val boardId: Long,
+    val title: String,
+    val contentJson: String,
+    val contentHtml: String?,
+    val isPublic: Boolean,
+    val authorId: Long,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+    val assets: List<BoardAdminPostAssetResponse>,
+)
+
+data class BoardAdminPostAssetResponse(
+    val id: Long?,
+    val kind: PostAssetKind,
+    val originalFilename: String,
+    val storedPath: String,
+    val mimeType: String?,
+    val byteSize: Long,
+    val width: Int?,
+    val height: Int?,
+    val sortOrder: Int,
+)
+
+data class BoardAdminPostSaveResponse(
+    val id: Long,
+)
+
+private fun BoardAdminBoardSummary.toResponse(): BoardAdminBoardResponse =
+    BoardAdminBoardResponse(
+        id = id,
+        slug = slug,
+        title = title,
+        type = type,
+        description = description,
+    )
+
+private fun BoardAdminPostSummary.toResponse(): BoardAdminPostSummaryResponse =
+    BoardAdminPostSummaryResponse(
+        id = id,
+        boardId = boardId,
+        title = title,
+        isPublic = isPublic,
+        authorId = authorId,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+
+private fun BoardAdminPostDetail.toResponse(): BoardAdminPostDetailResponse =
+    BoardAdminPostDetailResponse(
+        id = id,
+        boardId = boardId,
+        title = title,
+        contentJson = contentJson,
+        contentHtml = contentHtml,
+        isPublic = isPublic,
+        authorId = authorId,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        assets = assets.map { asset ->
+            BoardAdminPostAssetResponse(
+                id = asset.id,
+                kind = asset.kind,
+                originalFilename = asset.originalFilename,
+                storedPath = asset.storedPath,
+                mimeType = asset.mimeType,
+                byteSize = asset.byteSize,
+                width = asset.width,
+                height = asset.height,
+                sortOrder = asset.sortOrder,
+            )
+        },
+    )
+
+private fun BoardAdminPostSaveResult.toResponse(): BoardAdminPostSaveResponse =
+    BoardAdminPostSaveResponse(id = id)

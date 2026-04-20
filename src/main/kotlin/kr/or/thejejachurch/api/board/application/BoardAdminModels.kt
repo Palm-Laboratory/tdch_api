@@ -1,0 +1,60 @@
+package kr.or.thejejachurch.api.board.application
+
+import kr.or.thejejachurch.api.board.domain.BoardType
+import kr.or.thejejachurch.api.board.domain.PostAssetKind
+import java.time.OffsetDateTime
+
+data class BoardPostSaveCommand(
+    val title: String,
+    val contentJson: String,
+    val contentHtml: String? = null,
+    val isPublic: Boolean = true,
+    val assetIds: List<Long> = emptyList(),
+)
+
+data class BoardAdminBoardSummary(
+    val id: Long?,
+    val slug: String,
+    val title: String,
+    val type: BoardType,
+    val description: String?,
+)
+
+data class BoardAdminPostSummary(
+    val id: Long?,
+    val boardId: Long,
+    val title: String,
+    val isPublic: Boolean,
+    val authorId: Long,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+)
+
+data class BoardAdminPostDetail(
+    val id: Long?,
+    val boardId: Long,
+    val title: String,
+    val contentJson: String,
+    val contentHtml: String?,
+    val isPublic: Boolean,
+    val authorId: Long,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+    val assets: List<BoardAdminPostAsset> = emptyList(),
+)
+
+data class BoardAdminPostAsset(
+    val id: Long?,
+    val kind: PostAssetKind,
+    val originalFilename: String,
+    val storedPath: String,
+    val mimeType: String?,
+    val byteSize: Long,
+    val width: Int?,
+    val height: Int?,
+    val sortOrder: Int,
+)
+
+data class BoardAdminPostSaveResult(
+    val id: Long,
+)
