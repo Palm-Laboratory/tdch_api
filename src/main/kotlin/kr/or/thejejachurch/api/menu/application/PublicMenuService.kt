@@ -16,17 +16,19 @@ class PublicMenuService(
     private val menuItemRepository: MenuItemRepository,
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
 ) {
+    private val menuOrder = compareBy<MenuItem> { it.sortOrder }.thenBy { it.id }
+
     @Transactional(readOnly = true)
     fun getNavigation(): PublicNavigationResponse {
         val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
         val childrenByParent = publishedItems.groupBy { it.parentId }
         val itemsById = publishedItems.associateBy { it.id!! }
         val rootItems = childrenByParent[null].orEmpty()
-            .sortedWith(compareBy<MenuItem> { it.sortOrder }.thenBy { it.id })
+            .sortedWith(menuOrder)
 
         val groups = rootItems.map { root ->
             val directChildren = childrenByParent[root.id].orEmpty()
-                .sortedWith(compareBy<MenuItem> { it.sortOrder }.thenBy { it.id })
+                .sortedWith(menuOrder)
             val groupHref = resolveHref(root, childrenByParent, itemsById)
             val defaultLandingHref = resolveDefaultLandingHref(root, childrenByParent, itemsById)
             NavigationGroupDto(
@@ -99,6 +101,7 @@ class PublicMenuService(
                 ?: throw NotFoundException("연결된 공개 페이지를 찾을 수 없습니다. path=$path")
 
             return PublicResolvedMenuPage(
+                menuId = menu.id ?: throw IllegalStateException("메뉴 id가 없습니다."),
                 type = menu.type,
                 label = menu.label,
                 slug = menu.slug,
@@ -111,6 +114,7 @@ class PublicMenuService(
         }
 
         return PublicResolvedMenuPage(
+            menuId = menu.id ?: throw IllegalStateException("메뉴 id가 없습니다."),
             type = menu.type,
             label = menu.label,
             slug = menu.slug,
@@ -136,14 +140,14 @@ class PublicMenuService(
 
         val siblings = menu.parentId?.let { parentId ->
             publishedItems
-            .filter { it.parentId == parentId && it.type == MenuType.YOUTUBE_PLAYLIST }
-            .sortedWith(compareBy<MenuItem> { it.sortOrder }.thenBy { it.id })
-            .map {
-                VideoSiblingLink(
-                    label = it.label,
-                    href = buildStableHref(it, itemsById),
-                )
-            }
+                .filter { it.parentId == parentId && it.type == MenuType.YOUTUBE_PLAYLIST }
+                .sortedWith(menuOrder)
+                .map {
+                    VideoSiblingLink(
+                        label = it.label,
+                        href = buildStableHref(it, itemsById),
+                    )
+                }
         }.orEmpty()
 
         val groupLabel = menu.parentId?.let { parentId ->
@@ -172,7 +176,7 @@ class PublicMenuService(
     ): String =
         when (item.type) {
             MenuType.STATIC -> buildMenuPath(item, itemsById)
-            MenuType.BOARD -> item.boardKey?.trim()?.takeIf { it.isNotBlank() }?.let { "/news#$it" } ?: "/news"
+            MenuType.BOARD -> buildMenuPath(item, itemsById)
             MenuType.YOUTUBE_PLAYLIST -> buildStableHref(item, itemsById)
             MenuType.EXTERNAL_LINK -> item.externalUrl ?: "/"
             MenuType.FOLDER,
@@ -186,7 +190,7 @@ class PublicMenuService(
     ): String? {
         val firstChild = childrenByParent[item.id]
             .orEmpty()
-            .sortedWith(compareBy<MenuItem> { it.sortOrder }.thenBy { it.id })
+            .sortedWith(menuOrder)
             .firstOrNull()
             ?: return null
 
@@ -201,11 +205,18 @@ class PublicMenuService(
 
     private fun buildStableHref(item: MenuItem, itemsById: Map<Long, MenuItem>): String =
         when (item.type) {
-            MenuType.YOUTUBE_PLAYLIST -> buildVideoPath(item, itemsById)
+            MenuType.YOUTUBE_PLAYLIST -> buildPath(item, itemsById, prefix = "/videos")
             else -> "/"
         }
 
-    private fun buildVideoPath(item: MenuItem, itemsById: Map<Long, MenuItem>): String {
+    private fun buildMenuPath(item: MenuItem, itemsById: Map<Long, MenuItem>): String =
+        buildPath(item, itemsById)
+
+    private fun buildPath(
+        item: MenuItem,
+        itemsById: Map<Long, MenuItem>,
+        prefix: String = "",
+    ): String {
         val segments = mutableListOf<String>()
         var current: MenuItem? = item
 
@@ -214,19 +225,7 @@ class PublicMenuService(
             current = current.parentId?.let(itemsById::get)
         }
 
-        return "/videos/${segments.asReversed().joinToString("/")}"
-    }
-
-    private fun buildMenuPath(item: MenuItem, itemsById: Map<Long, MenuItem>): String {
-        val segments = mutableListOf<String>()
-        var current: MenuItem? = item
-
-        while (current != null) {
-            segments += current.slug
-            current = current.parentId?.let(itemsById::get)
-        }
-
-        return "/${segments.asReversed().joinToString("/")}"
+        return "$prefix/${segments.asReversed().joinToString("/")}"
     }
 
     private fun resolvePublishedMenu(

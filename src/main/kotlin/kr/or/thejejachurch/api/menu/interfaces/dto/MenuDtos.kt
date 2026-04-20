@@ -26,6 +26,7 @@ data class MenuTreeNodeRequest(
     val slugCustomized: Boolean = false,
     val staticPageKey: String? = null,
     val boardKey: String? = null,
+    val boardTypeId: Long? = null,
     val externalUrl: String? = null,
     val openInNewTab: Boolean = false,
     val isAuto: Boolean = false,
@@ -44,6 +45,9 @@ data class AdminMenuTreeNodeDto(
     val slugCustomized: Boolean,
     val staticPageKey: String?,
     val boardKey: String?,
+    val boardTypeId: Long?,
+    val boardTypeKey: String?,
+    val boardTypeLabel: String?,
     val externalUrl: String?,
     val openInNewTab: Boolean,
     val playlistTitle: String?,
@@ -99,6 +103,7 @@ data class PublicVideoSiblingDto(
 )
 
 data class PublicResolvedMenuPageResponse(
+    val menuId: Long,
     val type: MenuType,
     val label: String,
     val slug: String,
@@ -131,6 +136,7 @@ private fun MenuTreeNodeRequest.toCommand(): MenuTreeNodeInput =
         slugCustomized = slugCustomized,
         staticPageKey = staticPageKey,
         boardKey = boardKey,
+        boardTypeId = boardTypeId,
         externalUrl = externalUrl,
         openInNewTab = openInNewTab,
         isAuto = isAuto,
@@ -153,6 +159,9 @@ fun MenuTreeNode.toDto(): AdminMenuTreeNodeDto =
         slugCustomized = slugCustomized,
         staticPageKey = staticPageKey,
         boardKey = boardKey,
+        boardTypeId = boardTypeId,
+        boardTypeKey = boardTypeKey,
+        boardTypeLabel = boardTypeLabel,
         externalUrl = externalUrl,
         openInNewTab = openInNewTab,
         playlistTitle = playlistTitle,
@@ -200,6 +209,7 @@ fun PublicVideoDetail.toDto(): PublicVideoDetailResponse =
 
 fun PublicResolvedMenuPage.toDto(): PublicResolvedMenuPageResponse =
     PublicResolvedMenuPageResponse(
+        menuId = menuId,
         type = type,
         label = label,
         slug = slug,

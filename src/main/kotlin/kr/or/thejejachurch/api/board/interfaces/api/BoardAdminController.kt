@@ -1,6 +1,7 @@
 package kr.or.thejejachurch.api.board.interfaces.api
 
 import kr.or.thejejachurch.api.board.application.BoardAdminBoardSummary
+import kr.or.thejejachurch.api.board.application.BoardAdminBoardTypeSummary
 import kr.or.thejejachurch.api.board.application.BoardAdminPostDetail
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSaveResult
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSummary
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.OffsetDateTime
@@ -39,16 +41,29 @@ class BoardAdminController(
         )
     }
 
+    @GetMapping("/types")
+    fun listBoardTypes(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+    ): BoardAdminListBoardTypesResponse {
+        validateAdminKey(adminKey)
+
+        return BoardAdminListBoardTypesResponse(
+            types = boardAdminService.listBoardTypes(actorId).map { it.toResponse() },
+        )
+    }
+
     @GetMapping("/{slug}/posts")
     fun listPosts(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
         @RequestHeader("X-Admin-Actor-Id") actorId: Long,
         @PathVariable slug: String,
+        @RequestParam(required = false) menuId: Long? = null,
     ): BoardAdminListPostsResponse {
         validateAdminKey(adminKey)
 
         return BoardAdminListPostsResponse(
-            posts = boardAdminService.listPosts(actorId, slug).map { it.toResponse() },
+            posts = boardAdminService.listPosts(actorId, slug, menuId).map { it.toResponse() },
         )
     }
 
@@ -58,10 +73,11 @@ class BoardAdminController(
         @RequestHeader("X-Admin-Actor-Id") actorId: Long,
         @PathVariable slug: String,
         @PathVariable postId: Long,
+        @RequestParam(required = false) menuId: Long? = null,
     ): BoardAdminPostDetailResponse {
         validateAdminKey(adminKey)
 
-        return boardAdminService.getPost(actorId, slug, postId).toResponse()
+        return boardAdminService.getPost(actorId, slug, postId, menuId).toResponse()
     }
 
     @PostMapping("/{slug}/posts")
@@ -104,9 +120,10 @@ class BoardAdminController(
         @RequestHeader("X-Admin-Actor-Id") actorId: Long,
         @PathVariable slug: String,
         @PathVariable postId: Long,
+        @RequestParam(required = false) menuId: Long? = null,
     ) {
         validateAdminKey(adminKey)
-        boardAdminService.deletePost(actorId, slug, postId)
+        boardAdminService.deletePost(actorId, slug, postId, menuId)
     }
 
     private fun validateAdminKey(adminKey: String?) {
@@ -122,6 +139,7 @@ class BoardAdminController(
 }
 
 data class BoardPostSaveRequest(
+    val menuId: Long? = null,
     val title: String,
     val contentJson: String,
     val contentHtml: String? = null,
@@ -130,6 +148,7 @@ data class BoardPostSaveRequest(
 ) {
     fun toCommand(): BoardPostSaveCommand =
         BoardPostSaveCommand(
+            menuId = menuId,
             title = title,
             contentJson = contentJson,
             contentHtml = contentHtml,
@@ -147,7 +166,20 @@ data class BoardAdminBoardResponse(
     val slug: String,
     val title: String,
     val type: BoardType,
+    val boardTypeId: Long?,
     val description: String?,
+)
+
+data class BoardAdminListBoardTypesResponse(
+    val types: List<BoardAdminBoardTypeResponse>,
+)
+
+data class BoardAdminBoardTypeResponse(
+    val id: Long,
+    val key: String,
+    val label: String,
+    val description: String?,
+    val sortOrder: Int,
 )
 
 data class BoardAdminListPostsResponse(
@@ -157,6 +189,7 @@ data class BoardAdminListPostsResponse(
 data class BoardAdminPostSummaryResponse(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val isPublic: Boolean,
     val authorId: Long,
@@ -167,6 +200,7 @@ data class BoardAdminPostSummaryResponse(
 data class BoardAdminPostDetailResponse(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val contentJson: String,
     val contentHtml: String?,
@@ -199,13 +233,24 @@ private fun BoardAdminBoardSummary.toResponse(): BoardAdminBoardResponse =
         slug = slug,
         title = title,
         type = type,
+        boardTypeId = boardTypeId,
         description = description,
+    )
+
+private fun BoardAdminBoardTypeSummary.toResponse(): BoardAdminBoardTypeResponse =
+    BoardAdminBoardTypeResponse(
+        id = id,
+        key = key,
+        label = label,
+        description = description,
+        sortOrder = sortOrder,
     )
 
 private fun BoardAdminPostSummary.toResponse(): BoardAdminPostSummaryResponse =
     BoardAdminPostSummaryResponse(
         id = id,
         boardId = boardId,
+        menuId = menuId,
         title = title,
         isPublic = isPublic,
         authorId = authorId,
@@ -217,6 +262,7 @@ private fun BoardAdminPostDetail.toResponse(): BoardAdminPostDetailResponse =
     BoardAdminPostDetailResponse(
         id = id,
         boardId = boardId,
+        menuId = menuId,
         title = title,
         contentJson = contentJson,
         contentHtml = contentHtml,

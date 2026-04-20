@@ -23,15 +23,17 @@ class PublicBoardController(
         @PathVariable slug: String,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) menuId: Long? = null,
     ): PublicBoardListPostsResponse =
-        publicBoardService.listPosts(slug, page, size).toResponse()
+        publicBoardService.listPosts(slug, page, size, menuId).toResponse()
 
     @GetMapping("/{slug}/posts/{postId}")
     fun getPost(
         @PathVariable slug: String,
         @PathVariable postId: Long,
+        @RequestParam(required = false) menuId: Long? = null,
     ): PublicBoardPostDetailResponse =
-        publicBoardService.getPost(slug, postId).toResponse()
+        publicBoardService.getPost(slug, postId, menuId).toResponse()
 }
 
 data class PublicBoardListPostsResponse(
@@ -45,6 +47,7 @@ data class PublicBoardListPostsResponse(
 data class PublicBoardPostSummaryResponse(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val contentHtml: String?,
     val publishedAt: OffsetDateTime?,
@@ -55,6 +58,7 @@ data class PublicBoardPostSummaryResponse(
 data class PublicBoardPostDetailResponse(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val contentJson: String,
     val contentHtml: String?,
@@ -90,6 +94,7 @@ private fun PublicBoardPostSummary.toResponse(): PublicBoardPostSummaryResponse 
     PublicBoardPostSummaryResponse(
         id = id,
         boardId = boardId,
+        menuId = menuId,
         title = title,
         contentHtml = contentHtml,
         publishedAt = publishedAt,
@@ -101,6 +106,7 @@ private fun PublicBoardPostDetail.toResponse(): PublicBoardPostDetailResponse =
     PublicBoardPostDetailResponse(
         id = id,
         boardId = boardId,
+        menuId = menuId,
         title = title,
         contentJson = contentJson,
         contentHtml = contentHtml,

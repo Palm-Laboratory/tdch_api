@@ -12,7 +12,10 @@ interface MenuItemRepository : JpaRepository<MenuItem, Long> {
     fun findAllByStatusOrderBySortOrderAscIdAsc(status: MenuStatus): List<MenuItem>
     fun findBySlug(slug: String): MenuItem?
     fun findByTypeAndStatusAndSlug(type: kr.or.thejejachurch.api.menu.domain.MenuType, status: MenuStatus, slug: String): MenuItem?
+    fun findFirstByTypeAndBoardKeyOrderBySortOrderAscIdAsc(type: MenuType, boardKey: String): MenuItem?
     fun existsByTypeAndStatusAndBoardKey(type: MenuType, status: MenuStatus, boardKey: String): Boolean
+    fun existsByIdAndTypeAndBoardKey(id: Long, type: MenuType, boardKey: String): Boolean
+    fun existsByIdAndTypeAndStatusAndBoardKey(id: Long, type: MenuType, status: MenuStatus, boardKey: String): Boolean
     fun existsBySlugAndIdNot(slug: String, id: Long): Boolean
     fun findByParentIdAndSlug(parentId: Long, slug: String): MenuItem?
 

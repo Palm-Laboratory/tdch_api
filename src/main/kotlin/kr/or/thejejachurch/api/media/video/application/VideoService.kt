@@ -126,6 +126,42 @@ class VideoService(
             }
 
     @Transactional(readOnly = true)
+    fun getAdminVideosByMenu(menuId: Long): List<AdminVideoSummary> {
+        val menu = menuItemRepository.findByIdOrNull(menuId)
+            ?: throw NotFoundException("메뉴를 찾을 수 없습니다. menuId=$menuId")
+
+        if (menu.type != MenuType.YOUTUBE_PLAYLIST) {
+            throw NotFoundException("영상 재생목록 메뉴가 아닙니다. menuId=$menuId")
+        }
+
+        val playlistId = menu.playlistId
+            ?: throw NotFoundException("재생목록 정보가 연결되지 않았습니다. menuId=$menuId")
+
+        val playlistItems = youTubePlaylistItemRepository.findAllByPlaylistIdOrderByPositionAsc(playlistId)
+        if (playlistItems.isEmpty()) return emptyList()
+
+        val videoIds = playlistItems.map { it.videoId }.distinct()
+        val videosById = youTubeVideoRepository.findAllById(videoIds).associateBy { it.id!! }
+        val metasByVideoId = videoMetaRepository.findAllByVideoIdIn(videoIds).associateBy { it.videoId }
+
+        return playlistItems.mapNotNull { playlistItem ->
+            val video = videosById[playlistItem.videoId] ?: return@mapNotNull null
+            val meta = metasByVideoId[playlistItem.videoId]
+            AdminVideoSummary(
+                videoId = video.videoId,
+                title = effectiveDisplayTitle(video, meta),
+                sourceTitle = video.title,
+                preacherName = meta?.preacherName,
+                publishedAt = effectivePublishedAt(video, meta),
+                hidden = meta?.hidden ?: false,
+                contentForm = video.contentForm,
+                thumbnailUrl = effectiveThumbnailUrl(video, meta),
+                scriptureReference = meta?.scriptureReference,
+            )
+        }
+    }
+
+    @Transactional(readOnly = true)
     fun getAdminVideoDetail(videoId: String): AdminVideoDetail {
         val video = youTubeVideoRepository.findByVideoId(videoId)
             ?: throw NotFoundException("영상을 찾을 수 없습니다. videoId=$videoId")

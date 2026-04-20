@@ -5,6 +5,7 @@ import kr.or.thejejachurch.api.board.domain.PostAssetKind
 import java.time.OffsetDateTime
 
 data class BoardPostSaveCommand(
+    val menuId: Long? = null,
     val title: String,
     val contentJson: String,
     val contentHtml: String? = null,
@@ -17,12 +18,22 @@ data class BoardAdminBoardSummary(
     val slug: String,
     val title: String,
     val type: BoardType,
+    val boardTypeId: Long? = null,
+    val description: String? = null,
+)
+
+data class BoardAdminBoardTypeSummary(
+    val id: Long,
+    val key: String,
+    val label: String,
     val description: String?,
+    val sortOrder: Int,
 )
 
 data class BoardAdminPostSummary(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val isPublic: Boolean,
     val authorId: Long,
@@ -33,6 +44,7 @@ data class BoardAdminPostSummary(
 data class BoardAdminPostDetail(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val contentJson: String,
     val contentHtml: String?,

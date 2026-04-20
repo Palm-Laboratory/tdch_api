@@ -27,10 +27,15 @@ class VideoAdminController(
     fun getVideos(
         @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
         @RequestParam(required = false) form: YouTubeContentForm?,
+        @RequestParam(required = false) menuId: Long?,
     ): AdminVideoListResponse {
         validateAdminKey(adminKey)
         return AdminVideoListResponse(
-            items = videoService.getAdminVideos(form).map { it.toDto() },
+            items = if (menuId != null) {
+                videoService.getAdminVideosByMenu(menuId).map { it.toDto() }
+            } else {
+                videoService.getAdminVideos(form).map { it.toDto() }
+            },
         )
     }
 

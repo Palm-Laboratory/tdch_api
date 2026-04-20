@@ -25,11 +25,13 @@ class PublicBoardService(
 ) {
 
     @Transactional(readOnly = true)
-    fun listPosts(boardSlug: String, page: Int, size: Int): PublicBoardPostListResult {
-        val board = requirePublishedBoard(boardSlug)
+    fun listPosts(boardSlug: String, page: Int, size: Int, menuId: Long? = null): PublicBoardPostListResult {
+        val board = requirePublishedBoard(boardSlug, menuId)
         val boardId = requireBoardId(board)
         val pageRequest = PageRequest.of(page, size)
-        val posts = postRepository.findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(boardId, pageRequest)
+        val posts = menuId
+            ?.let { postRepository.findAllByMenuIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(it, pageRequest) }
+            ?: postRepository.findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(boardId, pageRequest)
 
         return PublicBoardPostListResult(
             page = posts.number,
@@ -41,16 +43,21 @@ class PublicBoardService(
     }
 
     @Transactional(readOnly = true)
-    fun getPost(boardSlug: String, postId: Long): PublicBoardPostDetail {
-        val board = requirePublishedBoard(boardSlug)
+    fun getPost(boardSlug: String, postId: Long, menuId: Long? = null): PublicBoardPostDetail {
+        val board = requirePublishedBoard(boardSlug, menuId)
         val boardId = requireBoardId(board)
-        val post = postRepository.findByBoardIdAndIdAndIsPublicTrue(boardId, postId)
+        val post = if (menuId != null) {
+            postRepository.findByMenuIdAndIdAndIsPublicTrue(menuId, postId)
+        } else {
+            postRepository.findByBoardIdAndIdAndIsPublicTrue(boardId, postId)
+        }
             ?: throw NotFoundException("게시글을 찾을 수 없습니다. id=$postId")
         val assets = postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(postId)
 
         return PublicBoardPostDetail(
             id = post.id,
             boardId = post.boardId,
+            menuId = post.menuId,
             title = post.title,
             contentJson = post.contentJson,
             contentHtml = post.contentHtml,
@@ -61,11 +68,20 @@ class PublicBoardService(
         )
     }
 
-    private fun requirePublishedBoard(slug: String): Board {
+    private fun requirePublishedBoard(slug: String, menuId: Long? = null): Board {
         val board = boardRepository.findBySlug(slug)
             ?: throw NotFoundException("게시판을 찾을 수 없습니다. slug=$slug")
 
-        if (!menuItemRepository.existsByTypeAndStatusAndBoardKey(MenuType.BOARD, MenuStatus.PUBLISHED, slug)) {
+        val exists = menuId?.let {
+            menuItemRepository.existsByIdAndTypeAndStatusAndBoardKey(
+                it,
+                MenuType.BOARD,
+                MenuStatus.PUBLISHED,
+                slug,
+            )
+        } ?: menuItemRepository.existsByTypeAndStatusAndBoardKey(MenuType.BOARD, MenuStatus.PUBLISHED, slug)
+
+        if (!exists) {
             throw NotFoundException("게시판을 찾을 수 없습니다. slug=$slug")
         }
 
@@ -79,6 +95,7 @@ class PublicBoardService(
         PublicBoardPostSummary(
             id = id,
             boardId = boardId,
+            menuId = menuId,
             title = title,
             contentHtml = contentHtml,
             publishedAt = publishedAt,

@@ -14,6 +14,7 @@ data class MenuTreeNodeInput(
     val slugCustomized: Boolean = false,
     val staticPageKey: String? = null,
     val boardKey: String? = null,
+    val boardTypeId: Long? = null,
     val externalUrl: String? = null,
     val openInNewTab: Boolean = false,
     val isAuto: Boolean = false,
@@ -32,6 +33,9 @@ data class MenuTreeNode(
     val slugCustomized: Boolean,
     val staticPageKey: String?,
     val boardKey: String?,
+    val boardTypeId: Long?,
+    val boardTypeKey: String?,
+    val boardTypeLabel: String?,
     val externalUrl: String?,
     val openInNewTab: Boolean,
     val playlistTitle: String? = null,
@@ -93,6 +97,7 @@ data class PublicVideoDetail(
 )
 
 data class PublicResolvedMenuPage(
+    val menuId: Long,
     val type: MenuType,
     val label: String,
     val slug: String,

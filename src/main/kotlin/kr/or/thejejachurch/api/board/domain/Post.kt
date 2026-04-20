@@ -18,6 +18,8 @@ class Post(
     val id: Long? = null,
     @Column(name = "board_id", nullable = false)
     var boardId: Long,
+    @Column(name = "menu_id", nullable = false)
+    var menuId: Long = boardId,
     @Column(nullable = false, length = 200)
     var title: String,
     @JdbcTypeCode(SqlTypes.JSON)

@@ -98,6 +98,32 @@ class BoardAdminServiceTest {
     }
 
     @Test
+    fun `list posts receives menu id and does not mix posts from another menu using the same board`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postRepository.findAllByBoardIdAndMenuIdOrderByCreatedAtDescIdDesc(10L, 1001L)).thenReturn(
+            listOf(
+                Post(
+                    id = 99L,
+                    boardId = 10L,
+                    menuId = 1001L,
+                    title = "첫 번째 공지 메뉴 글",
+                    contentJson = """{"type":"doc"}""",
+                    authorId = 1L,
+                )
+            )
+        )
+
+        val result = service.listPosts(actorId = 1L, boardSlug = "notice", menuId = 1001L)
+
+        assertThat(result).hasSize(1)
+        assertThat(result[0].id).isEqualTo(99L)
+        verify(postRepository).findAllByBoardIdAndMenuIdOrderByCreatedAtDescIdDesc(10L, 1001L)
+        verify(postRepository, never()).findAllByBoardIdOrderByCreatedAtDescIdDesc(10L)
+    }
+
+    @Test
     fun `create post requires active admin validates json creates post and attaches provided assets`() {
         val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
         val asset1 = uploadedAsset(id = 100L, actorId = 1L)
@@ -146,6 +172,44 @@ class BoardAdminServiceTest {
         assertThat(savedAssets.map { it.postId }).containsExactly(99L, 99L)
         assertThat(savedAssets.map { it.sortOrder }).containsExactly(0, 1)
         assertThat(result.id).isEqualTo(99L)
+    }
+
+    @Test
+    fun `create post receives menu id and stores it on the saved post`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postRepository.save(any())).thenReturn(
+            Post(
+                id = 99L,
+                boardId = 10L,
+                menuId = 1001L,
+                title = "첫 번째 공지 메뉴 글",
+                contentJson = """{"type":"doc","content":[]}""",
+                contentHtml = "<p>첫 번째 공지 메뉴 글</p>",
+                isPublic = true,
+                authorId = 1L,
+            )
+        )
+
+        service.createPost(
+            actorId = 1L,
+            boardSlug = "notice",
+            menuId = 1001L,
+            command = BoardPostSaveCommand(
+                title = "첫 번째 공지 메뉴 글",
+                contentJson = """{"type":"doc","content":[]}""",
+                contentHtml = "<p>첫 번째 공지 메뉴 글</p>",
+                isPublic = true,
+                assetIds = emptyList(),
+            ),
+        )
+
+        val savedPost = argumentCaptor<Post>().apply {
+            verify(postRepository).save(capture())
+        }.firstValue
+        assertThat(savedPost.boardId).isEqualTo(10L)
+        assertThat(savedPost.menuId).isEqualTo(1001L)
     }
 
     @Test
@@ -375,6 +439,70 @@ class BoardAdminServiceTest {
         }
 
         verify(postRepository, never()).save(any())
+    }
+
+    @Test
+    fun `get post rejects posts that are under the same board but another menu`() {
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(
+            Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        )
+        whenever(postRepository.findById(99L)).thenReturn(
+            Optional.of(
+                Post(
+                    id = 99L,
+                    boardId = 10L,
+                    menuId = 2002L,
+                    title = "두 번째 공지 메뉴 글",
+                    contentJson = """{"type":"doc"}""",
+                    authorId = 1L,
+                )
+            )
+        )
+
+        assertThrows<NotFoundException> {
+            service.getPost(actorId = 1L, boardSlug = "notice", menuId = 1001L, postId = 99L)
+        }
+
+        verify(postAssetRepository, never()).findAllByPostIdOrderBySortOrderAscIdAsc(99L)
+    }
+
+    @Test
+    fun `update post receives menu id and keeps the post scoped to that menu`() {
+        val post = Post(
+            id = 99L,
+            boardId = 10L,
+            menuId = 1001L,
+            title = "수정 전",
+            contentJson = """{"type":"doc"}""",
+            authorId = 1L,
+        )
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(
+            Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        )
+        whenever(postRepository.findById(99L)).thenReturn(Optional.of(post))
+        whenever(postRepository.save(any())).thenAnswer { it.arguments[0] }
+
+        service.updatePost(
+            actorId = 1L,
+            boardSlug = "notice",
+            menuId = 1001L,
+            postId = 99L,
+            command = BoardPostSaveCommand(
+                title = "수정 후",
+                contentJson = """{"type":"doc","content":[]}""",
+                contentHtml = "<p>수정 후</p>",
+                isPublic = false,
+                assetIds = emptyList(),
+            ),
+        )
+
+        val savedPost = argumentCaptor<Post>().apply {
+            verify(postRepository).save(capture())
+        }.firstValue
+        assertThat(savedPost.menuId).isEqualTo(1001L)
+        assertThat(savedPost.title).isEqualTo("수정 후")
     }
 
     @Test

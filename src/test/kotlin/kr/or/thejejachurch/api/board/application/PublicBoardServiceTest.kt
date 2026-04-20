@@ -118,6 +118,43 @@ class PublicBoardServiceTest {
     }
 
     @Test
+    fun `list posts receives menu id and returns only public posts under that menu`() {
+        val board = board(slug = "notice")
+        val pageRequest = PageRequest.of(0, 20)
+        val publicPost = post(
+            id = 101L,
+            boardId = board.id!!,
+            menuId = 1001L,
+            title = "첫 번째 공지 메뉴 공개 글",
+        )
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(
+            menuItemRepository.existsByIdAndTypeAndStatusAndBoardKey(
+                1001L,
+                MenuType.BOARD,
+                MenuStatus.PUBLISHED,
+                "notice",
+            )
+        ).thenReturn(true)
+        whenever(
+            postRepository.findAllByMenuIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+                1001L,
+                pageRequest,
+            )
+        ).thenReturn(PageImpl(listOf(publicPost), pageRequest, 1))
+
+        val result = service.listPosts(boardSlug = "notice", menuId = 1001L, page = 0, size = 20)
+
+        assertThat(result.posts).hasSize(1)
+        assertThat(result.posts[0].id).isEqualTo(101L)
+        verify(postRepository).findAllByMenuIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(1001L, pageRequest)
+        verify(postRepository, never()).findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+            board.id!!,
+            pageRequest,
+        )
+    }
+
+    @Test
     fun `get post throws not found for private post or post under another board`() {
         val board = board(slug = "notice")
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
@@ -181,6 +218,29 @@ class PublicBoardServiceTest {
     }
 
     @Test
+    fun `get post receives menu id and does not return a post from another menu with the same board`() {
+        val board = board(slug = "notice")
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(
+            menuItemRepository.existsByIdAndTypeAndStatusAndBoardKey(
+                1001L,
+                MenuType.BOARD,
+                MenuStatus.PUBLISHED,
+                "notice",
+            )
+        ).thenReturn(true)
+        whenever(postRepository.findByMenuIdAndIdAndIsPublicTrue(1001L, 99L)).thenReturn(null)
+
+        assertThrows<NotFoundException> {
+            service.getPost(boardSlug = "notice", menuId = 1001L, postId = 99L)
+        }
+
+        verify(postRepository).findByMenuIdAndIdAndIsPublicTrue(1001L, 99L)
+        verify(postRepository, never()).findByBoardIdAndIdAndIsPublicTrue(board.id!!, 99L)
+        verify(postAssetRepository, never()).findAllByPostIdOrderBySortOrderAscIdAsc(99L)
+    }
+
+    @Test
     fun `get post public url composition avoids duplicate slash when upload base url ends with slash`() {
         val board = board(slug = "notice")
         val post = post(id = 99L, boardId = board.id!!, title = "첨부 있는 글")
@@ -225,6 +285,7 @@ class PublicBoardServiceTest {
     private fun post(
         id: Long,
         boardId: Long,
+        menuId: Long = 1001L,
         title: String,
         contentJson: String = """{"type":"doc"}""",
         contentHtml: String? = "<p>$title</p>",
@@ -232,6 +293,7 @@ class PublicBoardServiceTest {
     ) = Post(
         id = id,
         boardId = boardId,
+        menuId = menuId,
         title = title,
         contentJson = contentJson,
         contentHtml = contentHtml,

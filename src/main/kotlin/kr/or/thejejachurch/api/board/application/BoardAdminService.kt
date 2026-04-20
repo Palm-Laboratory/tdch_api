@@ -5,10 +5,13 @@ import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.Post
 import kr.or.thejejachurch.api.board.domain.PostAsset
 import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
+import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardTypeRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostAssetRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
 import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.common.error.NotFoundException
+import kr.or.thejejachurch.api.menu.domain.MenuType
+import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,6 +22,8 @@ class BoardAdminService(
     private val postRepository: PostRepository,
     private val postAssetRepository: PostAssetRepository,
     private val adminAccountRepository: AdminAccountRepository,
+    private val menuItemRepository: MenuItemRepository? = null,
+    private val boardTypeRepository: BoardTypeRepository? = null,
     private val contentValidator: TiptapContentValidator = TiptapContentValidator(postAssetRepository),
 ) {
 
@@ -31,21 +36,46 @@ class BoardAdminService(
                 slug = board.slug,
                 title = board.title,
                 type = board.type,
+                boardTypeId = board.boardTypeId,
                 description = board.description,
             )
         }
     }
 
     @Transactional(readOnly = true)
-    fun listPosts(actorId: Long, boardSlug: String): List<BoardAdminPostSummary> {
+    fun listBoardTypes(actorId: Long): List<BoardAdminBoardTypeSummary> {
+        requireActiveAdmin(actorId)
+        val repository = boardTypeRepository
+            ?: throw IllegalStateException("boardTypeRepository is required to list board types.")
+
+        return repository.findAllByOrderBySortOrderAscIdAsc().map { boardType ->
+            BoardAdminBoardTypeSummary(
+                id = boardType.id ?: throw IllegalStateException("게시판 타입 id가 없습니다."),
+                key = boardType.key,
+                label = boardType.label,
+                description = boardType.description,
+                sortOrder = boardType.sortOrder,
+            )
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun listPosts(actorId: Long, boardSlug: String, menuId: Long? = null): List<BoardAdminPostSummary> {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
         val boardId = requireBoardId(board)
+        val posts = menuId
+            ?.let { scopedMenuId ->
+                requireBoardMenu(boardSlug = board.slug, menuId = scopedMenuId)
+                postRepository.findAllByBoardIdAndMenuIdOrderByCreatedAtDescIdDesc(boardId, scopedMenuId)
+            }
+            ?: postRepository.findAllByBoardIdOrderByCreatedAtDescIdDesc(boardId)
 
-        return postRepository.findAllByBoardIdOrderByCreatedAtDescIdDesc(boardId).map { post ->
+        return posts.map { post ->
             BoardAdminPostSummary(
                 id = post.id,
                 boardId = post.boardId,
+                menuId = post.menuId,
                 title = post.title,
                 isPublic = post.isPublic,
                 authorId = post.authorId,
@@ -56,15 +86,16 @@ class BoardAdminService(
     }
 
     @Transactional(readOnly = true)
-    fun getPost(actorId: Long, boardSlug: String, postId: Long): BoardAdminPostDetail {
+    fun getPost(actorId: Long, boardSlug: String, postId: Long, menuId: Long? = null): BoardAdminPostDetail {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
-        val post = requirePostInBoard(postId, board)
+        val post = requirePostInBoard(postId, board, menuId)
         val assets = postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(postId)
 
         return BoardAdminPostDetail(
             id = post.id,
             boardId = post.boardId,
+            menuId = post.menuId,
             title = post.title,
             contentJson = post.contentJson,
             contentHtml = post.contentHtml,
@@ -89,9 +120,15 @@ class BoardAdminService(
     }
 
     @Transactional
-    fun createPost(actorId: Long, boardSlug: String, command: BoardPostSaveCommand): BoardAdminPostSaveResult {
+    fun createPost(
+        actorId: Long,
+        boardSlug: String,
+        command: BoardPostSaveCommand,
+        menuId: Long? = command.menuId,
+    ): BoardAdminPostSaveResult {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
+        val boardMenuId = resolveBoardMenuId(board, menuId)
         val assetIds = mergeAssetIds(
             contentValidator.validate(
                 contentJson = command.contentJson,
@@ -108,6 +145,7 @@ class BoardAdminService(
         val saved = postRepository.save(
             Post(
                 boardId = requireBoardId(board),
+                menuId = boardMenuId,
                 title = command.title,
                 contentJson = command.contentJson,
                 contentHtml = command.contentHtml,
@@ -128,10 +166,11 @@ class BoardAdminService(
         boardSlug: String,
         postId: Long,
         command: BoardPostSaveCommand,
+        menuId: Long? = command.menuId,
     ): BoardAdminPostSaveResult {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
-        val post = requirePostInBoard(postId, board)
+        val post = requirePostInBoard(postId, board, menuId)
         val savedPostId = post.id ?: throw IllegalStateException("게시글 id가 없습니다.")
         val assetIds = mergeAssetIds(
             contentValidator.validate(
@@ -160,10 +199,10 @@ class BoardAdminService(
     }
 
     @Transactional
-    fun deletePost(actorId: Long, boardSlug: String, postId: Long) {
+    fun deletePost(actorId: Long, boardSlug: String, postId: Long, menuId: Long? = null) {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
-        val post = requirePostInBoard(postId, board)
+        val post = requirePostInBoard(postId, board, menuId)
         postRepository.delete(post)
     }
 
@@ -183,11 +222,30 @@ class BoardAdminService(
     private fun requireBoardId(board: Board): Long =
         board.id ?: throw IllegalStateException("게시판 id가 없습니다.")
 
-    private fun requirePostInBoard(postId: Long, board: Board): Post {
+    private fun requireBoardMenu(boardSlug: String, menuId: Long) {
+        val repository = menuItemRepository ?: return
+        if (!repository.existsByIdAndTypeAndBoardKey(menuId, MenuType.BOARD, boardSlug)) {
+            throw NotFoundException("게시판 메뉴를 찾을 수 없습니다. menuId=$menuId")
+        }
+    }
+
+    private fun resolveBoardMenuId(board: Board, menuId: Long?): Long {
+        if (menuId != null) {
+            requireBoardMenu(boardSlug = board.slug, menuId = menuId)
+            return menuId
+        }
+
+        val repository = menuItemRepository ?: return requireBoardId(board)
+        return repository.findFirstByTypeAndBoardKeyOrderBySortOrderAscIdAsc(MenuType.BOARD, board.slug)?.id
+            ?: throw NotFoundException("게시판 메뉴를 찾을 수 없습니다. slug=${board.slug}")
+    }
+
+    private fun requirePostInBoard(postId: Long, board: Board, menuId: Long? = null): Post {
+        menuId?.let { requireBoardMenu(boardSlug = board.slug, menuId = it) }
         val post = postRepository.findByIdOrNull(postId)
             ?: throw NotFoundException("게시글을 찾을 수 없습니다. id=$postId")
 
-        if (post.boardId != requireBoardId(board)) {
+        if (post.boardId != requireBoardId(board) || (menuId != null && post.menuId != menuId)) {
             throw NotFoundException("게시글을 찾을 수 없습니다. id=$postId")
         }
 

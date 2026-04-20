@@ -109,15 +109,96 @@ class PublicMenuServiceTest {
     }
 
     @Test
+    fun `resolveMenuPath resolves published board child using menu tree path instead of board key hash`() {
+        val news = menuItem(
+            id = 30L,
+            type = MenuType.FOLDER,
+            label = "소식",
+            slug = "news",
+        )
+        val notice = menuItem(
+            id = 31L,
+            parentId = news.id,
+            type = MenuType.BOARD,
+            label = "공지사항",
+            slug = "notice",
+            boardKey = "notice",
+        )
+        whenever(menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED))
+            .thenReturn(listOf(news, notice))
+
+        val resolved = service.resolveMenuPath("/news/notice")
+
+        assertAll(
+            { assertEquals(MenuType.BOARD, resolved.type) },
+            { assertEquals("공지사항", resolved.label) },
+            { assertEquals("notice", resolved.slug) },
+            { assertEquals("/news/notice", resolved.fullPath) },
+            { assertEquals("소식", resolved.parentLabel) },
+            { assertEquals("notice", resolved.boardKey) },
+            { assertNull(resolved.redirectTo) },
+        )
+
+        verify(menuItemRepository).findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
+        verify(menuItemRepository, never()).findRootBySlug("news")
+        verify(menuItemRepository, never()).findByParentIdAndSlug(news.id!!, "notice")
+    }
+
+    @Test
+    fun `resolveMenuPath redirects folder to first published board child using menu tree path`() {
+        val news = menuItem(
+            id = 40L,
+            type = MenuType.FOLDER,
+            label = "소식",
+            slug = "news",
+        )
+        val notice = menuItem(
+            id = 41L,
+            parentId = news.id,
+            type = MenuType.BOARD,
+            label = "공지사항",
+            slug = "notice",
+            boardKey = "notice",
+            sortOrder = 0,
+        )
+        val bulletin = menuItem(
+            id = 42L,
+            parentId = news.id,
+            type = MenuType.BOARD,
+            label = "주보",
+            slug = "bulletin",
+            boardKey = "bulletin",
+            sortOrder = 1,
+        )
+        whenever(menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED))
+            .thenReturn(listOf(news, notice, bulletin))
+
+        val resolved = service.resolveMenuPath("/news")
+
+        assertAll(
+            { assertEquals(MenuType.FOLDER, resolved.type) },
+            { assertEquals("소식", resolved.label) },
+            { assertEquals("news", resolved.slug) },
+            { assertEquals("/news/notice", resolved.fullPath) },
+            { assertEquals("/news/notice", resolved.redirectTo) },
+            { assertNull(resolved.parentLabel) },
+        )
+
+        verify(menuItemRepository).findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
+        verify(menuItemRepository, never()).findRootBySlug("news")
+        verify(menuItemRepository, never()).findByParentIdAndSlug(news.id!!, "notice")
+    }
+
+    @Test
     fun `getVideoDetailByPath resolves playlist detail from published items without parent lookup`() {
         val sermons = menuItem(
-            id = 31L,
+            id = 51L,
             type = MenuType.YOUTUBE_PLAYLIST_GROUP,
             label = "설교",
             slug = "sermons",
         )
         val sunday = menuItem(
-            id = 32L,
+            id = 52L,
             parentId = sermons.id,
             type = MenuType.YOUTUBE_PLAYLIST,
             label = "주일설교",
@@ -127,7 +208,7 @@ class PublicMenuServiceTest {
             sortOrder = 0,
         )
         val friday = menuItem(
-            id = 33L,
+            id = 53L,
             parentId = sermons.id,
             type = MenuType.YOUTUBE_PLAYLIST,
             label = "금요설교",
@@ -181,6 +262,7 @@ class PublicMenuServiceTest {
         label: String,
         slug: String,
         staticPageKey: String? = null,
+        boardKey: String? = null,
         playlistId: Long? = null,
         playlistContentForm: YouTubeContentForm? = null,
         sortOrder: Int = 0,
@@ -192,6 +274,7 @@ class PublicMenuServiceTest {
         label = label,
         slug = slug,
         staticPageKey = staticPageKey,
+        boardKey = boardKey,
         playlistId = playlistId,
         playlistContentForm = playlistContentForm,
         sortOrder = sortOrder,

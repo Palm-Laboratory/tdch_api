@@ -30,6 +30,8 @@ class UploadRuntimeConfigContractTest {
         assertThat(content).doesNotContain("http://127.0.0.1:3000")
         assertThat(localContent).contains("http://localhost:3000")
         assertThat(localContent).contains("http://127.0.0.1:3000")
+        assertThat(localContent).contains("root-path: \${TDCH_UPLOAD_ROOT:\${user.dir}/.local/uploads}")
+        assertThat(localContent).contains("public-base-url: \${TDCH_UPLOAD_PUBLIC_BASE_URL:http://localhost:8080/media}")
     }
 
     @Test
@@ -62,6 +64,28 @@ class UploadRuntimeConfigContractTest {
 
         assertThat(corsProperties).contains("https://tdch.co.kr")
         assertThat(corsProperties).contains("https://www.tdch.co.kr")
+    }
+
+    @Test
+    fun `local media resource config should serve uploaded files only for local profile`() {
+        val localMediaResourceConfig = readMainSource("LocalMediaResourceConfig.kt")
+
+        assertThat(localMediaResourceConfig).contains("@Profile(\"local\")")
+        assertThat(localMediaResourceConfig).contains("Path.of(uploadProperties.rootPath)")
+        assertThat(localMediaResourceConfig).contains("addResourceHandler(\"/media/**\")")
+        assertThat(localMediaResourceConfig).contains("addResourceLocations(rootUri)")
+    }
+
+    @Test
+    fun `global exception handler should not expose internal exception messages for 500 responses`() {
+        val globalExceptionHandler = Files.readString(
+            Path.of("src/main/kotlin/kr/or/thejejachurch/api/common/error/GlobalExceptionHandler.kt"),
+        )
+
+        assertThat(globalExceptionHandler).contains("@ExceptionHandler(NoResourceFoundException::class)")
+        assertThat(globalExceptionHandler).contains("logger.error(\"Unhandled API exception\", ex)")
+        assertThat(globalExceptionHandler).contains("message = \"서버 오류가 발생했습니다.\"")
+        assertThat(globalExceptionHandler).doesNotContain("message = ex.message ?: \"서버 오류가 발생했습니다.\"")
     }
 
     private fun loadUploadPropertiesClass(): Class<*> {

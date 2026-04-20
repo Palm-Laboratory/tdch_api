@@ -2,6 +2,11 @@ package kr.or.thejejachurch.api.menu.application
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAccountRepository
+import kr.or.thejejachurch.api.board.domain.Board
+import kr.or.thejejachurch.api.board.domain.BoardType
+import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
+import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardTypeRepository
+import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
 import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.menu.domain.MenuItem
@@ -21,6 +26,9 @@ class MenuManagementService(
     private val menuItemRepository: MenuItemRepository,
     private val menuRevisionRepository: MenuRevisionRepository,
     private val adminAccountRepository: AdminAccountRepository,
+    private val boardRepository: BoardRepository,
+    private val boardTypeRepository: BoardTypeRepository,
+    private val postRepository: PostRepository,
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
     private val objectMapper: ObjectMapper,
 ) {
@@ -210,11 +218,10 @@ class MenuManagementService(
                 }
 
                 MenuType.BOARD -> {
-                    val boardKey = node.boardKey?.trim()
-                    if (boardKey.isNullOrBlank()) {
-                        throw IllegalArgumentException("게시판 메뉴는 boardKey가 필요합니다.")
+                    if (node.boardTypeId == null && item.boardKey.isNullOrBlank()) {
+                        throw IllegalArgumentException("게시판 메뉴는 게시판 타입이 필요합니다.")
                     }
-                    item.boardKey = boardKey
+                    item.boardKey = node.boardKey?.trim()?.takeIf { it.isNotBlank() } ?: item.boardKey
                     item.staticPageKey = null
                     item.externalUrl = null
                     item.openInNewTab = false
@@ -255,6 +262,9 @@ class MenuManagementService(
             val saved = menuItemRepository.save(item)
             if (saved.id != null) {
                 seenIds.add(saved.id)
+            }
+            if (saved.type == MenuType.BOARD) {
+                ensureMenuScopedBoard(saved, node.boardTypeId)
             }
             persistNodes(
                 nodes = node.children,
@@ -356,6 +366,10 @@ class MenuManagementService(
     private fun buildAdminTree(): List<MenuTreeNode> {
         val items = menuItemRepository.findAllByOrderBySortOrderAscIdAsc()
         val playlistsById = youTubePlaylistRepository.findAll().associateBy { it.id!! }
+        val boardsBySlug = boardRepository.findAll().associateBy { it.slug }
+        val boardTypesById = boardTypeRepository.findAll().mapNotNull { boardType ->
+            boardType.id?.let { it to boardType }
+        }.toMap()
         val childrenByParent = items.groupBy { it.parentId }
 
         fun build(parentId: Long?): List<MenuTreeNode> =
@@ -364,6 +378,8 @@ class MenuManagementService(
                 .sortedWith(compareBy<MenuItem> { it.sortOrder }.thenBy { it.id })
                 .map { item ->
                     val playlist = item.playlistId?.let(playlistsById::get)
+                    val board = item.boardKey?.let(boardsBySlug::get)
+                    val boardType = board?.boardTypeId?.let(boardTypesById::get)
                     MenuTreeNode(
                         id = item.id!!,
                         type = item.type,
@@ -375,6 +391,9 @@ class MenuManagementService(
                         slugCustomized = item.slugCustomized,
                         staticPageKey = item.staticPageKey,
                         boardKey = item.boardKey,
+                        boardTypeId = boardType?.id,
+                        boardTypeKey = boardType?.key,
+                        boardTypeLabel = boardType?.label,
                         externalUrl = item.externalUrl,
                         openInNewTab = item.openInNewTab,
                         playlistTitle = playlist?.title,
@@ -389,6 +408,62 @@ class MenuManagementService(
                 }
 
         return build(parentId = null)
+    }
+
+    private fun ensureMenuScopedBoard(menu: MenuItem, requestedBoardTypeId: Long?) {
+        val menuId = menu.id ?: throw IllegalStateException("게시판 메뉴 id가 없습니다.")
+        val previousBoard = menu.boardKey?.let(boardRepository::findBySlug)
+        val boardTypeDefinition = requestedBoardTypeId
+            ?.let { boardTypeRepository.findByIdOrNull(it) }
+            ?: previousBoard?.boardTypeId?.let { boardTypeRepository.findByIdOrNull(it) }
+            ?: boardTypeRepository.findByKey(BoardType.GENERAL.name)
+            ?: throw IllegalStateException("기본 게시판 타입을 찾을 수 없습니다.")
+        val boardType = BoardType.valueOf(boardTypeDefinition.key)
+        val board = boardRepository.findByMenuId(menuId) ?: previousBoard ?: Board(
+            slug = buildBoardSlug(menu, currentBoardId = null),
+            menuId = menuId,
+            boardTypeId = boardTypeDefinition.id,
+            title = menu.label,
+            type = boardType,
+            description = null,
+        )
+
+        board.slug = buildBoardSlug(menu, currentBoardId = board.id)
+        board.menuId = menuId
+        board.boardTypeId = boardTypeDefinition.id
+        board.title = menu.label
+        board.type = boardType
+        board.description = null
+
+        val savedBoard = boardRepository.save(board)
+        val savedBoardId = savedBoard.id ?: throw IllegalStateException("게시판 id가 없습니다.")
+
+        if (menu.boardKey != savedBoard.slug) {
+            menu.boardKey = savedBoard.slug
+            menuItemRepository.save(menu)
+        }
+        postRepository.updateBoardIdByMenuId(menuId = menuId, boardId = savedBoardId)
+    }
+
+    private fun buildBoardSlug(menu: MenuItem, currentBoardId: Long?): String {
+        val parentSlug = menu.parentId
+            ?.let { menuItemRepository.findByIdOrNull(it) }
+            ?.slug
+            ?.takeIf { it.isNotBlank() }
+        val base = listOfNotNull(parentSlug, menu.slug.takeIf { it.isNotBlank() })
+            .joinToString("-")
+            .ifBlank { "board" }
+        var candidate = base
+        var sequence = 1
+
+        while (true) {
+            val existing = boardRepository.findBySlug(candidate)
+            if (existing == null || existing.id == currentBoardId) {
+                return candidate
+            }
+            sequence += 1
+            candidate = "$base-$sequence"
+        }
     }
 
     private fun ensureSlugAvailable(slug: String, currentId: Long?, parentId: Long?) {

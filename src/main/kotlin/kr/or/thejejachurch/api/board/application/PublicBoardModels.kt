@@ -14,6 +14,7 @@ data class PublicBoardPostListResult(
 data class PublicBoardPostSummary(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val contentHtml: String?,
     val publishedAt: OffsetDateTime?,
@@ -24,6 +25,7 @@ data class PublicBoardPostSummary(
 data class PublicBoardPostDetail(
     val id: Long?,
     val boardId: Long,
+    val menuId: Long = boardId,
     val title: String,
     val contentJson: String,
     val contentHtml: String?,

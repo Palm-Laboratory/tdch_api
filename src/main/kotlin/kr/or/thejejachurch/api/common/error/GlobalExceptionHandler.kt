@@ -1,14 +1,17 @@
 package kr.or.thejejachurch.api.common.error
 
 import kr.or.thejejachurch.api.common.response.ApiErrorResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(UnauthorizedException::class)
     fun handleUnauthorized(ex: UnauthorizedException): ResponseEntity<ApiErrorResponse> =
@@ -37,6 +40,15 @@ class GlobalExceptionHandler {
             )
         )
 
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResourceFound(ex: NoResourceFoundException): ResponseEntity<ApiErrorResponse> =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            ApiErrorResponse(
+                code = "NOT_FOUND",
+                message = "요청한 리소스를 찾을 수 없습니다.",
+            )
+        )
+
     @ExceptionHandler(MethodArgumentNotValidException::class, IllegalArgumentException::class)
     fun handleBadRequest(ex: Exception): ResponseEntity<ApiErrorResponse> =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
@@ -47,11 +59,14 @@ class GlobalExceptionHandler {
         )
 
     @ExceptionHandler(Exception::class)
-    fun handleInternal(ex: Exception): ResponseEntity<ApiErrorResponse> =
-        ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+    fun handleInternal(ex: Exception): ResponseEntity<ApiErrorResponse> {
+        logger.error("Unhandled API exception", ex)
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             ApiErrorResponse(
                 code = "INTERNAL_SERVER_ERROR",
-                message = ex.message ?: "서버 오류가 발생했습니다.",
+                message = "서버 오류가 발생했습니다.",
             )
         )
+    }
 }
