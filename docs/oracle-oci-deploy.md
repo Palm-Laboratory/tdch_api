@@ -4,6 +4,8 @@
 
 처음 서버를 세팅할 때부터 GHCR, GitHub Actions, 스키마 변경 배포, 점검/복구까지 포함한 전체 절차는 [oracle-oci-operations-manual.md](./oracle-oci-operations-manual.md)를 우선 참고한다.
 
+게시판 업로드 기능 배포 시에는 DB 백업, 디스크 체크, 임시 업로드 정리, `deploy/scripts/*.sh` 운영 배치 여부를 [db-backup-restore-runbook.md](./db-backup-restore-runbook.md)의 `Production Deployment Checklist`와 함께 확인한다.
+
 대상 구조:
 
 - nginx
@@ -191,3 +193,4 @@ GHCR owner가 바뀌는 대표 상황:
 - `https://<api-domain>/api/v1/navigation` 응답 정상
 - `tdch_web`의 API base URL이 `https://<api-domain>`을 가리킴
 - 운영 VM의 `<deploy-path>/.env`와 GitHub Actions secrets가 서로 일관됨
+- 게시판 업로드 운영 항목은 [db-backup-restore-runbook.md](./db-backup-restore-runbook.md)의 `Production Deployment Checklist`를 같이 완료함
