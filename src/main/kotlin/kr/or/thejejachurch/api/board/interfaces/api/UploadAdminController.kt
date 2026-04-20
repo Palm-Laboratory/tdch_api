@@ -1,0 +1,58 @@
+package kr.or.thejejachurch.api.board.interfaces.api
+
+import jakarta.validation.Valid
+import kr.or.thejejachurch.api.board.application.UploadTokenService
+import kr.or.thejejachurch.api.board.domain.PostAssetKind
+import kr.or.thejejachurch.api.common.config.AdminProperties
+import kr.or.thejejachurch.api.common.error.ForbiddenException
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+
+@RestController
+@RequestMapping("/api/v1/admin/uploads")
+class UploadAdminController(
+    private val uploadTokenService: UploadTokenService,
+    private val adminProperties: AdminProperties,
+) {
+    @PostMapping("/token")
+    fun issueToken(
+        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
+        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
+        @Valid @RequestBody request: UploadTokenIssueRequest,
+    ): UploadTokenIssueResponse {
+        validateAdminKey(adminKey)
+
+        val result = uploadTokenService.issueToken(
+            actorId = actorId,
+            kind = request.kind,
+            maxByteSize = request.maxByteSize,
+            allowedMimeTypes = request.allowedMimeTypes,
+        )
+
+        return UploadTokenIssueResponse(rawToken = result.rawToken)
+    }
+
+    private fun validateAdminKey(adminKey: String?) {
+        val configuredKey = adminProperties.syncKey.trim()
+        if (configuredKey.isBlank()) {
+            throw IllegalStateException("ADMIN_SYNC_KEY is not configured.")
+        }
+
+        if (adminKey.isNullOrBlank() || adminKey != configuredKey) {
+            throw ForbiddenException("관리자 키가 올바르지 않습니다.")
+        }
+    }
+}
+
+data class UploadTokenIssueRequest(
+    val kind: PostAssetKind,
+    val maxByteSize: Long,
+    val allowedMimeTypes: List<String>,
+)
+
+data class UploadTokenIssueResponse(
+    val rawToken: String,
+)
