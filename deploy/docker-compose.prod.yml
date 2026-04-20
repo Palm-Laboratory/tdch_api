@@ -41,7 +41,12 @@ services:
       YOUTUBE_CHANNEL_ID: ${YOUTUBE_CHANNEL_ID}
       ADMIN_SYNC_KEY: ${ADMIN_SYNC_KEY}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      TDCH_UPLOAD_ROOT: ${TDCH_UPLOAD_ROOT}
+      TDCH_UPLOAD_PUBLIC_BASE_URL: ${TDCH_UPLOAD_PUBLIC_BASE_URL}
       TZ: ${TZ:-Asia/Seoul}
+    user: "1000:1000"
+    volumes:
+      - /opt/tdch/uploads:/opt/tdch/uploads
     ports:
       - "127.0.0.1:8080:8080"
     networks:
