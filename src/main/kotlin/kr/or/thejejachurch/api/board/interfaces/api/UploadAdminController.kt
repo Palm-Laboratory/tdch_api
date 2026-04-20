@@ -1,20 +1,25 @@
 package kr.or.thejejachurch.api.board.interfaces.api
 
 import jakarta.validation.Valid
+import kr.or.thejejachurch.api.board.application.UploadAssetService
 import kr.or.thejejachurch.api.board.application.UploadTokenService
 import kr.or.thejejachurch.api.board.domain.PostAssetKind
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
+import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("/api/v1/admin/uploads")
 class UploadAdminController(
     private val uploadTokenService: UploadTokenService,
+    private val uploadAssetService: UploadAssetService,
     private val adminProperties: AdminProperties,
 ) {
     @PostMapping("/token")
@@ -33,6 +38,28 @@ class UploadAdminController(
         )
 
         return UploadTokenIssueResponse(rawToken = result.rawToken)
+    }
+
+    @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun upload(
+        @RequestHeader(name = "X-Upload-Token") rawToken: String,
+        @RequestParam("file") file: MultipartFile,
+        @RequestParam kind: PostAssetKind,
+    ): UploadAssetResponse {
+        val result = uploadAssetService.upload(
+            rawToken = rawToken,
+            file = file,
+            kind = kind,
+        )
+
+        return UploadAssetResponse(
+            assetId = result.assetId,
+            storedPath = result.storedPath,
+            mimeType = result.mimeType,
+            byteSize = result.byteSize,
+            width = result.width,
+            height = result.height,
+        )
     }
 
     private fun validateAdminKey(adminKey: String?) {
@@ -55,4 +82,13 @@ data class UploadTokenIssueRequest(
 
 data class UploadTokenIssueResponse(
     val rawToken: String,
+)
+
+data class UploadAssetResponse(
+    val assetId: Long,
+    val storedPath: String,
+    val mimeType: String?,
+    val byteSize: Long,
+    val width: Int?,
+    val height: Int?,
 )

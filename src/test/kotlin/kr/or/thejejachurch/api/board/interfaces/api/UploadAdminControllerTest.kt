@@ -1,5 +1,7 @@
 package kr.or.thejejachurch.api.board.interfaces.api
 
+import kr.or.thejejachurch.api.board.application.UploadAssetService
+import kr.or.thejejachurch.api.board.application.UploadedAssetResult
 import kr.or.thejejachurch.api.board.application.UploadTokenIssueResult
 import kr.or.thejejachurch.api.board.application.UploadTokenService
 import kr.or.thejejachurch.api.board.domain.PostAssetKind
@@ -13,16 +15,19 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.web.bind.annotation.RequestHeader
 
 class UploadAdminControllerTest {
 
     private val uploadTokenService: UploadTokenService = mock()
+    private val uploadAssetService: UploadAssetService = mock()
 
     @Test
     fun `issue token delegates to upload token service and returns raw token value when admin key matches`() {
         val controller = UploadAdminController(
             uploadTokenService = uploadTokenService,
+            uploadAssetService = uploadAssetService,
             adminProperties = AdminProperties(syncKey = "secret-key"),
         )
         whenever(
@@ -59,6 +64,7 @@ class UploadAdminControllerTest {
     fun `issue token throws forbidden when admin key is wrong and does not call service`() {
         val controller = UploadAdminController(
             uploadTokenService = uploadTokenService,
+            uploadAssetService = uploadAssetService,
             adminProperties = AdminProperties(syncKey = "secret-key"),
         )
 
@@ -81,6 +87,7 @@ class UploadAdminControllerTest {
     fun `issue token throws forbidden when admin key is missing and does not call service`() {
         val controller = UploadAdminController(
             uploadTokenService = uploadTokenService,
+            uploadAssetService = uploadAssetService,
             adminProperties = AdminProperties(syncKey = "secret-key"),
         )
 
@@ -103,6 +110,7 @@ class UploadAdminControllerTest {
     fun `issue token throws illegal state when admin sync key is blank`() {
         val controller = UploadAdminController(
             uploadTokenService = uploadTokenService,
+            uploadAssetService = uploadAssetService,
             adminProperties = AdminProperties(syncKey = "   "),
         )
 
@@ -118,6 +126,56 @@ class UploadAdminControllerTest {
             )
         }
 
+        verifyNoInteractions(uploadTokenService)
+    }
+
+    @Test
+    fun `upload delegates to upload asset service and returns uploaded asset metadata`() {
+        val controller = UploadAdminController(
+            uploadTokenService = uploadTokenService,
+            uploadAssetService = uploadAssetService,
+            adminProperties = AdminProperties(syncKey = "secret-key"),
+        )
+        val file = MockMultipartFile(
+            "file",
+            "hero.png",
+            "image/png",
+            byteArrayOf(1, 2, 3, 4),
+        )
+        whenever(
+            uploadAssetService.upload(
+                rawToken = eq("raw-upload-token"),
+                file = eq(file),
+                kind = eq(PostAssetKind.INLINE_IMAGE),
+            )
+        ).thenReturn(
+            UploadedAssetResult(
+                assetId = 99L,
+                storedPath = "2026/04/hero.png",
+                mimeType = "image/png",
+                byteSize = 4L,
+                width = 640,
+                height = 480,
+            ),
+        )
+
+        val response = controller.upload(
+            rawToken = "raw-upload-token",
+            file = file,
+            kind = PostAssetKind.INLINE_IMAGE,
+        )
+
+        assertThat(readProperty(response, "assetId")).isEqualTo(99L)
+        assertThat(readProperty(response, "storedPath")).isEqualTo("2026/04/hero.png")
+        assertThat(readProperty(response, "mimeType")).isEqualTo("image/png")
+        assertThat(readProperty(response, "byteSize")).isEqualTo(4L)
+        assertThat(readProperty(response, "width")).isEqualTo(640)
+        assertThat(readProperty(response, "height")).isEqualTo(480)
+        verify(uploadAssetService).upload(
+            rawToken = "raw-upload-token",
+            file = file,
+            kind = PostAssetKind.INLINE_IMAGE,
+        )
         verifyNoInteractions(uploadTokenService)
     }
 
@@ -140,5 +198,13 @@ class UploadAdminControllerTest {
 
         tokenField.isAccessible = true
         return tokenField.get(response) as String
+    }
+
+    private fun readProperty(response: Any, propertyName: String): Any? {
+        val field = response.javaClass.declaredFields.firstOrNull { it.name == propertyName }
+            ?: error("Expected $propertyName field on response")
+
+        field.isAccessible = true
+        return field.get(response)
     }
 }
