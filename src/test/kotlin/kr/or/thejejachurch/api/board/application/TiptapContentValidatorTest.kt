@@ -29,6 +29,31 @@ class TiptapContentValidatorTest {
     }
 
     @Test
+    fun `accepts simple editor image sources that carry asset metadata in the src fragment`() {
+        val asset = uploadedAsset(id = 100L, actorId = 1L)
+        whenever(postAssetRepository.findById(100L)).thenReturn(Optional.of(asset))
+
+        val referencedAssetIds = validator.validate(
+            contentJson = """
+                {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "image",
+                      "attrs": {
+                        "src": "/media/uploads/asset-100.png#tdchAssetId=100&tdchStoredPath=uploads%2Fasset-100.png"
+                      }
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            actorId = 1L,
+        )
+
+        assertThat(referencedAssetIds).isEqualTo(listOf(100L))
+    }
+
+    @Test
     fun `returns referenced image asset ids in traversal order`() {
         whenever(postAssetRepository.findById(200L)).thenReturn(Optional.of(uploadedAsset(id = 200L, actorId = 1L)))
         whenever(postAssetRepository.findById(100L)).thenReturn(Optional.of(uploadedAsset(id = 100L, actorId = 1L)))
