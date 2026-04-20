@@ -149,6 +149,85 @@ class BoardAdminServiceTest {
     }
 
     @Test
+    fun `create post attaches inline image asset referenced only in content json`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        val asset = uploadedAsset(id = 100L, actorId = 1L)
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postAssetRepository.findById(100L)).thenReturn(Optional.of(asset))
+        whenever(postRepository.save(any())).thenReturn(
+            Post(
+                id = 99L,
+                boardId = 10L,
+                title = "새 소식",
+                contentJson = docWithImage(assetId = 100L),
+                contentHtml = "<p>새 소식</p>",
+                isPublic = true,
+                authorId = 1L,
+            )
+        )
+
+        service.createPost(
+            actorId = 1L,
+            boardSlug = "notice",
+            command = BoardPostSaveCommand(
+                title = "새 소식",
+                contentJson = docWithImage(assetId = 100L),
+                contentHtml = "<p>새 소식</p>",
+                isPublic = true,
+                assetIds = emptyList(),
+            ),
+        )
+
+        val savedAssets = argumentCaptor<Iterable<PostAsset>>().apply {
+            verify(postAssetRepository).saveAll(capture())
+        }.firstValue.toList()
+        assertThat(savedAssets.map { it.id }).containsExactly(100L)
+        assertThat(savedAssets.map { it.postId }).containsExactly(99L)
+        assertThat(savedAssets.map { it.sortOrder }).containsExactly(0)
+    }
+
+    @Test
+    fun `create post deduplicates inline image asset when also provided in command asset ids`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        val asset = uploadedAsset(id = 100L, actorId = 1L)
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postAssetRepository.findById(100L)).thenReturn(Optional.of(asset))
+        whenever(postAssetRepository.findAllById(listOf(100L))).thenReturn(listOf(asset))
+        whenever(postRepository.save(any())).thenReturn(
+            Post(
+                id = 99L,
+                boardId = 10L,
+                title = "새 소식",
+                contentJson = docWithImage(assetId = 100L),
+                contentHtml = "<p>새 소식</p>",
+                isPublic = true,
+                authorId = 1L,
+            )
+        )
+
+        service.createPost(
+            actorId = 1L,
+            boardSlug = "notice",
+            command = BoardPostSaveCommand(
+                title = "새 소식",
+                contentJson = docWithImage(assetId = 100L),
+                contentHtml = "<p>새 소식</p>",
+                isPublic = true,
+                assetIds = listOf(100L),
+            ),
+        )
+
+        val savedAssets = argumentCaptor<Iterable<PostAsset>>().apply {
+            verify(postAssetRepository).saveAll(capture())
+        }.firstValue.toList()
+        assertThat(savedAssets.map { it.id }).containsExactly(100L)
+        assertThat(savedAssets.map { it.postId }).containsExactly(99L)
+        assertThat(savedAssets.map { it.sortOrder }).containsExactly(0)
+    }
+
+    @Test
     fun `create post rejects invalid content json`() {
         whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
         whenever(boardRepository.findBySlug("notice")).thenReturn(
@@ -163,6 +242,42 @@ class BoardAdminServiceTest {
                     title = "새 소식",
                     contentJson = "{not-json",
                     contentHtml = "<p>새 소식</p>",
+                    isPublic = true,
+                    assetIds = emptyList(),
+                ),
+            )
+        }
+
+        verify(postRepository, never()).save(any())
+    }
+
+    @Test
+    fun `create post rejects public url only image content before saving post`() {
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(
+            Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        )
+
+        assertThrows<IllegalArgumentException> {
+            service.createPost(
+                actorId = 1L,
+                boardSlug = "notice",
+                command = BoardPostSaveCommand(
+                    title = "새 소식",
+                    contentJson = """
+                        {
+                          "type": "doc",
+                          "content": [
+                            {
+                              "type": "image",
+                              "attrs": {
+                                "publicUrl": "https://cdn.example.com/uploads/asset-100.png"
+                              }
+                            }
+                          ]
+                        }
+                    """.trimIndent(),
+                    contentHtml = null,
                     isPublic = true,
                     assetIds = emptyList(),
                 ),
@@ -368,4 +483,19 @@ class BoardAdminServiceTest {
         width = 640,
         height = 480,
     )
+
+    private fun docWithImage(assetId: Long) = """
+        {
+          "type": "doc",
+          "content": [
+            {
+              "type": "image",
+              "attrs": {
+                "assetId": $assetId,
+                "storedPath": "uploads/asset-$assetId.png"
+              }
+            }
+          ]
+        }
+    """.trimIndent()
 }

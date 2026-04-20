@@ -1,7 +1,5 @@
 package kr.or.thejejachurch.api.board.application
 
-import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.databind.ObjectMapper
 import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAccountRepository
 import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.Post
@@ -21,7 +19,7 @@ class BoardAdminService(
     private val postRepository: PostRepository,
     private val postAssetRepository: PostAssetRepository,
     private val adminAccountRepository: AdminAccountRepository,
-    private val objectMapper: ObjectMapper = ObjectMapper(),
+    private val contentValidator: TiptapContentValidator = TiptapContentValidator(postAssetRepository),
 ) {
 
     @Transactional(readOnly = true)
@@ -94,10 +92,16 @@ class BoardAdminService(
     fun createPost(actorId: Long, boardSlug: String, command: BoardPostSaveCommand): BoardAdminPostSaveResult {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
-        validateContentJson(command.contentJson)
+        val assetIds = mergeAssetIds(
+            contentValidator.validate(
+                contentJson = command.contentJson,
+                actorId = actorId,
+            ),
+            command.assetIds,
+        )
 
         val assets = resolveAssetsForCreate(
-            assetIds = command.assetIds,
+            assetIds = assetIds,
             actorId = actorId,
         )
 
@@ -113,7 +117,7 @@ class BoardAdminService(
         )
         val postId = saved.id ?: throw IllegalStateException("저장된 게시글 id가 없습니다.")
 
-        attachAssets(assets, command.assetIds, postId)
+        attachAssets(assets, assetIds, postId)
 
         return BoardAdminPostSaveResult(id = postId)
     }
@@ -127,12 +131,18 @@ class BoardAdminService(
     ): BoardAdminPostSaveResult {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
-        validateContentJson(command.contentJson)
-
         val post = requirePostInBoard(postId, board)
         val savedPostId = post.id ?: throw IllegalStateException("게시글 id가 없습니다.")
+        val assetIds = mergeAssetIds(
+            contentValidator.validate(
+                contentJson = command.contentJson,
+                actorId = actorId,
+                postId = savedPostId,
+            ),
+            command.assetIds,
+        )
         val assets = resolveAssetsForUpdate(
-            assetIds = command.assetIds,
+            assetIds = assetIds,
             actorId = actorId,
             postId = savedPostId,
         )
@@ -144,7 +154,7 @@ class BoardAdminService(
         val saved = postRepository.save(post)
         val resultId = saved.id ?: savedPostId
 
-        attachAssets(assets, command.assetIds, resultId)
+        attachAssets(assets, assetIds, resultId)
 
         return BoardAdminPostSaveResult(id = resultId)
     }
@@ -184,13 +194,8 @@ class BoardAdminService(
         return post
     }
 
-    private fun validateContentJson(contentJson: String) {
-        try {
-            objectMapper.readTree(contentJson)
-        } catch (ex: JsonProcessingException) {
-            throw IllegalArgumentException("contentJson은 올바른 JSON이어야 합니다.", ex)
-        }
-    }
+    private fun mergeAssetIds(contentAssetIds: List<Long>, commandAssetIds: List<Long>): List<Long> =
+        (contentAssetIds + commandAssetIds).distinct()
 
     private fun resolveAssetsForCreate(assetIds: List<Long>, actorId: Long): Map<Long, PostAsset> {
         if (assetIds.isEmpty()) {
@@ -223,12 +228,23 @@ class BoardAdminService(
     }
 
     private fun resolveAssets(assetIds: List<Long>): Map<Long, PostAsset> {
-        val assets = postAssetRepository.findAllById(assetIds).associateBy { it.id }
-        val missingIds = assetIds.filter { it !in assets.keys }
+        val assetsById = postAssetRepository.findAllById(assetIds)
+            .associateBy { it.id ?: throw IllegalStateException("첨부 파일 id가 없습니다.") }
+            .toMutableMap()
+
+        assetIds
+            .filter { it !in assetsById }
+            .forEach { assetId ->
+                postAssetRepository.findByIdOrNull(assetId)?.let { asset ->
+                    assetsById[assetId] = asset
+                }
+            }
+
+        val missingIds = assetIds.filter { it !in assetsById }
         if (missingIds.isNotEmpty()) {
             throw NotFoundException("첨부 파일을 찾을 수 없습니다. ids=${missingIds.joinToString(",")}")
         }
-        return assets.mapKeys { (id, _) -> id ?: throw IllegalStateException("첨부 파일 id가 없습니다.") }
+        return assetsById
     }
 
     private fun attachAssets(assetsById: Map<Long, PostAsset>, assetIds: List<Long>, postId: Long) {
