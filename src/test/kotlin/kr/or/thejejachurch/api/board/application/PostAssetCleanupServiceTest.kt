@@ -31,16 +31,16 @@ class PostAssetCleanupServiceTest {
         val staleInlineImage = postAsset(
             id = 11L,
             storedPath = "board/inline/old-image.png",
-            createdAt = cutoff.minusSeconds(1),
+            detachedAt = cutoff.minusSeconds(1),
         )
         val staleAttachment = postAsset(
             id = 12L,
             kind = PostAssetKind.FILE_ATTACHMENT,
             storedPath = "board/files/old-file.pdf",
-            createdAt = cutoff.minusDays(1),
+            detachedAt = cutoff.minusDays(1),
         )
         val staleTemporaryAssets = listOf(staleInlineImage, staleAttachment)
-        whenever(postAssetRepository.findAllByPostIdIsNullAndCreatedAtBefore(cutoff))
+        whenever(postAssetRepository.findAllByPostIdIsNullAndDetachedAtBefore(cutoff))
             .thenReturn(staleTemporaryAssets)
 
         val deletedCount: Long = service.cleanupStaleTemporaryAssets()
@@ -49,19 +49,19 @@ class PostAssetCleanupServiceTest {
         order.verify(attachmentStorage).delete(staleInlineImage.storedPath)
         order.verify(attachmentStorage).delete(staleAttachment.storedPath)
         order.verify(postAssetRepository).deleteAll(staleTemporaryAssets)
-        verify(postAssetRepository).findAllByPostIdIsNullAndCreatedAtBefore(cutoff)
+        verify(postAssetRepository).findAllByPostIdIsNullAndDetachedAtBefore(cutoff)
         assertThat(deletedCount).isEqualTo(2L)
     }
 
     @Test
     fun `cleanupStaleTemporaryAssets ignores attached and recent assets through repository cutoff query`() {
         val cutoff = fixedNow.minusHours(72)
-        whenever(postAssetRepository.findAllByPostIdIsNullAndCreatedAtBefore(cutoff))
+        whenever(postAssetRepository.findAllByPostIdIsNullAndDetachedAtBefore(cutoff))
             .thenReturn(emptyList<PostAsset>())
 
         val deletedCount: Long = service.cleanupStaleTemporaryAssets()
 
-        verify(postAssetRepository).findAllByPostIdIsNullAndCreatedAtBefore(cutoff)
+        verify(postAssetRepository).findAllByPostIdIsNullAndDetachedAtBefore(cutoff)
         verify(attachmentStorage, never()).delete(org.mockito.kotlin.any())
         verify(postAssetRepository, never()).deleteAll(org.mockito.kotlin.any<Iterable<PostAsset>>())
         assertThat(deletedCount).isZero()
@@ -71,7 +71,7 @@ class PostAssetCleanupServiceTest {
         id: Long,
         kind: PostAssetKind = PostAssetKind.INLINE_IMAGE,
         storedPath: String,
-        createdAt: OffsetDateTime,
+        detachedAt: OffsetDateTime,
         postId: Long? = null,
     ) = PostAsset(
         id = id,
@@ -81,10 +81,11 @@ class PostAssetCleanupServiceTest {
         storedPath = storedPath,
         byteSize = 1024L,
         postId = postId,
+        detachedAt = detachedAt,
         mimeType = if (kind == PostAssetKind.INLINE_IMAGE) "image/png" else "application/pdf",
         width = if (kind == PostAssetKind.INLINE_IMAGE) 640 else null,
         height = if (kind == PostAssetKind.INLINE_IMAGE) 480 else null,
-        createdAt = createdAt,
-        updatedAt = createdAt,
+        createdAt = fixedNow.minusDays(30),
+        updatedAt = fixedNow.minusDays(30),
     )
 }

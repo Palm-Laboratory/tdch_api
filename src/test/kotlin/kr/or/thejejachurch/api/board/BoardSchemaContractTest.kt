@@ -88,6 +88,38 @@ class BoardSchemaContractTest {
     }
 
     @Test
+    fun `V17 migration should track detached post assets for delayed cleanup`() {
+        val migration = Path.of("src/main/resources/db/migration/V17__track_post_asset_detached_at.sql")
+
+        assertThat(migration).exists()
+
+        val content = Files.readString(migration)
+        val normalized = content.lowercase()
+
+        assertThat(normalized).contains("alter table post_asset")
+        assertThat(normalized).contains("add column if not exists detached_at timestamptz")
+        assertThat(normalized).contains("set detached_at = created_at")
+        assertThat(normalized).contains("where post_id is null")
+        assertThat(normalized).contains("idx_post_asset_detached_at")
+    }
+
+    @Test
+    fun `V18 migration should support pinned board posts`() {
+        val migration = Path.of("src/main/resources/db/migration/V18__add_post_pinned_flag.sql")
+
+        assertThat(migration).exists()
+
+        val content = Files.readString(migration)
+        val normalized = content.lowercase()
+
+        assertThat(normalized).contains("alter table post")
+        assertThat(normalized).contains("add column if not exists is_pinned boolean not null default false")
+        assertThat(normalized).contains("is_pinned desc")
+        assertThat(normalized).contains("idx_post_board_public_pinned_created_at")
+        assertThat(normalized).contains("idx_post_menu_public_pinned_created_at")
+    }
+
+    @Test
     fun `V11 migration should create menu scoped boards`() {
         val migration = Path.of("src/main/resources/db/migration/V11__scope_boards_to_board_menus.sql")
 

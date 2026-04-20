@@ -29,6 +29,8 @@ class PostAsset(
     var byteSize: Long,
     @Column(name = "post_id")
     var postId: Long? = null,
+    @Column(name = "detached_at")
+    var detachedAt: OffsetDateTime? = null,
     @Column(name = "mime_type", length = 120)
     var mimeType: String? = null,
     @Column

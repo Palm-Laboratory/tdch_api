@@ -53,7 +53,7 @@ class PublicBoardServiceTest {
             eq(MenuStatus.PUBLISHED),
             eq("missing"),
         )
-        verify(postRepository, never()).findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+        verify(postRepository, never()).findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
             eq(10L),
             eq(PageRequest.of(0, 20)),
         )
@@ -75,7 +75,7 @@ class PublicBoardServiceTest {
             service.listPosts(boardSlug = "notice", page = 0, size = 20)
         }
 
-        verify(postRepository, never()).findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+        verify(postRepository, never()).findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
             eq(board.id!!),
             eq(PageRequest.of(0, 20)),
         )
@@ -95,7 +95,7 @@ class PublicBoardServiceTest {
             )
         ).thenReturn(true)
         whenever(
-            postRepository.findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+            postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
                 board.id!!,
                 pageRequest,
             )
@@ -110,11 +110,11 @@ class PublicBoardServiceTest {
         assertThat(result.posts).hasSize(1)
         assertThat(result.posts[0].id).isEqualTo(101L)
         assertThat(result.posts[0].title).isEqualTo("공개 소식")
-        verify(postRepository).findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+        verify(postRepository).findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
             board.id!!,
             pageRequest,
         )
-        verify(postRepository, never()).findAllByBoardIdOrderByCreatedAtDescIdDesc(board.id!!)
+        verify(postRepository, never()).findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(board.id!!)
     }
 
     @Test
@@ -137,7 +137,7 @@ class PublicBoardServiceTest {
             )
         ).thenReturn(true)
         whenever(
-            postRepository.findAllByMenuIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+            postRepository.findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
                 1001L,
                 pageRequest,
             )
@@ -147,8 +147,8 @@ class PublicBoardServiceTest {
 
         assertThat(result.posts).hasSize(1)
         assertThat(result.posts[0].id).isEqualTo(101L)
-        verify(postRepository).findAllByMenuIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(1001L, pageRequest)
-        verify(postRepository, never()).findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(
+        verify(postRepository).findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(1001L, pageRequest)
+        verify(postRepository, never()).findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
             board.id!!,
             pageRequest,
         )

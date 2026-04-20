@@ -9,10 +9,10 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface PostRepository : JpaRepository<Post, Long> {
-    fun findAllByBoardIdOrderByCreatedAtDescIdDesc(boardId: Long): List<Post>
-    fun findAllByBoardIdAndMenuIdOrderByCreatedAtDescIdDesc(boardId: Long, menuId: Long): List<Post>
-    fun findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(boardId: Long, pageable: Pageable): Page<Post>
-    fun findAllByMenuIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(menuId: Long, pageable: Pageable): Page<Post>
+    fun findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(boardId: Long): List<Post>
+    fun findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(boardId: Long, menuId: Long): List<Post>
+    fun findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(boardId: Long, pageable: Pageable): Page<Post>
+    fun findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(menuId: Long, pageable: Pageable): Page<Post>
     fun findByBoardIdAndIdAndIsPublicTrue(boardId: Long, id: Long): Post?
     fun findByMenuIdAndIdAndIsPublicTrue(menuId: Long, id: Long): Post?
 

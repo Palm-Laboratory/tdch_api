@@ -6,6 +6,7 @@ import kr.or.thejejachurch.api.board.infrastructure.persistence.PostAssetReposit
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import java.time.OffsetDateTime
 
 @Service
 class UploadAssetService(
@@ -44,6 +45,7 @@ class UploadAssetService(
             originalFilename = originalFilename,
             storedPath = storedAttachment.storedPath,
             byteSize = storedAttachment.byteSize,
+            detachedAt = OffsetDateTime.now(),
             mimeType = storedAttachment.mimeType,
             width = storedAttachment.width,
             height = storedAttachment.height,

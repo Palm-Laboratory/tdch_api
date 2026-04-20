@@ -23,6 +23,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.time.OffsetDateTime
 import java.util.Optional
 
 class BoardAdminServiceTest {
@@ -102,7 +103,7 @@ class BoardAdminServiceTest {
         val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
         whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
-        whenever(postRepository.findAllByBoardIdAndMenuIdOrderByCreatedAtDescIdDesc(10L, 1001L)).thenReturn(
+        whenever(postRepository.findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(10L, 1001L)).thenReturn(
             listOf(
                 Post(
                     id = 99L,
@@ -119,8 +120,8 @@ class BoardAdminServiceTest {
 
         assertThat(result).hasSize(1)
         assertThat(result[0].id).isEqualTo(99L)
-        verify(postRepository).findAllByBoardIdAndMenuIdOrderByCreatedAtDescIdDesc(10L, 1001L)
-        verify(postRepository, never()).findAllByBoardIdOrderByCreatedAtDescIdDesc(10L)
+        verify(postRepository).findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(10L, 1001L)
+        verify(postRepository, never()).findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(10L)
     }
 
     @Test
@@ -151,6 +152,7 @@ class BoardAdminServiceTest {
                 contentJson = """{"type":"doc","content":[]}""",
                 contentHtml = "<p>새 소식</p>",
                 isPublic = true,
+                isPinned = true,
                 assetIds = listOf(100L, 200L),
             ),
         )
@@ -163,6 +165,7 @@ class BoardAdminServiceTest {
         assertThat(savedPost.contentJson).isEqualTo("""{"type":"doc","content":[]}""")
         assertThat(savedPost.contentHtml).isEqualTo("<p>새 소식</p>")
         assertThat(savedPost.isPublic).isTrue()
+        assertThat(savedPost.isPinned).isTrue()
         assertThat(savedPost.authorId).isEqualTo(1L)
 
         val savedAssets = argumentCaptor<Iterable<PostAsset>>().apply {
@@ -494,6 +497,7 @@ class BoardAdminServiceTest {
                 contentJson = """{"type":"doc","content":[]}""",
                 contentHtml = "<p>수정 후</p>",
                 isPublic = false,
+                isPinned = true,
                 assetIds = emptyList(),
             ),
         )
@@ -503,6 +507,53 @@ class BoardAdminServiceTest {
         }.firstValue
         assertThat(savedPost.menuId).isEqualTo(1001L)
         assertThat(savedPost.title).isEqualTo("수정 후")
+        assertThat(savedPost.isPinned).isTrue()
+    }
+
+    @Test
+    fun `update post detaches previously attached assets missing from the save payload`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        val post = Post(
+            id = 99L,
+            boardId = 10L,
+            title = "수정 전",
+            contentJson = """{"type":"doc"}""",
+            authorId = 1L,
+        )
+        val removedAsset = uploadedAsset(id = 100L, actorId = 1L, postId = 99L)
+        val retainedAsset = uploadedAsset(id = 200L, actorId = 1L, postId = 99L).apply {
+            detachedAt = OffsetDateTime.parse("2026-04-19T00:00:00Z")
+        }
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postRepository.findById(99L)).thenReturn(Optional.of(post))
+        whenever(postRepository.save(any())).thenAnswer { it.arguments[0] }
+        whenever(postAssetRepository.findAllById(listOf(200L))).thenReturn(listOf(retainedAsset))
+        whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(removedAsset, retainedAsset))
+
+        service.updatePost(
+            actorId = 1L,
+            boardSlug = "notice",
+            postId = 99L,
+            command = BoardPostSaveCommand(
+                title = "수정 후",
+                contentJson = """{"type":"doc","content":[]}""",
+                contentHtml = "<p>수정 후</p>",
+                isPublic = true,
+                assetIds = listOf(200L),
+            ),
+        )
+
+        val savedAssets = argumentCaptor<Iterable<PostAsset>>().apply {
+            verify(postAssetRepository).saveAll(capture())
+        }.firstValue.toList()
+        assertThat(savedAssets.map { it.id }).containsExactly(100L, 200L)
+        assertThat(removedAsset.postId).isNull()
+        assertThat(removedAsset.detachedAt).isNotNull()
+        assertThat(removedAsset.sortOrder).isZero()
+        assertThat(retainedAsset.postId).isEqualTo(99L)
+        assertThat(retainedAsset.detachedAt).isNull()
+        assertThat(retainedAsset.sortOrder).isZero()
     }
 
     @Test

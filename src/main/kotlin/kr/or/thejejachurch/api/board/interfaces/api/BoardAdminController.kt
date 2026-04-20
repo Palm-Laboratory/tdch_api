@@ -144,6 +144,7 @@ data class BoardPostSaveRequest(
     val contentJson: String,
     val contentHtml: String? = null,
     val isPublic: Boolean = true,
+    val isPinned: Boolean = false,
     val assetIds: List<Long> = emptyList(),
 ) {
     fun toCommand(): BoardPostSaveCommand =
@@ -153,6 +154,7 @@ data class BoardPostSaveRequest(
             contentJson = contentJson,
             contentHtml = contentHtml,
             isPublic = isPublic,
+            isPinned = isPinned,
             assetIds = assetIds,
         )
 }
@@ -192,6 +194,7 @@ data class BoardAdminPostSummaryResponse(
     val menuId: Long = boardId,
     val title: String,
     val isPublic: Boolean,
+    val isPinned: Boolean,
     val authorId: Long,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
@@ -205,6 +208,7 @@ data class BoardAdminPostDetailResponse(
     val contentJson: String,
     val contentHtml: String?,
     val isPublic: Boolean,
+    val isPinned: Boolean,
     val authorId: Long,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
@@ -253,6 +257,7 @@ private fun BoardAdminPostSummary.toResponse(): BoardAdminPostSummaryResponse =
         menuId = menuId,
         title = title,
         isPublic = isPublic,
+        isPinned = isPinned,
         authorId = authorId,
         createdAt = createdAt,
         updatedAt = updatedAt,
@@ -267,6 +272,7 @@ private fun BoardAdminPostDetail.toResponse(): BoardAdminPostDetailResponse =
         contentJson = contentJson,
         contentHtml = contentHtml,
         isPublic = isPublic,
+        isPinned = isPinned,
         authorId = authorId,
         createdAt = createdAt,
         updatedAt = updatedAt,

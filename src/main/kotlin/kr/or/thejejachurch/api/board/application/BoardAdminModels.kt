@@ -10,6 +10,7 @@ data class BoardPostSaveCommand(
     val contentJson: String,
     val contentHtml: String? = null,
     val isPublic: Boolean = true,
+    val isPinned: Boolean = false,
     val assetIds: List<Long> = emptyList(),
 )
 
@@ -36,6 +37,7 @@ data class BoardAdminPostSummary(
     val menuId: Long = boardId,
     val title: String,
     val isPublic: Boolean,
+    val isPinned: Boolean,
     val authorId: Long,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
@@ -49,6 +51,7 @@ data class BoardAdminPostDetail(
     val contentJson: String,
     val contentHtml: String?,
     val isPublic: Boolean,
+    val isPinned: Boolean,
     val authorId: Long,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,

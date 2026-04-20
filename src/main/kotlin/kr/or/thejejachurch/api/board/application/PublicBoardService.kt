@@ -30,8 +30,8 @@ class PublicBoardService(
         val boardId = requireBoardId(board)
         val pageRequest = PageRequest.of(page, size)
         val posts = menuId
-            ?.let { postRepository.findAllByMenuIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(it, pageRequest) }
-            ?: postRepository.findAllByBoardIdAndIsPublicTrueOrderByCreatedAtDescIdDesc(boardId, pageRequest)
+            ?.let { postRepository.findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(it, pageRequest) }
+            ?: postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(boardId, pageRequest)
 
         return PublicBoardPostListResult(
             page = posts.number,
@@ -61,6 +61,7 @@ class PublicBoardService(
             title = post.title,
             contentJson = post.contentJson,
             contentHtml = post.contentHtml,
+            isPinned = post.isPinned,
             publishedAt = post.publishedAt,
             createdAt = post.createdAt,
             updatedAt = post.updatedAt,
@@ -98,6 +99,7 @@ class PublicBoardService(
             menuId = menuId,
             title = title,
             contentHtml = contentHtml,
+            isPinned = isPinned,
             publishedAt = publishedAt,
             createdAt = createdAt,
             updatedAt = updatedAt,

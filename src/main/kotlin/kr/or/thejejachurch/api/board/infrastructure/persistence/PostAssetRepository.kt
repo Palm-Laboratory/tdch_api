@@ -7,5 +7,5 @@ import java.time.OffsetDateTime
 interface PostAssetRepository : JpaRepository<PostAsset, Long> {
     fun findAllByPostIdOrderBySortOrderAscIdAsc(postId: Long): List<PostAsset>
 
-    fun findAllByPostIdIsNullAndCreatedAtBefore(cutoff: OffsetDateTime): List<PostAsset>
+    fun findAllByPostIdIsNullAndDetachedAtBefore(cutoff: OffsetDateTime): List<PostAsset>
 }

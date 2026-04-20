@@ -75,6 +75,7 @@ class UploadAssetServiceTest {
                         storedPath == storedAttachment.storedPath &&
                         mimeType == storedAttachment.mimeType &&
                         byteSize == storedAttachment.byteSize &&
+                        detachedAt != null &&
                         width == storedAttachment.width &&
                         height == storedAttachment.height
                 },
@@ -123,6 +124,7 @@ class UploadAssetServiceTest {
         assertThat(result.byteSize).isEqualTo(storedAttachment.byteSize)
         assertThat(result.width).isEqualTo(storedAttachment.width)
         assertThat(result.height).isEqualTo(storedAttachment.height)
+        assertThat(savedAsset.detachedAt).isNotNull()
     }
 
     @Test

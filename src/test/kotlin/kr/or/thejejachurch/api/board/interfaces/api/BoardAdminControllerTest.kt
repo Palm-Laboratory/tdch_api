@@ -64,6 +64,7 @@ class BoardAdminControllerTest {
                     boardId = 1L,
                     title = "주일 예배 안내",
                     isPublic = true,
+                    isPinned = true,
                     authorId = 42L,
                     createdAt = createdAt,
                     updatedAt = updatedAt,
@@ -80,6 +81,7 @@ class BoardAdminControllerTest {
         assertThat(response.posts).hasSize(1)
         assertThat(response.posts[0].id).isEqualTo(11L)
         assertThat(response.posts[0].title).isEqualTo("주일 예배 안내")
+        assertThat(response.posts[0].isPinned).isTrue()
         verify(boardAdminService).listPosts(42L, "notice")
     }
 
@@ -96,6 +98,7 @@ class BoardAdminControllerTest {
                 contentJson = """{"type":"doc","content":[]}""",
                 contentHtml = "<p>주일 예배 안내</p>",
                 isPublic = true,
+                isPinned = true,
                 authorId = 42L,
                 createdAt = createdAt,
                 updatedAt = updatedAt,
@@ -137,6 +140,7 @@ class BoardAdminControllerTest {
         assertThat(response.title).isEqualTo("주일 예배 안내")
         assertThat(response.contentJson).isEqualTo("""{"type":"doc","content":[]}""")
         assertThat(response.contentHtml).isEqualTo("<p>주일 예배 안내</p>")
+        assertThat(response.isPinned).isTrue()
         assertThat(response.assets).hasSize(2)
         assertThat(response.assets.map { it.id }).containsExactly(100L, 101L)
         assertThat(response.assets.map { it.kind }).containsExactly(
@@ -161,6 +165,7 @@ class BoardAdminControllerTest {
                 actorId = eq(42L),
                 boardSlug = eq("notice"),
                 command = org.mockito.kotlin.any(),
+                menuId = org.mockito.kotlin.isNull(),
             )
         ).thenReturn(BoardAdminPostSaveResult(id = 11L))
 
@@ -177,11 +182,13 @@ class BoardAdminControllerTest {
             actorId = eq(42L),
             boardSlug = eq("notice"),
             command = commandCaptor.capture(),
+            menuId = org.mockito.kotlin.isNull(),
         )
         assertThat(commandCaptor.firstValue.title).isEqualTo("주일 예배 안내")
         assertThat(commandCaptor.firstValue.contentJson).isEqualTo("""{"type":"doc","content":[]}""")
         assertThat(commandCaptor.firstValue.contentHtml).isEqualTo("<p>주일 예배 안내</p>")
         assertThat(commandCaptor.firstValue.isPublic).isFalse()
+        assertThat(commandCaptor.firstValue.isPinned).isTrue()
         assertThat(commandCaptor.firstValue.assetIds).containsExactly(100L, 101L)
     }
 
@@ -194,6 +201,7 @@ class BoardAdminControllerTest {
                 boardSlug = eq("notice"),
                 postId = eq(11L),
                 command = org.mockito.kotlin.any(),
+                menuId = org.mockito.kotlin.isNull(),
             )
         ).thenReturn(BoardAdminPostSaveResult(id = 11L))
 
@@ -212,11 +220,13 @@ class BoardAdminControllerTest {
             boardSlug = eq("notice"),
             postId = eq(11L),
             command = commandCaptor.capture(),
+            menuId = org.mockito.kotlin.isNull(),
         )
         assertThat(commandCaptor.firstValue.title).isEqualTo("주일 예배 안내")
         assertThat(commandCaptor.firstValue.contentJson).isEqualTo("""{"type":"doc","content":[]}""")
         assertThat(commandCaptor.firstValue.contentHtml).isEqualTo("<p>주일 예배 안내</p>")
         assertThat(commandCaptor.firstValue.isPublic).isFalse()
+        assertThat(commandCaptor.firstValue.isPinned).isTrue()
         assertThat(commandCaptor.firstValue.assetIds).containsExactly(100L, 101L)
     }
 
@@ -274,6 +284,7 @@ class BoardAdminControllerTest {
             contentJson = """{"type":"doc","content":[]}""",
             contentHtml = "<p>주일 예배 안내</p>",
             isPublic = false,
+            isPinned = true,
             assetIds = listOf(100L, 101L),
         )
 }

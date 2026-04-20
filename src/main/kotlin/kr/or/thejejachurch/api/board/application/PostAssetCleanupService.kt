@@ -15,7 +15,7 @@ class PostAssetCleanupService(
     @Transactional
     fun cleanupStaleTemporaryAssets(): Long {
         val cutoff = OffsetDateTime.now(clock).minusHours(72)
-        val staleAssets = postAssetRepository.findAllByPostIdIsNullAndCreatedAtBefore(cutoff)
+        val staleAssets = postAssetRepository.findAllByPostIdIsNullAndDetachedAtBefore(cutoff)
 
         if (staleAssets.isEmpty()) {
             return 0L

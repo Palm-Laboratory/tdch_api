@@ -34,6 +34,7 @@ class PublicBoardControllerTest {
                         boardId = 1L,
                         title = "주일 예배 안내",
                         contentHtml = "<p>주일 예배 안내</p>",
+                        isPinned = true,
                         publishedAt = createdAt,
                         createdAt = createdAt,
                         updatedAt = updatedAt,
@@ -43,6 +44,7 @@ class PublicBoardControllerTest {
                         boardId = 1L,
                         title = "수요 예배 안내",
                         contentHtml = null,
+                        isPinned = false,
                         publishedAt = null,
                         createdAt = createdAt.plusDays(1),
                         updatedAt = updatedAt.plusDays(1),
@@ -66,6 +68,7 @@ class PublicBoardControllerTest {
         assertThat(response.posts.map { it.boardId }).containsExactly(1L, 1L)
         assertThat(response.posts.map { it.title }).containsExactly("주일 예배 안내", "수요 예배 안내")
         assertThat(response.posts.map { it.contentHtml }).containsExactly("<p>주일 예배 안내</p>", null)
+        assertThat(response.posts.map { it.isPinned }).containsExactly(true, false)
         assertThat(response.posts.map { it.publishedAt }).containsExactly(createdAt, null)
         assertThat(response.posts.map { it.createdAt }).containsExactly(createdAt, createdAt.plusDays(1))
         assertThat(response.posts.map { it.updatedAt }).containsExactly(updatedAt, updatedAt.plusDays(1))
@@ -84,6 +87,7 @@ class PublicBoardControllerTest {
                 title = "주일 예배 안내",
                 contentJson = """{"type":"doc","content":[]}""",
                 contentHtml = "<p>주일 예배 안내</p>",
+                isPinned = true,
                 publishedAt = createdAt,
                 createdAt = createdAt,
                 updatedAt = updatedAt,
@@ -126,6 +130,7 @@ class PublicBoardControllerTest {
         assertThat(response.title).isEqualTo("주일 예배 안내")
         assertThat(response.contentJson).isEqualTo("""{"type":"doc","content":[]}""")
         assertThat(response.contentHtml).isEqualTo("<p>주일 예배 안내</p>")
+        assertThat(response.isPinned).isTrue()
         assertThat(response.publishedAt).isEqualTo(createdAt)
         assertThat(response.createdAt).isEqualTo(createdAt)
         assertThat(response.updatedAt).isEqualTo(updatedAt)

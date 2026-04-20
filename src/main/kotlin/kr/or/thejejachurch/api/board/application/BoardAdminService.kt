@@ -15,6 +15,8 @@ import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepositor
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.OffsetDateTime
 
 @Service
 class BoardAdminService(
@@ -25,6 +27,7 @@ class BoardAdminService(
     private val menuItemRepository: MenuItemRepository? = null,
     private val boardTypeRepository: BoardTypeRepository? = null,
     private val contentValidator: TiptapContentValidator = TiptapContentValidator(postAssetRepository),
+    private val clock: Clock = Clock.systemUTC(),
 ) {
 
     @Transactional(readOnly = true)
@@ -67,9 +70,9 @@ class BoardAdminService(
         val posts = menuId
             ?.let { scopedMenuId ->
                 requireBoardMenu(boardSlug = board.slug, menuId = scopedMenuId)
-                postRepository.findAllByBoardIdAndMenuIdOrderByCreatedAtDescIdDesc(boardId, scopedMenuId)
+                postRepository.findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(boardId, scopedMenuId)
             }
-            ?: postRepository.findAllByBoardIdOrderByCreatedAtDescIdDesc(boardId)
+            ?: postRepository.findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(boardId)
 
         return posts.map { post ->
             BoardAdminPostSummary(
@@ -78,6 +81,7 @@ class BoardAdminService(
                 menuId = post.menuId,
                 title = post.title,
                 isPublic = post.isPublic,
+                isPinned = post.isPinned,
                 authorId = post.authorId,
                 createdAt = post.createdAt,
                 updatedAt = post.updatedAt,
@@ -100,6 +104,7 @@ class BoardAdminService(
             contentJson = post.contentJson,
             contentHtml = post.contentHtml,
             isPublic = post.isPublic,
+            isPinned = post.isPinned,
             authorId = post.authorId,
             createdAt = post.createdAt,
             updatedAt = post.updatedAt,
@@ -150,6 +155,7 @@ class BoardAdminService(
                 contentJson = command.contentJson,
                 contentHtml = command.contentHtml,
                 isPublic = command.isPublic,
+                isPinned = command.isPinned,
                 authorId = actorId,
             )
         )
@@ -190,10 +196,11 @@ class BoardAdminService(
         post.contentJson = command.contentJson
         post.contentHtml = command.contentHtml
         post.isPublic = command.isPublic
+        post.isPinned = command.isPinned
         val saved = postRepository.save(post)
         val resultId = saved.id ?: savedPostId
 
-        attachAssets(assets, assetIds, resultId)
+        syncAssets(assets, assetIds, resultId)
 
         return BoardAdminPostSaveResult(id = resultId)
     }
@@ -313,9 +320,37 @@ class BoardAdminService(
         val attachedAssets = assetIds.mapIndexed { index, assetId ->
             assetsById.getValue(assetId).apply {
                 this.postId = postId
+                this.detachedAt = null
                 this.sortOrder = index
             }
         }
         postAssetRepository.saveAll(attachedAssets)
+    }
+
+    private fun syncAssets(assetsById: Map<Long, PostAsset>, assetIds: List<Long>, postId: Long) {
+        val selectedAssetIds = assetIds.toSet()
+        val detachedAt = OffsetDateTime.now(clock)
+        val detachedAssets = postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(postId)
+            .filter { asset -> asset.id !in selectedAssetIds }
+            .map { asset ->
+                asset.apply {
+                    this.postId = null
+                    this.detachedAt = detachedAt
+                    this.sortOrder = 0
+                }
+            }
+
+        val attachedAssets = assetIds.mapIndexed { index, assetId ->
+            assetsById.getValue(assetId).apply {
+                this.postId = postId
+                this.detachedAt = null
+                this.sortOrder = index
+            }
+        }
+
+        val changedAssets = detachedAssets + attachedAssets
+        if (changedAssets.isNotEmpty()) {
+            postAssetRepository.saveAll(changedAssets)
+        }
     }
 }

@@ -33,6 +33,8 @@ class Post(
     var publishedAt: OffsetDateTime? = null,
     @Column(name = "is_public", nullable = false)
     var isPublic: Boolean = true,
+    @Column(name = "is_pinned", nullable = false)
+    var isPinned: Boolean = false,
     @Column(name = "created_at", nullable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now(),
     @Column(name = "updated_at", nullable = false)
