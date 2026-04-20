@@ -1,0 +1,125 @@
+package kr.or.thejejachurch.api.board.interfaces.api
+
+import kr.or.thejejachurch.api.board.application.PublicBoardPostAsset
+import kr.or.thejejachurch.api.board.application.PublicBoardPostDetail
+import kr.or.thejejachurch.api.board.application.PublicBoardPostListResult
+import kr.or.thejejachurch.api.board.application.PublicBoardPostSummary
+import kr.or.thejejachurch.api.board.application.PublicBoardService
+import kr.or.thejejachurch.api.board.domain.PostAssetKind
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
+
+@RestController
+@RequestMapping("/api/v1/public/boards")
+class PublicBoardController(
+    private val publicBoardService: PublicBoardService,
+) {
+    @GetMapping("/{slug}/posts")
+    fun listPosts(
+        @PathVariable slug: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): PublicBoardListPostsResponse =
+        publicBoardService.listPosts(slug, page, size).toResponse()
+
+    @GetMapping("/{slug}/posts/{postId}")
+    fun getPost(
+        @PathVariable slug: String,
+        @PathVariable postId: Long,
+    ): PublicBoardPostDetailResponse =
+        publicBoardService.getPost(slug, postId).toResponse()
+}
+
+data class PublicBoardListPostsResponse(
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val hasNext: Boolean,
+    val posts: List<PublicBoardPostSummaryResponse>,
+)
+
+data class PublicBoardPostSummaryResponse(
+    val id: Long?,
+    val boardId: Long,
+    val title: String,
+    val contentHtml: String?,
+    val publishedAt: OffsetDateTime?,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+)
+
+data class PublicBoardPostDetailResponse(
+    val id: Long?,
+    val boardId: Long,
+    val title: String,
+    val contentJson: String,
+    val contentHtml: String?,
+    val publishedAt: OffsetDateTime?,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
+    val assets: List<PublicBoardPostAssetResponse>,
+)
+
+data class PublicBoardPostAssetResponse(
+    val id: Long?,
+    val kind: PostAssetKind,
+    val originalFilename: String,
+    val storedPath: String,
+    val publicUrl: String,
+    val mimeType: String?,
+    val byteSize: Long,
+    val width: Int?,
+    val height: Int?,
+    val sortOrder: Int,
+)
+
+private fun PublicBoardPostListResult.toResponse(): PublicBoardListPostsResponse =
+    PublicBoardListPostsResponse(
+        page = page,
+        size = size,
+        totalElements = totalElements,
+        hasNext = hasNext,
+        posts = posts.map { it.toResponse() },
+    )
+
+private fun PublicBoardPostSummary.toResponse(): PublicBoardPostSummaryResponse =
+    PublicBoardPostSummaryResponse(
+        id = id,
+        boardId = boardId,
+        title = title,
+        contentHtml = contentHtml,
+        publishedAt = publishedAt,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+
+private fun PublicBoardPostDetail.toResponse(): PublicBoardPostDetailResponse =
+    PublicBoardPostDetailResponse(
+        id = id,
+        boardId = boardId,
+        title = title,
+        contentJson = contentJson,
+        contentHtml = contentHtml,
+        publishedAt = publishedAt,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        assets = assets.map { it.toResponse() },
+    )
+
+private fun PublicBoardPostAsset.toResponse(): PublicBoardPostAssetResponse =
+    PublicBoardPostAssetResponse(
+        id = id,
+        kind = kind,
+        originalFilename = originalFilename,
+        storedPath = storedPath,
+        publicUrl = publicUrl,
+        mimeType = mimeType,
+        byteSize = byteSize,
+        width = width,
+        height = height,
+        sortOrder = sortOrder,
+    )
