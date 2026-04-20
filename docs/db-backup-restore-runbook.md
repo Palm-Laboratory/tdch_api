@@ -29,6 +29,20 @@ The script writes gzipped custom-format dumps named like `db-20260420-030000.dum
 
 Set `BACKUP_DB_VIA_DOCKER=false` to use a host-installed `pg_dump` instead. In that mode the same `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, and `PGPASSWORD` environment variables are used.
 
+## Production Deployment Checklist
+
+Confirm these items during the final production deployment before enabling cron:
+
+- Confirm `OCI_DEPLOY_PATH` matches the actual deployment directory, normally `/opt/tdch`.
+- Decide whether `deploy/scripts/*.sh` will be copied manually or uploaded by GitHub Actions.
+- If using manual placement, copy scripts to `/opt/tdch/scripts` and run `chmod 755 /opt/tdch/scripts/*.sh`.
+- If using GitHub Actions placement, add an upload step for `deploy/scripts/*.sh` to `${OCI_DEPLOY_PATH}/scripts/`.
+- Confirm `/opt/tdch/docker-compose.prod.yml` exists and the database service name is `db`.
+- Confirm `/opt/tdch/.env` has `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` values matching the running database.
+- Run `/opt/tdch/scripts/backup-db.sh` once manually and verify a `.dump.gz` file is created in `/opt/tdch/backups`.
+- Run `/opt/tdch/scripts/check-disk.sh` once manually and verify it checks `/opt/tdch/uploads`.
+- Register cron only after the manual backup and disk check commands pass.
+
 ## Restore
 
 Restore into an empty database or a database prepared for replacement.
