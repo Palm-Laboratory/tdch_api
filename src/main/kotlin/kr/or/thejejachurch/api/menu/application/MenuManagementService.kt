@@ -71,6 +71,7 @@ class MenuManagementService(
             .filter { it.parentId == null || it.parentId !in removedIds }
             .mapNotNull { it.id }
         if (rootRemovedIds.isNotEmpty()) {
+            deleteBoardsScopedToMenus(removedIds)
             menuItemRepository.deleteAllByIdInBatch(rootRemovedIds)
         }
 
@@ -100,10 +101,40 @@ class MenuManagementService(
             throw IllegalArgumentException("자동 생성 메뉴는 수동 삭제할 수 없습니다.")
         }
 
+        val items = menuItemRepository.findAllByOrderBySortOrderAscIdAsc()
+        deleteBoardsScopedToMenus(collectMenuSubtreeIds(menuId, items))
         menuItemRepository.delete(menu)
 
         val remaining = menuItemRepository.findAllByOrderBySortOrderAscIdAsc()
         recomputePaths(remaining)
+    }
+
+    private fun collectMenuSubtreeIds(rootId: Long, items: List<MenuItem>): Set<Long> {
+        val ids = linkedSetOf<Long>()
+        val childrenByParent = items.groupBy { it.parentId }
+
+        fun visit(menuId: Long) {
+            if (!ids.add(menuId)) {
+                return
+            }
+            childrenByParent[menuId].orEmpty().forEach { child ->
+                child.id?.let(::visit)
+            }
+        }
+
+        visit(rootId)
+        return ids
+    }
+
+    private fun deleteBoardsScopedToMenus(menuIds: Set<Long>) {
+        if (menuIds.isEmpty()) {
+            return
+        }
+
+        val boards = boardRepository.findAllByMenuIdIn(menuIds)
+        if (boards.isNotEmpty()) {
+            boardRepository.deleteAll(boards)
+        }
     }
 
     private fun validateInputTree(nodes: List<MenuTreeNodeInput>) {
@@ -218,9 +249,6 @@ class MenuManagementService(
                 }
 
                 MenuType.BOARD -> {
-                    if (node.boardTypeId == null && item.boardKey.isNullOrBlank()) {
-                        throw IllegalArgumentException("게시판 메뉴는 게시판 타입이 필요합니다.")
-                    }
                     item.boardKey = node.boardKey?.trim()?.takeIf { it.isNotBlank() } ?: item.boardKey
                     item.staticPageKey = null
                     item.externalUrl = null

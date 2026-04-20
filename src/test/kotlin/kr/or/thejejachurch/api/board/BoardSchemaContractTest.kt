@@ -169,6 +169,40 @@ class BoardSchemaContractTest {
     }
 
     @Test
+    fun `V15 migration should repair board menus whose board row is missing`() {
+        val migration = Path.of("src/main/resources/db/migration/V15__repair_missing_menu_scoped_boards.sql")
+
+        assertThat(migration).exists()
+
+        val content = Files.readString(migration)
+        val normalized = content.lowercase()
+
+        assertThat(normalized).contains("missing_board_menu")
+        assertThat(normalized).contains("menu_item.type = 'board'")
+        assertThat(normalized).contains("board_by_menu.menu_id = menu_item.id")
+        assertThat(normalized).contains("board_by_key.slug = menu_item.board_key")
+        assertThat(normalized).contains("insert into board")
+        assertThat(normalized).contains("where key = 'general'")
+        assertThat(normalized).contains("menu_id")
+        assertThat(normalized).contains("board_type_id")
+        assertThat(normalized).contains("update menu_item")
+        assertThat(normalized).contains("set board_key = board.slug")
+        assertThat(normalized).contains("update post")
+        assertThat(normalized).contains("post.menu_id = board.menu_id")
+    }
+
+    @Test
+    fun `board repository should support deleting boards by menu ids before menu deletion`() {
+        val repository = Path.of("src/main/kotlin/kr/or/thejejachurch/api/board/infrastructure/persistence/BoardRepository.kt")
+
+        assertThat(repository).exists()
+
+        val normalized = Files.readString(repository).lowercase()
+
+        assertThat(normalized).contains("findallbymenuidin")
+    }
+
+    @Test
     fun `board post post asset and upload token entities should expose the BUP-002 field names`() {
         val expectedFiles = listOf(
             "src/main/kotlin/kr/or/thejejachurch/api/board/domain/Board.kt",

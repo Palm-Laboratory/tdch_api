@@ -1,0 +1,113 @@
+package kr.or.thejejachurch.api.menu.application
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import kr.or.thejejachurch.api.adminaccount.domain.AdminAccount
+import kr.or.thejejachurch.api.adminaccount.domain.AdminAccountRole
+import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAccountRepository
+import kr.or.thejejachurch.api.board.domain.Board
+import kr.or.thejejachurch.api.board.domain.BoardType
+import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
+import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardTypeRepository
+import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
+import kr.or.thejejachurch.api.menu.domain.MenuItem
+import kr.or.thejejachurch.api.menu.domain.MenuType
+import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
+import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuRevisionRepository
+import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Optional
+
+class MenuManagementServiceContractTest {
+
+    @Test
+    fun `BOARD menu creation should not require admins to choose a board type`() {
+        val service = Path.of("src/main/kotlin/kr/or/thejejachurch/api/menu/application/MenuManagementService.kt")
+
+        assertThat(service).exists()
+
+        val normalized = Files.readString(service).lowercase()
+
+        assertThat(normalized).doesNotContain("게시판 메뉴는 게시판 타입이 필요합니다")
+        assertThat(normalized).contains("ensuremenuscopedboard(saved, node.boardtypeid)")
+        assertThat(normalized).contains("boardtyperepository.findbykey(boardtype.general.name)")
+    }
+
+    @Test
+    fun `deleting a menu removes menu scoped boards in the deleted subtree first`() {
+        val menuItemRepository = mock<MenuItemRepository>()
+        val menuRevisionRepository = mock<MenuRevisionRepository>()
+        val adminAccountRepository = mock<AdminAccountRepository>()
+        val boardRepository = mock<BoardRepository>()
+        val boardTypeRepository = mock<BoardTypeRepository>()
+        val postRepository = mock<PostRepository>()
+        val youTubePlaylistRepository = mock<YouTubePlaylistRepository>()
+        val service = MenuManagementService(
+            menuItemRepository = menuItemRepository,
+            menuRevisionRepository = menuRevisionRepository,
+            adminAccountRepository = adminAccountRepository,
+            boardRepository = boardRepository,
+            boardTypeRepository = boardTypeRepository,
+            postRepository = postRepository,
+            youTubePlaylistRepository = youTubePlaylistRepository,
+            objectMapper = ObjectMapper(),
+        )
+        val root = MenuItem(id = 10L, type = MenuType.FOLDER, label = "소식", slug = "news")
+        val boardMenu = MenuItem(
+            id = 11L,
+            parentId = 10L,
+            type = MenuType.BOARD,
+            label = "행사",
+            slug = "event",
+            boardKey = "news-event",
+        )
+        val board = Board(
+            id = 99L,
+            slug = "news-event",
+            title = "행사",
+            type = BoardType.GENERAL,
+            menuId = 11L,
+        )
+
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin()))
+        whenever(menuItemRepository.findById(10L)).thenReturn(Optional.of(root))
+        whenever(menuItemRepository.findAllByOrderBySortOrderAscIdAsc())
+            .thenReturn(listOf(root, boardMenu), emptyList())
+        whenever(boardRepository.findAllByMenuIdIn(setOf(10L, 11L))).thenReturn(listOf(board))
+
+        service.deleteMenuItem(actorId = 1L, menuId = 10L)
+
+        val order = inOrder(boardRepository, menuItemRepository)
+        order.verify(boardRepository).deleteAll(listOf(board))
+        order.verify(menuItemRepository).delete(root)
+    }
+
+    @Test
+    fun `V16 migration should delete orphan menu scoped boards`() {
+        val migration = Path.of("src/main/resources/db/migration/V16__delete_orphan_menu_scoped_boards.sql")
+
+        assertThat(migration).exists()
+
+        val normalized = Files.readString(migration).lowercase()
+
+        assertThat(normalized).contains("delete from board")
+        assertThat(normalized).contains("not exists")
+        assertThat(normalized).contains("menu_item.id = board.menu_id")
+        assertThat(normalized).contains("menu_item.type = 'board'")
+        assertThat(normalized).contains("menu_item.board_key = board.slug")
+    }
+
+    private fun activeAdmin() = AdminAccount(
+        id = 1L,
+        username = "admin",
+        displayName = "관리자",
+        passwordHash = "hash",
+        role = AdminAccountRole.ADMIN,
+        active = true,
+    )
+}
