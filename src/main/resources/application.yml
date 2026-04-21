@@ -34,7 +34,7 @@ cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:https://tdch.co.kr,https://www.tdch.co.kr}
 
 tdch.uploads.root-path: ${TDCH_UPLOAD_ROOT:/opt/tdch/uploads}
-tdch.uploads.public-base-url: ${TDCH_UPLOAD_PUBLIC_BASE_URL:https://api.tdch.co.kr/media}
+tdch.uploads.public-base-url: ${TDCH_UPLOAD_PUBLIC_BASE_URL:https://api.tdch.co.kr/upload}
 
 youtube:
   api-key: ${YOUTUBE_API_KEY:}

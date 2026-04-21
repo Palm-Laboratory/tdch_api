@@ -41,7 +41,7 @@ class TiptapContentValidatorTest {
                     {
                       "type": "image",
                       "attrs": {
-                        "src": "/media/uploads/asset-100.png#tdchAssetId=100&tdchStoredPath=uploads%2Fasset-100.png"
+                        "src": "/upload/uploads/asset-100.png#tdchAssetId=100&tdchStoredPath=uploads%2Fasset-100.png"
                       }
                     }
                   ]

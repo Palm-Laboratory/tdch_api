@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
 
-class OpsMediaServingConfigContractTest {
+class OpsUploadServingConfigContractTest {
 
     @Test
     fun `production compose should expose upload settings and bind mount to app service`() {
@@ -22,47 +22,46 @@ class OpsMediaServingConfigContractTest {
         val content = Files.readString(Path.of(".env.production.example"))
 
         assertThat(content).contains("TDCH_UPLOAD_ROOT=/opt/tdch/uploads")
-        assertThat(content).contains("TDCH_UPLOAD_PUBLIC_BASE_URL=https://api.tdch.co.kr/media")
+        assertThat(content).contains("TDCH_UPLOAD_PUBLIC_BASE_URL=https://api.tdch.co.kr/upload")
     }
 
     @Test
-    fun `nginx http context file should only define shared media rate limit and allowlist variables`() {
+    fun `nginx http context file should only define shared upload rate limit and allowlist variables`() {
         val content = readNginxFile("api.tdch.co.kr.http.conf")
 
         assertThat(content).doesNotContainPattern("""(?m)^\s*server\s*\{""")
-        assertThat(content).doesNotContainPattern("""(?m)^\s*location\s+/media/?\s*\{""")
+        assertThat(content).doesNotContainPattern("""(?m)^\s*location\s+/upload/?\s*\{""")
         assertThat(content).containsPattern("""(?m)^\s*limit_req_zone\s+""")
         assertThat(content).containsPattern(
-            """(?m)^\s*map\s+\${'$'}http_referer\s+\$[A-Za-z0-9_]*media[A-Za-z0-9_]*\s*\{""",
+            """(?m)^\s*map\s+\${'$'}http_referer\s+\$[A-Za-z0-9_]*upload[A-Za-z0-9_]*\s*\{""",
         )
         assertThat(content).containsPattern(
-            """(?m)^\s*map\s+\${'$'}http_origin\s+\$[A-Za-z0-9_]*media[A-Za-z0-9_]*\s*\{""",
+            """(?m)^\s*map\s+\${'$'}http_origin\s+\$[A-Za-z0-9_]*upload[A-Za-z0-9_]*\s*\{""",
         )
     }
 
     @Test
-    fun `nginx server context should serve media with upload limits and request guards`() {
+    fun `nginx server context should serve upload assets with limits and request guards`() {
         val content = readNginxFile("api.tdch.co.kr.conf")
-        val mediaLocation = locationBlock(content, "/media/")
+        val uploadLocation = locationBlock(content, "/upload/")
 
         assertThat(content).containsPattern("""(?m)^\s*client_max_body_size\s+12m\s*;""")
         assertThat(content).containsPattern("""(?m)^\s*include\s+(?:/etc/nginx/)?mime\.types\s*;""")
         assertThat(content).containsPattern("""(?m)^\s*default_type\s+application/octet-stream\s*;""")
-
-        assertThat(mediaLocation).containsPattern("""(?m)^\s*alias\s+/opt/tdch/uploads/\s*;""")
-        assertThat(mediaLocation).containsPattern("""(?m)^\s*limit_req\s+""")
-        assertThat(mediaLocation).containsPattern("""(?m)^\s*try_files\s+""")
-        assertThat(mediaLocation).containsPattern("""(?m)^\s*if\s+\(\s*\$[A-Za-z0-9_]*media[A-Za-z0-9_]*\s*=\s*0\s*\)\s*\{""")
-        assertThat(mediaLocation).contains("\$http_referer")
-        assertThat(mediaLocation).contains("\$http_origin")
+        assertThat(uploadLocation).containsPattern("""(?m)^\s*alias\s+/opt/tdch/uploads/\s*;""")
+        assertThat(uploadLocation).containsPattern("""(?m)^\s*limit_req\s+""")
+        assertThat(uploadLocation).containsPattern("""(?m)^\s*try_files\s+""")
+        assertThat(uploadLocation).containsPattern("""(?m)^\s*if\s+\(\s*\$[A-Za-z0-9_]*upload[A-Za-z0-9_]*\s*=\s*0\s*\)\s*\{""")
+        assertThat(uploadLocation).contains("\$http_referer")
+        assertThat(uploadLocation).contains("\$http_origin")
     }
 
     @Test
-    fun `media location should live only in nginx server context file`() {
+    fun `upload location should live only in nginx server context file`() {
         assertThat(readNginxFile("api.tdch.co.kr.http.conf"))
-            .doesNotContainPattern("""(?m)^\s*location\s+/media/?\s*\{""")
+            .doesNotContainPattern("""(?m)^\s*location\s+/upload/?\s*\{""")
         assertThat(readNginxFile("api.tdch.co.kr.conf"))
-            .containsPattern("""(?m)^\s*location\s+/media/?\s*\{""")
+            .containsPattern("""(?m)^\s*location\s+/upload/?\s*\{""")
     }
 
     private fun readDeployFile(fileName: String): String = Files.readString(Path.of("deploy", fileName))

@@ -8,7 +8,7 @@ import java.nio.file.Path
 
 @Configuration
 @Profile("local")
-class LocalMediaResourceConfig(
+class LocalUploadResourceConfig(
     private val uploadProperties: UploadProperties,
 ) : WebMvcConfigurer {
 
@@ -20,7 +20,7 @@ class LocalMediaResourceConfig(
             .toString()
             .let { uri -> if (uri.endsWith("/")) uri else "$uri/" }
 
-        registry.addResourceHandler("/media/**")
+        registry.addResourceHandler("/upload/**")
             .addResourceLocations(rootUri)
             .setCachePeriod(0)
     }

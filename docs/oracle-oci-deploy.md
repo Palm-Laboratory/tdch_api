@@ -189,7 +189,7 @@ GHCR owner가 바뀌는 대표 상황:
 
 - `<api-domain>` DNS가 운영 VM을 가리킴
 - `https://<api-domain>/api/v1/health` 응답 정상
-- `https://<api-domain>/api/v1/media/home` 응답 정상
+- `https://<api-domain>/api/v1/public/menu` 응답 정상
 - `https://<api-domain>/api/v1/navigation` 응답 정상
 - `tdch_web`의 API base URL이 `https://<api-domain>`을 가리킴
 - 운영 VM의 `<deploy-path>/.env`와 GitHub Actions secrets가 서로 일관됨

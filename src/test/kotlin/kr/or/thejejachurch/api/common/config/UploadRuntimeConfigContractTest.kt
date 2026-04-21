@@ -22,7 +22,7 @@ class UploadRuntimeConfigContractTest {
         assertThat(content).contains("file-size-threshold: 2MB")
         assertThat(content).contains("tdch.uploads.root-path: \${TDCH_UPLOAD_ROOT:/opt/tdch/uploads}")
         assertThat(content).contains(
-            "tdch.uploads.public-base-url: \${TDCH_UPLOAD_PUBLIC_BASE_URL:https://api.tdch.co.kr/media}",
+            "tdch.uploads.public-base-url: \${TDCH_UPLOAD_PUBLIC_BASE_URL:https://api.tdch.co.kr/upload}",
         )
         assertThat(content).contains("https://tdch.co.kr")
         assertThat(content).contains("https://www.tdch.co.kr")
@@ -31,7 +31,7 @@ class UploadRuntimeConfigContractTest {
         assertThat(localContent).contains("http://localhost:3000")
         assertThat(localContent).contains("http://127.0.0.1:3000")
         assertThat(localContent).contains("root-path: \${TDCH_UPLOAD_ROOT:\${user.dir}/.local/uploads}")
-        assertThat(localContent).contains("public-base-url: \${TDCH_UPLOAD_PUBLIC_BASE_URL:http://localhost:8080/media}")
+        assertThat(localContent).contains("public-base-url: \${TDCH_UPLOAD_PUBLIC_BASE_URL:http://localhost:8080/upload}")
     }
 
     @Test
@@ -67,13 +67,13 @@ class UploadRuntimeConfigContractTest {
     }
 
     @Test
-    fun `local media resource config should serve uploaded files only for local profile`() {
-        val localMediaResourceConfig = readMainSource("LocalMediaResourceConfig.kt")
+    fun `local upload resource config should serve uploaded files only for local profile`() {
+        val localUploadResourceConfig = readMainSource("LocalUploadResourceConfig.kt")
 
-        assertThat(localMediaResourceConfig).contains("@Profile(\"local\")")
-        assertThat(localMediaResourceConfig).contains("Path.of(uploadProperties.rootPath)")
-        assertThat(localMediaResourceConfig).contains("addResourceHandler(\"/media/**\")")
-        assertThat(localMediaResourceConfig).contains("addResourceLocations(rootUri)")
+        assertThat(localUploadResourceConfig).contains("@Profile(\"local\")")
+        assertThat(localUploadResourceConfig).contains("Path.of(uploadProperties.rootPath)")
+        assertThat(localUploadResourceConfig).contains("addResourceHandler(\"/upload/**\")")
+        assertThat(localUploadResourceConfig).contains("addResourceLocations(rootUri)")
     }
 
     @Test

@@ -200,7 +200,7 @@ class PublicBoardServiceTest {
         ).thenReturn(true)
         whenever(postRepository.findByBoardIdAndIdAndIsPublicTrue(board.id!!, 99L)).thenReturn(post)
         whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(image))
-        whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/media")
+        whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/upload")
 
         val result = service.getPost(boardSlug = "notice", postId = 99L)
 
@@ -213,7 +213,7 @@ class PublicBoardServiceTest {
         assertThat(result.assets[0].kind).isEqualTo(PostAssetKind.INLINE_IMAGE)
         assertThat(result.assets[0].storedPath).isEqualTo("uploads/2026/notice/image.png")
         assertThat(result.assets[0].publicUrl).isEqualTo(
-            "https://cdn.example.com/media/uploads/2026/notice/image.png"
+            "https://cdn.example.com/upload/uploads/2026/notice/image.png"
         )
     }
 
@@ -262,13 +262,13 @@ class PublicBoardServiceTest {
         ).thenReturn(true)
         whenever(postRepository.findByBoardIdAndIdAndIsPublicTrue(board.id!!, 99L)).thenReturn(post)
         whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(attachment))
-        whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/media/")
+        whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/upload/")
 
         val result = service.getPost(boardSlug = "notice", postId = 99L)
 
         assertThat(result.assets[0].storedPath).isEqualTo("uploads/2026/notice/bulletin.pdf")
         assertThat(result.assets[0].publicUrl).isEqualTo(
-            "https://cdn.example.com/media/uploads/2026/notice/bulletin.pdf"
+            "https://cdn.example.com/upload/uploads/2026/notice/bulletin.pdf"
         )
     }
 
