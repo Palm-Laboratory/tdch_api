@@ -23,14 +23,6 @@ data class BoardAdminBoardSummary(
     val description: String? = null,
 )
 
-data class BoardAdminBoardTypeSummary(
-    val id: Long,
-    val key: String,
-    val label: String,
-    val description: String?,
-    val sortOrder: Int,
-)
-
 data class BoardAdminPostSummary(
     val id: Long?,
     val boardId: Long,

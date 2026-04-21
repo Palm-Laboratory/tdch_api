@@ -1,7 +1,6 @@
 package kr.or.thejejachurch.api.board.interfaces.api
 
 import kr.or.thejejachurch.api.board.application.BoardAdminBoardSummary
-import kr.or.thejejachurch.api.board.application.BoardAdminBoardTypeSummary
 import kr.or.thejejachurch.api.board.application.BoardAdminPostDetail
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSaveResult
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSummary
@@ -38,18 +37,6 @@ class BoardAdminController(
 
         return BoardAdminListBoardsResponse(
             boards = boardAdminService.listBoards(actorId).map { it.toResponse() },
-        )
-    }
-
-    @GetMapping("/types")
-    fun listBoardTypes(
-        @RequestHeader("X-Admin-Key", required = false) adminKey: String?,
-        @RequestHeader("X-Admin-Actor-Id") actorId: Long,
-    ): BoardAdminListBoardTypesResponse {
-        validateAdminKey(adminKey)
-
-        return BoardAdminListBoardTypesResponse(
-            types = boardAdminService.listBoardTypes(actorId).map { it.toResponse() },
         )
     }
 
@@ -172,18 +159,6 @@ data class BoardAdminBoardResponse(
     val description: String?,
 )
 
-data class BoardAdminListBoardTypesResponse(
-    val types: List<BoardAdminBoardTypeResponse>,
-)
-
-data class BoardAdminBoardTypeResponse(
-    val id: Long,
-    val key: String,
-    val label: String,
-    val description: String?,
-    val sortOrder: Int,
-)
-
 data class BoardAdminListPostsResponse(
     val posts: List<BoardAdminPostSummaryResponse>,
 )
@@ -239,15 +214,6 @@ private fun BoardAdminBoardSummary.toResponse(): BoardAdminBoardResponse =
         type = type,
         boardTypeId = boardTypeId,
         description = description,
-    )
-
-private fun BoardAdminBoardTypeSummary.toResponse(): BoardAdminBoardTypeResponse =
-    BoardAdminBoardTypeResponse(
-        id = id,
-        key = key,
-        label = label,
-        description = description,
-        sortOrder = sortOrder,
     )
 
 private fun BoardAdminPostSummary.toResponse(): BoardAdminPostSummaryResponse =

@@ -5,7 +5,6 @@ import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.Post
 import kr.or.thejejachurch.api.board.domain.PostAsset
 import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
-import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardTypeRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostAssetRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
 import kr.or.thejejachurch.api.common.error.ForbiddenException
@@ -25,7 +24,6 @@ class BoardAdminService(
     private val postAssetRepository: PostAssetRepository,
     private val adminAccountRepository: AdminAccountRepository,
     private val menuItemRepository: MenuItemRepository? = null,
-    private val boardTypeRepository: BoardTypeRepository? = null,
     private val contentValidator: TiptapContentValidator = TiptapContentValidator(postAssetRepository),
     private val clock: Clock = Clock.systemUTC(),
 ) {
@@ -41,23 +39,6 @@ class BoardAdminService(
                 type = board.type,
                 boardTypeId = board.boardTypeId,
                 description = board.description,
-            )
-        }
-    }
-
-    @Transactional(readOnly = true)
-    fun listBoardTypes(actorId: Long): List<BoardAdminBoardTypeSummary> {
-        requireActiveAdmin(actorId)
-        val repository = boardTypeRepository
-            ?: throw IllegalStateException("boardTypeRepository is required to list board types.")
-
-        return repository.findAllByOrderBySortOrderAscIdAsc().map { boardType ->
-            BoardAdminBoardTypeSummary(
-                id = boardType.id ?: throw IllegalStateException("게시판 타입 id가 없습니다."),
-                key = boardType.key,
-                label = boardType.label,
-                description = boardType.description,
-                sortOrder = boardType.sortOrder,
             )
         }
     }
