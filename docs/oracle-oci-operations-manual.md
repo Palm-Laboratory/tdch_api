@@ -180,6 +180,8 @@ YOUTUBE_API_KEY=replace-me
 YOUTUBE_CHANNEL_ID=replace-me
 ADMIN_SYNC_KEY=replace-me
 CORS_ALLOWED_ORIGINS=https://www.tdch.co.kr,https://tdch.co.kr
+TDCH_UPLOAD_ROOT=/opt/tdch/uploads
+TDCH_UPLOAD_PUBLIC_BASE_URL=https://api.tdch.co.kr/upload
 ```
 
 설명:
@@ -234,6 +236,8 @@ docker pull ghcr.io/<github-owner>/<repo>:sha-<commit-sha>
 
 ```bash
 cd /opt/tdch
+sudo mkdir -p /opt/tdch/uploads
+sudo chown -R 1000:1000 /opt/tdch/uploads
 docker compose -f docker-compose.prod.yml up -d db
 docker compose -f docker-compose.prod.yml up -d app
 docker compose -f docker-compose.prod.yml ps
@@ -252,7 +256,7 @@ DB 복원이나 수동 점검이 필요하면 `db`만 먼저 올리고, 그 뒤 
 sudo mkdir -p /var/www/certbot
 sudo chown -R www-data:www-data /var/www/certbot
 
-sudo cp deploy/nginx/api.tdch.co.kr.http.conf /etc/nginx/sites-available/<api-domain>
+sudo cp deploy/nginx/api.tdch.co.kr.pre-ssl.conf /etc/nginx/sites-available/<api-domain>
 sudo ln -sf /etc/nginx/sites-available/<api-domain> /etc/nginx/sites-enabled/<api-domain>
 sudo nginx -t
 sudo systemctl reload nginx
@@ -273,6 +277,7 @@ sudo certbot --nginx -d <api-domain>
 HTTPS 최종 설정:
 
 ```bash
+sudo cp deploy/nginx/tdch-upload-http-context.conf /etc/nginx/conf.d/tdch-upload-http-context.conf
 sudo cp deploy/nginx/api.tdch.co.kr.conf /etc/nginx/sites-available/<api-domain>
 sudo nginx -t
 sudo systemctl reload nginx
@@ -375,7 +380,7 @@ docker compose -f docker-compose.prod.yml exec -T db sh -lc 'psql -U "$POSTGRES_
 ```bash
 curl -fsS http://127.0.0.1:8080/api/v1/public/menu | head
 curl -fsS 'http://127.0.0.1:8080/api/v1/public/menu/resolve?path=/about/greeting'
-curl -fsS 'http://127.0.0.1:8080/api/v1/public/videos?path=/videos/sermons'
+curl -fsS 'http://127.0.0.1:8080/api/v1/public/videos?path=/videos/worship/sunday-worship'
 ```
 
 브라우저 점검:

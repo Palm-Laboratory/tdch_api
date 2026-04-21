@@ -58,6 +58,8 @@ cp .env.production.example /tmp/tdch.env
 - `YOUTUBE_*`
 - `ADMIN_SYNC_KEY`
 - `CORS_ALLOWED_ORIGINS=https://<web-domain>,https://www.<web-domain>`
+- `TDCH_UPLOAD_ROOT=/opt/tdch/uploads`
+- `TDCH_UPLOAD_PUBLIC_BASE_URL=https://<api-domain>/upload`
 
 완성한 파일을 VM에 업로드한다.
 
@@ -78,6 +80,8 @@ VM에서 최초 기동:
 
 ```bash
 cd <deploy-path>
+sudo mkdir -p /opt/tdch/uploads
+sudo chown -R 1000:1000 /opt/tdch/uploads
 docker compose -f docker-compose.prod.yml up -d db
 docker compose -f docker-compose.prod.yml up -d app
 docker compose -f docker-compose.prod.yml ps
@@ -100,7 +104,7 @@ sudo chown -R www-data:www-data /var/www/certbot
 인증서 발급 전에는 HTTP-only 설정을 사용한다.
 
 ```bash
-sudo cp deploy/nginx/api.tdch.co.kr.http.conf /etc/nginx/sites-available/<api-domain>
+sudo cp deploy/nginx/api.tdch.co.kr.pre-ssl.conf /etc/nginx/sites-available/<api-domain>
 sudo ln -sf /etc/nginx/sites-available/<api-domain> /etc/nginx/sites-enabled/<api-domain>
 sudo nginx -t
 sudo systemctl reload nginx
@@ -123,6 +127,7 @@ sudo certbot --nginx -d <api-domain>
 그 다음 최종 nginx 설정으로 교체한다.
 
 ```bash
+sudo cp deploy/nginx/tdch-upload-http-context.conf /etc/nginx/conf.d/tdch-upload-http-context.conf
 sudo cp deploy/nginx/api.tdch.co.kr.conf /etc/nginx/sites-available/<api-domain>
 sudo nginx -t
 sudo systemctl reload nginx
@@ -190,7 +195,8 @@ GHCR owner가 바뀌는 대표 상황:
 - `<api-domain>` DNS가 운영 VM을 가리킴
 - `https://<api-domain>/api/v1/health` 응답 정상
 - `https://<api-domain>/api/v1/public/menu` 응답 정상
-- `https://<api-domain>/api/v1/navigation` 응답 정상
+- `https://<api-domain>/upload/<known-uploaded-file>` 응답 정상
 - `tdch_web`의 API base URL이 `https://<api-domain>`을 가리킴
 - 운영 VM의 `<deploy-path>/.env`와 GitHub Actions secrets가 서로 일관됨
+- 운영 VM의 `<deploy-path>/.env`에 `TDCH_UPLOAD_ROOT=/opt/tdch/uploads`, `TDCH_UPLOAD_PUBLIC_BASE_URL=https://<api-domain>/upload`이 설정됨
 - 게시판 업로드 운영 항목은 [db-backup-restore-runbook.md](./db-backup-restore-runbook.md)의 `Production Deployment Checklist`를 같이 완료함

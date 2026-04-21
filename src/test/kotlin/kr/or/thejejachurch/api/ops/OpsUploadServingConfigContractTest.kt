@@ -27,7 +27,7 @@ class OpsUploadServingConfigContractTest {
 
     @Test
     fun `nginx http context file should only define shared upload rate limit and allowlist variables`() {
-        val content = readNginxFile("api.tdch.co.kr.http.conf")
+        val content = readNginxFile("tdch-upload-http-context.conf")
 
         assertThat(content).doesNotContainPattern("""(?m)^\s*server\s*\{""")
         assertThat(content).doesNotContainPattern("""(?m)^\s*location\s+/upload/?\s*\{""")
@@ -38,6 +38,17 @@ class OpsUploadServingConfigContractTest {
         assertThat(content).containsPattern(
             """(?m)^\s*map\s+\${'$'}http_origin\s+\$[A-Za-z0-9_]*upload[A-Za-z0-9_]*\s*\{""",
         )
+    }
+
+    @Test
+    fun `nginx pre ssl file should be an http only server config`() {
+        val content = readNginxFile("api.tdch.co.kr.pre-ssl.conf")
+
+        assertThat(content).containsPattern("""(?m)^\s*server\s*\{""")
+        assertThat(content).containsPattern("""(?m)^\s*listen\s+80\s*;""")
+        assertThat(content).contains("proxy_pass http://127.0.0.1:8080;")
+        assertThat(content).doesNotContain("ssl_certificate")
+        assertThat(content).doesNotContainPattern("""(?m)^\s*limit_req_zone\s+""")
     }
 
     @Test
@@ -58,7 +69,7 @@ class OpsUploadServingConfigContractTest {
 
     @Test
     fun `upload location should live only in nginx server context file`() {
-        assertThat(readNginxFile("api.tdch.co.kr.http.conf"))
+        assertThat(readNginxFile("tdch-upload-http-context.conf"))
             .doesNotContainPattern("""(?m)^\s*location\s+/upload/?\s*\{""")
         assertThat(readNginxFile("api.tdch.co.kr.conf"))
             .containsPattern("""(?m)^\s*location\s+/upload/?\s*\{""")

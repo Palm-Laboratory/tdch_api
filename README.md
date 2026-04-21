@@ -6,6 +6,9 @@
 
 - 헬스체크 API
 - 관리자 인증/계정 관리 API
+- 공개 메뉴 API
+- YouTube 영상 동기화와 영상 메타 API
+- 게시판/게시글/첨부 업로드 API
 - Flyway 마이그레이션
 
 ## 로컬 준비
@@ -32,15 +35,20 @@ DB_USERNAME=postgres
 DB_PASSWORD=postgres
 ADMIN_SYNC_KEY=your-admin-key
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+TDCH_UPLOAD_ROOT=/opt/tdch/uploads
+TDCH_UPLOAD_PUBLIC_BASE_URL=http://localhost:8080/upload
 ```
 
-## 초기 엔드포인트
+## 주요 엔드포인트
 
 - `GET /api/v1/health`
 - `POST /api/v1/admin/auth/login`
-- `POST /api/v1/admin/auth/logout`
+- `GET /api/v1/admin/auth/me`
 - `GET /api/v1/admin/accounts`
 - `POST /api/v1/admin/accounts`
+- `GET /api/v1/public/menu`
+- `POST /api/v1/admin/uploads/token`
+- `POST /api/v1/admin/uploads`
 
 운영 CORS 예시:
 
@@ -62,7 +70,8 @@ CORS_ALLOWED_ORIGINS=https://your-project.vercel.app,https://your-domain.com,htt
 Oracle Cloud Infrastructure VM 기준 운영 파일을 함께 관리합니다.
 
 - `deploy/docker-compose.prod.yml`: 운영용 `app + postgres` compose
-- `deploy/nginx/api.tdch.co.kr.http.conf`: 인증서 발급 전 HTTP-only nginx 설정
+- `deploy/nginx/api.tdch.co.kr.pre-ssl.conf`: 인증서 발급 전 HTTP-only nginx 설정
+- `deploy/nginx/tdch-upload-http-context.conf`: 업로드 정적 서빙 rate limit과 referer/origin map용 nginx http context snippet
 - `deploy/nginx/api.tdch.co.kr.conf`: 인증서 발급 후 HTTPS reverse proxy 설정
 - `.env.production.example`: `/opt/tdch/.env` 작성용 예시
 - `.github/workflows/deploy-oracle.yml`: `main` 브랜치용 GHCR + SSH 배포 워크플로
