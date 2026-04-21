@@ -95,18 +95,6 @@ class VideoService(
     }
 
     @Transactional(readOnly = true)
-    fun resolvePublicVideoHref(videoId: String): String? {
-        val video = youTubeVideoRepository.findByVideoId(videoId) ?: return null
-        val meta = videoMetaRepository.findByVideoId(video.id!!)
-
-        if (!isDisplayable(video, meta)) {
-            return null
-        }
-
-        return findPublicMenuHrefForVideoEntity(video.id, video.videoId)
-    }
-
-    @Transactional(readOnly = true)
     fun getAdminVideos(form: YouTubeContentForm?): List<AdminVideoSummary> =
         loadAllVideos()
             .filter { form == null || it.video.contentForm == form }

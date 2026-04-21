@@ -26,11 +26,6 @@ class PublicVideoController(
         @RequestParam videoId: String,
     ) = videoService.getPublicPlaylistVideoDetailByPath(path, videoId).toDto()
 
-    @GetMapping("/by-id/{videoId}")
-    fun getVideoHref(
-        @PathVariable videoId: String,
-    ) = mapOf("href" to videoService.resolvePublicVideoHref(videoId))
-
     @GetMapping("/{slug}/items")
     fun getPlaylistVideos(
         @PathVariable slug: String,

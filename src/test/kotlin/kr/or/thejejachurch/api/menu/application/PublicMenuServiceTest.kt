@@ -191,17 +191,17 @@ class PublicMenuServiceTest {
 
     @Test
     fun `getVideoDetailByPath resolves playlist detail from published items without parent lookup`() {
-        val sermons = menuItem(
+        val worship = menuItem(
             id = 51L,
             type = MenuType.YOUTUBE_PLAYLIST_GROUP,
-            label = "설교",
-            slug = "sermons",
+            label = "예배",
+            slug = "worship",
         )
         val sunday = menuItem(
             id = 52L,
-            parentId = sermons.id,
+            parentId = worship.id,
             type = MenuType.YOUTUBE_PLAYLIST,
-            label = "주일설교",
+            label = "주일예배",
             slug = "sunday",
             playlistId = 101L,
             playlistContentForm = YouTubeContentForm.LONGFORM,
@@ -209,24 +209,24 @@ class PublicMenuServiceTest {
         )
         val friday = menuItem(
             id = 53L,
-            parentId = sermons.id,
+            parentId = worship.id,
             type = MenuType.YOUTUBE_PLAYLIST,
-            label = "금요설교",
+            label = "금요예배",
             slug = "friday",
             playlistId = 102L,
             playlistContentForm = YouTubeContentForm.LONGFORM,
             sortOrder = 1,
         )
         whenever(menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED))
-            .thenReturn(listOf(sermons, sunday, friday))
+            .thenReturn(listOf(worship, sunday, friday))
         whenever(youTubePlaylistRepository.findById(eq(101L))).thenReturn(
             java.util.Optional.of(
                 YouTubePlaylist(
                     id = 101L,
                     channelId = 1L,
                     playlistId = "PL_SUNDAY",
-                    title = "주일설교 원본",
-                    description = "설교 모음",
+                    title = "주일예배 원본",
+                    description = "예배 모음",
                     thumbnailUrl = "https://example.com/thumb.jpg",
                     itemCount = 42,
                     publishedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
@@ -234,25 +234,25 @@ class PublicMenuServiceTest {
             ),
         )
 
-        val detail = service.getVideoDetailByPath("/videos/sermons/sunday")
+        val detail = service.getVideoDetailByPath("/videos/worship/sunday")
 
         assertAll(
-            { assertEquals("주일설교", detail.title) },
-            { assertEquals("주일설교 원본", detail.sourceTitle) },
+            { assertEquals("주일예배", detail.title) },
+            { assertEquals("주일예배 원본", detail.sourceTitle) },
             { assertEquals("PL_SUNDAY", detail.playlistId) },
-            { assertEquals("/videos/sermons/sunday", detail.fullPath) },
-            { assertEquals("설교", detail.groupLabel) },
+            { assertEquals("/videos/worship/sunday", detail.fullPath) },
+            { assertEquals("예배", detail.groupLabel) },
             { assertEquals(2, detail.siblings.size) },
             {
                 assertEquals(
-                    listOf("/videos/sermons/sunday", "/videos/sermons/friday"),
+                    listOf("/videos/worship/sunday", "/videos/worship/friday"),
                     detail.siblings.map { it.href },
                 )
             },
         )
 
         verify(menuItemRepository).findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
-        verify(menuItemRepository, never()).findById(sermons.id!!)
+        verify(menuItemRepository, never()).findById(worship.id!!)
     }
 
     private fun menuItem(
