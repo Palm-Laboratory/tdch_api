@@ -88,18 +88,18 @@ class MenuManagementServiceContractTest {
     }
 
     @Test
-    fun `V16 migration should delete orphan menu scoped boards`() {
-        val migration = Path.of("src/main/resources/db/migration/V16__delete_orphan_menu_scoped_boards.sql")
+    fun `V1 migration should not carry orphan board cleanup migrations into the fresh schema`() {
+        val migration = Path.of("src/main/resources/db/migration/V1__create_tdch_schema.sql")
 
         assertThat(migration).exists()
 
         val normalized = Files.readString(migration).lowercase()
 
-        assertThat(normalized).contains("delete from board")
-        assertThat(normalized).contains("not exists")
-        assertThat(normalized).contains("menu_item.id = board.menu_id")
-        assertThat(normalized).contains("menu_item.type = 'board'")
-        assertThat(normalized).contains("menu_item.board_key = board.slug")
+        assertThat(normalized).contains("create table board")
+        assertThat(normalized).contains("menu_id bigint references menu_item(id) on delete set null")
+        assertThat(normalized).contains("create unique index uq_board_menu_id")
+        assertThat(normalized).doesNotContain("delete from board")
+        assertThat(normalized).doesNotContain("legacy-board-posts")
     }
 
     private fun activeAdmin() = AdminAccount(

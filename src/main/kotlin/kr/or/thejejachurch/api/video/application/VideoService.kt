@@ -1,12 +1,12 @@
-package kr.or.thejejachurch.api.media.video.application
+package kr.or.thejejachurch.api.video.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.menu.domain.MenuItem
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
-import kr.or.thejejachurch.api.media.video.domain.VideoMeta
-import kr.or.thejejachurch.api.media.video.infrastructure.persistence.VideoMetaRepository
+import kr.or.thejejachurch.api.video.domain.VideoMeta
+import kr.or.thejejachurch.api.video.infrastructure.persistence.VideoMetaRepository
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.domain.YouTubePrivacyStatus
 import kr.or.thejejachurch.api.youtube.domain.YouTubeSyncStatus

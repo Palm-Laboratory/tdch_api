@@ -1,4 +1,4 @@
-package kr.or.thejejachurch.api.media.video.application
+package kr.or.thejejachurch.api.video.application
 
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import java.time.OffsetDateTime

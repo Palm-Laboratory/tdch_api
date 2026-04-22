@@ -58,10 +58,12 @@ CORS_ALLOWED_ORIGINS=https://your-project.vercel.app,https://your-domain.com,htt
 
 ## Flyway checksum mismatch 대응
 
-현재는 `admin_account` 기준의 단일 baseline migration만 유지합니다.
+현재는 전체 운영 스키마를 `V1__create_tdch_schema.sql` 단일 baseline migration으로 유지합니다.
+이 baseline에는 관리자 계정, 메뉴, YouTube 동기화, `video_meta`, 게시판, 게시글, 첨부, 업로드 토큰 스키마가 포함됩니다.
 
-- 기본 복구 전략: 관리자 계정 외 테이블 제거 후 Flyway history 초기화
+- 기본 복구 전략: 운영 데이터가 없거나 초기화 가능한 DB라면 DB를 새로 만들고 V1부터 적용
 - 예외 전략: 현재 DB 구조가 baseline과 동일하다는 것을 확인한 경우에만 `repair` 검토
+- 주의: 이미 기존 `V1`~`V18` Flyway history가 적용된 DB에는 이 squashed V1을 그대로 덮어쓰면 checksum mismatch가 발생합니다.
 
 자세한 기준과 복구 절차는 [../docs/flyway-migration-hygiene.md](/Users/hanwool/ground/Palm%20Lab/TDCH/docs/flyway-migration-hygiene.md)를 따릅니다.
 

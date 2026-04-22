@@ -1,4 +1,4 @@
-package kr.or.thejejachurch.api.media.video.domain
+package kr.or.thejejachurch.api.video.domain
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -9,7 +9,7 @@ import jakarta.persistence.Table
 import java.time.OffsetDateTime
 
 @Entity
-@Table(name = "media_video_meta")
+@Table(name = "youtube_video_meta")
 class VideoMeta(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

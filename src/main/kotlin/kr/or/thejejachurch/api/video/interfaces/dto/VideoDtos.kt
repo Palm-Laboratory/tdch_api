@@ -1,13 +1,13 @@
-package kr.or.thejejachurch.api.media.video.interfaces.dto
+package kr.or.thejejachurch.api.video.interfaces.dto
 
-import kr.or.thejejachurch.api.media.video.application.AdminVideoDetail
-import kr.or.thejejachurch.api.media.video.application.AdminVideoSummary
-import kr.or.thejejachurch.api.media.video.application.PublicVideoDetail
-import kr.or.thejejachurch.api.media.video.application.PublicVideoList
-import kr.or.thejejachurch.api.media.video.application.PublicVideoPlaylistLink
-import kr.or.thejejachurch.api.media.video.application.PublicShortformPlaylistWindow
-import kr.or.thejejachurch.api.media.video.application.PublicVideoSummary
-import kr.or.thejejachurch.api.media.video.application.UpdateVideoMetaCommand
+import kr.or.thejejachurch.api.video.application.AdminVideoDetail
+import kr.or.thejejachurch.api.video.application.AdminVideoSummary
+import kr.or.thejejachurch.api.video.application.PublicVideoDetail
+import kr.or.thejejachurch.api.video.application.PublicVideoList
+import kr.or.thejejachurch.api.video.application.PublicVideoPlaylistLink
+import kr.or.thejejachurch.api.video.application.PublicShortformPlaylistWindow
+import kr.or.thejejachurch.api.video.application.PublicVideoSummary
+import kr.or.thejejachurch.api.video.application.UpdateVideoMetaCommand
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import java.time.OffsetDateTime
 

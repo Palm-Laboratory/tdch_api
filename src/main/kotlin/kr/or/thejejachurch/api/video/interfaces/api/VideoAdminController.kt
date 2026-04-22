@@ -1,12 +1,12 @@
-package kr.or.thejejachurch.api.media.video.interfaces.api
+package kr.or.thejejachurch.api.video.interfaces.api
 
 import kr.or.thejejachurch.api.common.config.AdminProperties
 import kr.or.thejejachurch.api.common.error.ForbiddenException
-import kr.or.thejejachurch.api.media.video.application.VideoService
-import kr.or.thejejachurch.api.media.video.interfaces.dto.AdminVideoListResponse
-import kr.or.thejejachurch.api.media.video.interfaces.dto.UpdateVideoMetaRequest
-import kr.or.thejejachurch.api.media.video.interfaces.dto.toCommand
-import kr.or.thejejachurch.api.media.video.interfaces.dto.toDto
+import kr.or.thejejachurch.api.video.application.VideoService
+import kr.or.thejejachurch.api.video.interfaces.dto.AdminVideoListResponse
+import kr.or.thejejachurch.api.video.interfaces.dto.UpdateVideoMetaRequest
+import kr.or.thejejachurch.api.video.interfaces.dto.toCommand
+import kr.or.thejejachurch.api.video.interfaces.dto.toDto
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
