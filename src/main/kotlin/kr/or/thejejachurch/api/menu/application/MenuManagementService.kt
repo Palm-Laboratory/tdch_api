@@ -151,6 +151,10 @@ class MenuManagementService(
                     throw IllegalArgumentException("ARCHIVED 상태는 자동 유튜브 메뉴에만 사용할 수 있습니다.")
                 }
 
+                if (node.status == MenuStatus.DRAFT && !node.isAuto) {
+                    throw IllegalArgumentException("DRAFT 상태는 자동 유튜브 메뉴 최초 동기화에만 사용할 수 있습니다.")
+                }
+
                 validatePlacement(
                     type = node.type,
                     depth = depth,
@@ -308,6 +312,10 @@ class MenuManagementService(
     private fun normalizeStatus(node: MenuTreeNodeInput, existing: MenuItem, parentId: Long?): MenuStatus {
         if (existing.isAuto && existing.status == MenuStatus.ARCHIVED && node.status != MenuStatus.ARCHIVED) {
             throw IllegalArgumentException("ARCHIVED 상태는 유튜브 동기화로만 해제됩니다.")
+        }
+
+        if (!existing.isAuto && node.status == MenuStatus.DRAFT) {
+            throw IllegalArgumentException("DRAFT 상태는 자동 유튜브 메뉴 최초 동기화에만 사용할 수 있습니다.")
         }
 
         if (existing.type == MenuType.YOUTUBE_PLAYLIST && node.status == MenuStatus.PUBLISHED && parentId == null) {

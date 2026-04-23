@@ -10,11 +10,13 @@ import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardTypeRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
 import kr.or.thejejachurch.api.menu.domain.MenuItem
+import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuRevisionRepository
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
@@ -85,6 +87,42 @@ class MenuManagementServiceContractTest {
         val order = inOrder(boardRepository, menuItemRepository)
         order.verify(boardRepository).deleteAll(listOf(board))
         order.verify(menuItemRepository).delete(root)
+    }
+
+    @Test
+    fun `manual menu tree saves cannot set DRAFT status`() {
+        val menuItemRepository = mock<MenuItemRepository>()
+        val service = MenuManagementService(
+            menuItemRepository = menuItemRepository,
+            menuRevisionRepository = mock<MenuRevisionRepository>(),
+            adminAccountRepository = mock<AdminAccountRepository>().also {
+                whenever(it.findById(1L)).thenReturn(Optional.of(activeAdmin()))
+            },
+            boardRepository = mock<BoardRepository>(),
+            boardTypeRepository = mock<BoardTypeRepository>(),
+            postRepository = mock<PostRepository>(),
+            youTubePlaylistRepository = mock<YouTubePlaylistRepository>(),
+            objectMapper = ObjectMapper(),
+        )
+
+        whenever(menuItemRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(emptyList())
+
+        assertThatThrownBy {
+            service.replaceTree(
+                actorId = 1L,
+                items = listOf(
+                    MenuTreeNodeInput(
+                        type = MenuType.FOLDER,
+                        status = MenuStatus.DRAFT,
+                        label = "새 메뉴",
+                        slug = "new-menu",
+                        isAuto = true,
+                    )
+                ),
+            )
+        }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("DRAFT 상태는 자동 유튜브 메뉴 최초 동기화에만 사용할 수 있습니다.")
     }
 
     @Test
