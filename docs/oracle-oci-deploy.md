@@ -13,8 +13,6 @@
 - Spring Boot app
 - PostgreSQL 16
 
-과거 데이터 이관 절차는 별도 문서 [`oracle-oci-migration-history.md`](./oracle-oci-migration-history.md)로 분리했다.
-
 ## 1. 운영 디렉토리 배치
 
 운영 VM에는 애플리케이션 파일을 둘 배포 디렉토리가 필요하다.

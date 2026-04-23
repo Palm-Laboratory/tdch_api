@@ -234,18 +234,18 @@ class PublicMenuServiceTest {
             ),
         )
 
-        val detail = service.getVideoDetailByPath("/videos/worship/sunday")
+        val detail = service.getVideoDetailByPath("/worship/sunday")
 
         assertAll(
             { assertEquals("주일예배", detail.title) },
             { assertEquals("주일예배 원본", detail.sourceTitle) },
             { assertEquals("PL_SUNDAY", detail.playlistId) },
-            { assertEquals("/videos/worship/sunday", detail.fullPath) },
+            { assertEquals("/worship/sunday", detail.fullPath) },
             { assertEquals("예배", detail.groupLabel) },
             { assertEquals(2, detail.siblings.size) },
             {
                 assertEquals(
-                    listOf("/videos/worship/sunday", "/videos/worship/friday"),
+                    listOf("/worship/sunday", "/worship/friday"),
                     detail.siblings.map { it.href },
                 )
             },
@@ -253,6 +253,51 @@ class PublicMenuServiceTest {
 
         verify(menuItemRepository).findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
         verify(menuItemRepository, never()).findById(worship.id!!)
+    }
+
+    @Test
+    fun `video menu paths follow the menu tree without a fixed videos prefix`() {
+        val videos = menuItem(
+            id = 60L,
+            type = MenuType.YOUTUBE_PLAYLIST_GROUP,
+            label = "영상",
+            slug = "videos",
+        )
+        val worship = menuItem(
+            id = 61L,
+            parentId = videos.id,
+            type = MenuType.YOUTUBE_PLAYLIST,
+            label = "예배",
+            slug = "worship",
+            playlistId = 201L,
+            playlistContentForm = YouTubeContentForm.LONGFORM,
+        )
+        whenever(menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED))
+            .thenReturn(listOf(videos, worship))
+        whenever(youTubePlaylistRepository.findById(eq(201L))).thenReturn(
+            java.util.Optional.of(
+                YouTubePlaylist(
+                    id = 201L,
+                    channelId = 1L,
+                    playlistId = "PL_WORSHIP",
+                    title = "예배 원본",
+                    description = "예배 영상",
+                    thumbnailUrl = null,
+                    itemCount = 10,
+                    publishedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+                ),
+            ),
+        )
+
+        val navigation = service.getNavigation()
+        val detail = service.getVideoDetailByPath("/videos/worship")
+
+        assertAll(
+            { assertEquals("/videos/worship", navigation.groups.single().href) },
+            { assertEquals("/videos/worship", navigation.groups.single().defaultLandingHref) },
+            { assertEquals("/videos/worship", navigation.groups.single().items.single().href) },
+            { assertEquals("/videos/worship", detail.fullPath) },
+        )
     }
 
     private fun menuItem(

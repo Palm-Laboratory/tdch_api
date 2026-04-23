@@ -14,7 +14,6 @@
 관련 보조 문서:
 
 - 빠른 요약: [oracle-oci-deploy.md](./oracle-oci-deploy.md)
-- 과거 이관 기록: [oracle-oci-migration-history.md](./oracle-oci-migration-history.md)
 
 ## 1. 전체 구조
 

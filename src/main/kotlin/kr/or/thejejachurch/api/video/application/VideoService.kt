@@ -1,6 +1,7 @@
 package kr.or.thejejachurch.api.video.application
 
 import kr.or.thejejachurch.api.common.error.NotFoundException
+import kr.or.thejejachurch.api.menu.application.PublicVideoMenuPathSupport
 import kr.or.thejejachurch.api.menu.domain.MenuItem
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
@@ -33,23 +34,9 @@ class VideoService(
     }
 
     @Transactional(readOnly = true)
-    fun getPublicPlaylistVideos(slug: String, page: Int, size: Int): PublicVideoList {
-        val context = loadPlaylistContext(slug)
-        val summaries = loadPlaylistSummaries(context.menu)
-
-        return toPublicVideoList(context.menu, summaries, page, size)
-    }
-
-    @Transactional(readOnly = true)
     fun getPublicPlaylistVideosByPath(path: String, page: Int, size: Int): PublicVideoList {
         val menu = resolvePublishedPlaylistMenuByPath(path)
         return toPublicVideoList(menu, loadPlaylistSummaries(menu), page, size)
-    }
-
-    @Transactional(readOnly = true)
-    fun getPublicPlaylistVideoDetail(slug: String, videoId: String): PublicVideoDetail {
-        val context = loadPlaylistContext(slug)
-        return buildPlaylistVideoDetail(context.menu, videoId)
     }
 
     @Transactional(readOnly = true)
@@ -200,19 +187,6 @@ class VideoService(
         val metasByVideoId = videoMetaRepository.findAll().associateBy { it.videoId }
         return youTubeVideoRepository.findAll()
             .map { video -> VideoWithMeta(video = video, meta = metasByVideoId[video.id]) }
-    }
-
-    private fun loadPlaylistContext(slug: String): PlaylistContext {
-        val menu = menuItemRepository.findByTypeAndStatusAndSlug(
-            type = MenuType.YOUTUBE_PLAYLIST,
-            status = MenuStatus.PUBLISHED,
-            slug = slug,
-        ) ?: throw NotFoundException("재생목록을 찾을 수 없습니다. slug=$slug")
-
-        val playlist = menu.playlistId?.let { youTubePlaylistRepository.findByIdOrNull(it) }
-            ?: throw NotFoundException("유튜브 재생목록 정보를 찾을 수 없습니다. slug=$slug")
-
-        return PlaylistContext(menu = menu, playlistId = playlist.id!!)
     }
 
     private fun loadPlaylistSummaries(menu: MenuItem): List<PublicVideoSummary> =
@@ -372,17 +346,8 @@ class VideoService(
         return "${buildPlaylistPath(menu, itemsById)}/$videoId"
     }
 
-    private fun buildPlaylistPath(menu: MenuItem, itemsById: Map<Long, MenuItem>): String {
-        val segments = mutableListOf<String>()
-        var current: MenuItem? = menu
-
-        while (current != null) {
-            segments += current.slug
-            current = current.parentId?.let(itemsById::get)
-        }
-
-        return "/videos/${segments.asReversed().joinToString("/")}"
-    }
+    private fun buildPlaylistPath(menu: MenuItem, itemsById: Map<Long, MenuItem>): String =
+        PublicVideoMenuPathSupport.buildPlaylistPath(menu, itemsById)
 
     private fun resolvePublishedPlaylistMenuByPath(path: String): MenuItem {
         val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
@@ -390,7 +355,8 @@ class VideoService(
         val normalizedPath = normalizeLookupPath(path)
 
         return publishedItems.firstOrNull { item ->
-            item.type == MenuType.YOUTUBE_PLAYLIST && buildPlaylistPath(item, itemsById) == normalizedPath
+            item.type == MenuType.YOUTUBE_PLAYLIST &&
+                PublicVideoMenuPathSupport.matchesPlaylistPath(item, itemsById, normalizedPath)
         } ?: throw NotFoundException("재생목록을 찾을 수 없습니다. path=$path")
     }
 
@@ -407,8 +373,4 @@ class VideoService(
         val meta: VideoMeta?,
     )
 
-    private data class PlaylistContext(
-        val menu: MenuItem,
-        val playlistId: Long,
-    )
 }

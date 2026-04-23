@@ -33,6 +33,7 @@ class PublicMenuService(
             val defaultLandingHref = resolveDefaultLandingHref(root, childrenByParent, itemsById)
             NavigationGroupDto(
                 key = root.slug,
+                type = root.type,
                 label = root.label,
                 href = groupHref,
                 matchPath = normalizeMatchPath(groupHref),
@@ -47,6 +48,7 @@ class PublicMenuService(
                     val href = resolveHref(child, childrenByParent, itemsById)
                     NavigationItemDto(
                         key = child.slug,
+                        type = child.type,
                         label = child.label,
                         href = href,
                         matchPath = normalizeMatchPath(href),
@@ -64,19 +66,6 @@ class PublicMenuService(
         }
 
         return PublicNavigationResponse(groups = groups)
-    }
-
-    @Transactional(readOnly = true)
-    fun getVideoDetail(slug: String): PublicVideoDetail {
-        val publishedItems = menuItemRepository.findAllByStatusOrderBySortOrderAscIdAsc(MenuStatus.PUBLISHED)
-        val itemsById = publishedItems.associateBy { it.id!! }
-        val menu = menuItemRepository.findByTypeAndStatusAndSlug(
-            type = MenuType.YOUTUBE_PLAYLIST,
-            status = MenuStatus.PUBLISHED,
-            slug = slug,
-        )
-            ?: throw NotFoundException("재생목록을 찾을 수 없습니다. slug=$slug")
-        return buildVideoDetail(menu, publishedItems, itemsById)
     }
 
     @Transactional(readOnly = true)
@@ -205,7 +194,7 @@ class PublicMenuService(
 
     private fun buildStableHref(item: MenuItem, itemsById: Map<Long, MenuItem>): String =
         when (item.type) {
-            MenuType.YOUTUBE_PLAYLIST -> buildPath(item, itemsById, prefix = "/videos")
+            MenuType.YOUTUBE_PLAYLIST -> PublicVideoMenuPathSupport.buildPlaylistPath(item, itemsById)
             else -> "/"
         }
 
@@ -244,9 +233,15 @@ class PublicMenuService(
     private fun resolvePublishedVideoMenu(
         path: String,
         childrenByParent: Map<Long?, List<MenuItem>>,
-    ): MenuItem = resolvePublishedPath(path.removePrefix("/videos"), childrenByParent)
-        .takeIf { it.type == MenuType.YOUTUBE_PLAYLIST }
-        ?: throw NotFoundException("공개된 재생목록을 찾을 수 없습니다. path=$path")
+    ): MenuItem {
+        val publishedItems = childrenByParent.values.flatten()
+        val itemsById = publishedItems.associateBy { it.id!! }
+
+        return publishedItems.firstOrNull { item ->
+            item.type == MenuType.YOUTUBE_PLAYLIST &&
+                PublicVideoMenuPathSupport.matchesPlaylistPath(item, itemsById, path)
+        } ?: throw NotFoundException("공개된 재생목록을 찾을 수 없습니다. path=$path")
+    }
 
     private fun resolvePublishedPath(
         path: String,
@@ -284,6 +279,7 @@ enum class NavigationLinkType {
 
 data class NavigationItemDto(
     val key: String,
+    val type: MenuType,
     val label: String,
     val href: String,
     val matchPath: String?,
@@ -299,6 +295,7 @@ data class NavigationItemDto(
 
 data class NavigationGroupDto(
     val key: String,
+    val type: MenuType,
     val label: String,
     val href: String,
     val matchPath: String?,
