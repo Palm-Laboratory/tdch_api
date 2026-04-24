@@ -23,7 +23,7 @@ class BoardAdminService(
     private val postRepository: PostRepository,
     private val postAssetRepository: PostAssetRepository,
     private val adminAccountRepository: AdminAccountRepository,
-    private val menuItemRepository: MenuItemRepository? = null,
+    private val menuItemRepository: MenuItemRepository,
     private val contentValidator: TiptapContentValidator = TiptapContentValidator(postAssetRepository),
     private val clock: Clock = Clock.systemUTC(),
 ) {
@@ -211,8 +211,7 @@ class BoardAdminService(
         board.id ?: throw IllegalStateException("게시판 id가 없습니다.")
 
     private fun requireBoardMenu(boardSlug: String, menuId: Long) {
-        val repository = menuItemRepository ?: return
-        if (!repository.existsByIdAndTypeAndBoardKey(menuId, MenuType.BOARD, boardSlug)) {
+        if (!menuItemRepository.existsByIdAndTypeAndBoardKey(menuId, MenuType.BOARD, boardSlug)) {
             throw NotFoundException("게시판 메뉴를 찾을 수 없습니다. menuId=$menuId")
         }
     }
@@ -223,8 +222,7 @@ class BoardAdminService(
             return menuId
         }
 
-        val repository = menuItemRepository ?: return requireBoardId(board)
-        return repository.findFirstByTypeAndBoardKeyOrderBySortOrderAscIdAsc(MenuType.BOARD, board.slug)?.id
+        return menuItemRepository.findFirstByTypeAndBoardKeyOrderBySortOrderAscIdAsc(MenuType.BOARD, board.slug)?.id
             ?: throw NotFoundException("게시판 메뉴를 찾을 수 없습니다. slug=${board.slug}")
     }
 

@@ -13,7 +13,11 @@ import kr.or.thejejachurch.api.board.infrastructure.persistence.PostAssetReposit
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
 import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.common.error.NotFoundException
+import kr.or.thejejachurch.api.menu.domain.MenuItem
+import kr.or.thejejachurch.api.menu.domain.MenuType
+import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
@@ -32,13 +36,23 @@ class BoardAdminServiceTest {
     private val postRepository: PostRepository = mock()
     private val postAssetRepository: PostAssetRepository = mock()
     private val adminAccountRepository: AdminAccountRepository = mock()
+    private val menuItemRepository: MenuItemRepository = mock()
 
     private val service = BoardAdminService(
         boardRepository = boardRepository,
         postRepository = postRepository,
         postAssetRepository = postAssetRepository,
         adminAccountRepository = adminAccountRepository,
+        menuItemRepository = menuItemRepository,
     )
+
+    @BeforeEach
+    fun stubMenuItemRepository() {
+        whenever(menuItemRepository.findFirstByTypeAndBoardKeyOrderBySortOrderAscIdAsc(any(), any()))
+            .thenReturn(stubMenuItem(1001L))
+        whenever(menuItemRepository.existsByIdAndTypeAndBoardKey(any(), any(), any()))
+            .thenReturn(true)
+    }
 
     @Test
     fun `list boards requires active admin and returns board summaries`() {
@@ -661,6 +675,14 @@ class BoardAdminServiceTest {
         mimeType = "image/png",
         width = 640,
         height = 480,
+    )
+
+    private fun stubMenuItem(menuId: Long, boardKey: String = "notice") = MenuItem(
+        id = menuId,
+        type = MenuType.BOARD,
+        boardKey = boardKey,
+        label = boardKey,
+        slug = boardKey,
     )
 
     private fun docWithImage(assetId: Long) = """
