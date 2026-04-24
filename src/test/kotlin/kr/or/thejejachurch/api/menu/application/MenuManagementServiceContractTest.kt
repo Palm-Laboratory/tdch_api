@@ -14,6 +14,7 @@ import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuRevisionRepository
+import kr.or.thejejachurch.api.youtube.application.PlaylistDisplayableVideoCountResolver
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -49,6 +50,7 @@ class MenuManagementServiceContractTest {
         val boardTypeRepository = mock<BoardTypeRepository>()
         val postRepository = mock<PostRepository>()
         val youTubePlaylistRepository = mock<YouTubePlaylistRepository>()
+        val playlistDisplayableVideoCountResolver = mock<PlaylistDisplayableVideoCountResolver>()
         val service = MenuManagementService(
             menuItemRepository = menuItemRepository,
             menuRevisionRepository = menuRevisionRepository,
@@ -57,6 +59,7 @@ class MenuManagementServiceContractTest {
             boardTypeRepository = boardTypeRepository,
             postRepository = postRepository,
             youTubePlaylistRepository = youTubePlaylistRepository,
+            playlistDisplayableVideoCountResolver = playlistDisplayableVideoCountResolver,
             objectMapper = ObjectMapper(),
         )
         val root = MenuItem(id = 10L, type = MenuType.FOLDER, label = "소식", slug = "news")
@@ -102,6 +105,7 @@ class MenuManagementServiceContractTest {
             boardTypeRepository = mock<BoardTypeRepository>(),
             postRepository = mock<PostRepository>(),
             youTubePlaylistRepository = mock<YouTubePlaylistRepository>(),
+            playlistDisplayableVideoCountResolver = mock<PlaylistDisplayableVideoCountResolver>(),
             objectMapper = ObjectMapper(),
         )
 

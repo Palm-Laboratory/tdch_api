@@ -15,6 +15,7 @@ import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuRevisionRepository
+import kr.or.thejejachurch.api.youtube.application.PlaylistDisplayableVideoCountResolver
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
 import org.springframework.data.repository.findByIdOrNull
@@ -30,6 +31,7 @@ class MenuManagementService(
     private val boardTypeRepository: BoardTypeRepository,
     private val postRepository: PostRepository,
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
+    private val playlistDisplayableVideoCountResolver: PlaylistDisplayableVideoCountResolver,
     private val objectMapper: ObjectMapper,
 ) {
     private data class ResolvedSlug(
@@ -402,6 +404,7 @@ class MenuManagementService(
     private fun buildAdminTree(): List<MenuTreeNode> {
         val items = menuItemRepository.findAllByOrderBySortOrderAscIdAsc()
         val playlistsById = youTubePlaylistRepository.findAll().associateBy { it.id!! }
+        val displayableCountsByPlaylistId = playlistDisplayableVideoCountResolver.resolveAll(playlistsById.keys)
         val boardsBySlug = boardRepository.findAll().associateBy { it.slug }
         val boardTypesById = boardTypeRepository.findAll().mapNotNull { boardType ->
             boardType.id?.let { it to boardType }
@@ -435,7 +438,7 @@ class MenuManagementService(
                         playlistTitle = playlist?.title,
                         playlistSourceTitle = playlist?.title,
                         thumbnailUrl = playlist?.thumbnailUrl,
-                        itemCount = playlist?.itemCount,
+                        itemCount = playlist?.id?.let { displayableCountsByPlaylistId[it] ?: 0 },
                         syncStatus = playlist?.syncStatus,
                         playlistContentForm = item.playlistContentForm,
                         parentId = item.parentId,

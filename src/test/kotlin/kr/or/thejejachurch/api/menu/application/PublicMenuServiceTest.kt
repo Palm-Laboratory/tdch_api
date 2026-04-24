@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.menu.domain.MenuItem
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
+import kr.or.thejejachurch.api.youtube.application.PlaylistDisplayableVideoCountResolver
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.domain.YouTubePlaylist
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
@@ -21,10 +22,12 @@ import kotlin.test.assertNull
 class PublicMenuServiceTest {
     private val menuItemRepository = mock<MenuItemRepository>()
     private val youTubePlaylistRepository = mock<YouTubePlaylistRepository>()
+    private val playlistDisplayableVideoCountResolver = mock<PlaylistDisplayableVideoCountResolver>()
 
     private val service = PublicMenuService(
         menuItemRepository = menuItemRepository,
         youTubePlaylistRepository = youTubePlaylistRepository,
+        playlistDisplayableVideoCountResolver = playlistDisplayableVideoCountResolver,
     )
 
     @Test

@@ -36,6 +36,7 @@ class YouTubeSyncService(
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
     private val youTubeVideoRepository: YouTubeVideoRepository,
     private val youTubePlaylistItemRepository: YouTubePlaylistItemRepository,
+    private val playlistDisplayableVideoCountResolver: PlaylistDisplayableVideoCountResolver,
     private val menuItemRepository: MenuItemRepository,
     private val objectMapper: ObjectMapper,
 ) {
@@ -244,6 +245,7 @@ class YouTubeSyncService(
         val menus = menuItemRepository.findAllByOrderBySortOrderAscIdAsc()
         val menusById = menus.associateBy { it.id!! }
         val playlistsById = youTubePlaylistRepository.findAll().associateBy { it.id!! }
+        val displayableCountsByPlaylistId = playlistDisplayableVideoCountResolver.resolveAll(playlistsById.keys)
 
         return menus
             .filter { it.type == MenuType.YOUTUBE_PLAYLIST && it.playlistId != null }
@@ -262,7 +264,7 @@ class YouTubeSyncService(
                     parentId = parent?.id,
                     parentLabel = parent?.label,
                     thumbnailUrl = playlist.thumbnailUrl,
-                    itemCount = playlist.itemCount,
+                    itemCount = displayableCountsByPlaylistId[playlist.id] ?: 0,
                     playlistContentForm = menu.playlistContentForm ?: YouTubeContentForm.LONGFORM,
                 )
             }

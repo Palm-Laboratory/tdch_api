@@ -5,6 +5,7 @@ import kr.or.thejejachurch.api.menu.domain.MenuItem
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
+import kr.or.thejejachurch.api.youtube.application.PlaylistDisplayableVideoCountResolver
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
 import org.springframework.data.repository.findByIdOrNull
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 class PublicMenuService(
     private val menuItemRepository: MenuItemRepository,
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
+    private val playlistDisplayableVideoCountResolver: PlaylistDisplayableVideoCountResolver,
 ) {
     private val menuOrder = compareBy<MenuItem> { it.sortOrder }.thenBy { it.id }
 
@@ -153,7 +155,7 @@ class PublicMenuService(
             fullPath = buildStableHref(menu, itemsById),
             description = playlist.description,
             thumbnailUrl = playlist.thumbnailUrl,
-            itemCount = playlist.itemCount,
+            itemCount = playlistDisplayableVideoCountResolver.resolve(playlist.id!!),
             contentForm = menu.playlistContentForm ?: YouTubeContentForm.LONGFORM,
             groupLabel = groupLabel,
             siblings = siblings,
