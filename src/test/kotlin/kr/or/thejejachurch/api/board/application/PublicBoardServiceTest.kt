@@ -106,7 +106,7 @@ class PublicBoardServiceTest {
         assertThat(result.page).isEqualTo(1)
         assertThat(result.size).isEqualTo(2)
         assertThat(result.totalElements).isEqualTo(3)
-        assertThat(result.hasNext).isTrue()
+        assertThat(result.hasNext).isFalse()
         assertThat(result.posts).hasSize(1)
         assertThat(result.posts[0].id).isEqualTo(101L)
         assertThat(result.posts[0].title).isEqualTo("공개 소식")
@@ -115,6 +115,37 @@ class PublicBoardServiceTest {
             pageRequest,
         )
         verify(postRepository, never()).findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(board.id!!)
+    }
+
+    @Test
+    fun `list posts returns hasNext false on last page and hasNext true when more pages exist`() {
+        val board = board(slug = "notice")
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(
+            menuItemRepository.existsByTypeAndStatusAndBoardKey(MenuType.BOARD, MenuStatus.PUBLISHED, "notice")
+        ).thenReturn(true)
+
+        // 마지막 페이지: page=0, size=3, total=3 → hasNext=false
+        whenever(
+            postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
+                board.id!!,
+                PageRequest.of(0, 3),
+            )
+        ).thenReturn(PageImpl(listOf(post(1L, board.id!!, title = "글1"), post(2L, board.id!!, title = "글2"), post(3L, board.id!!, title = "글3")), PageRequest.of(0, 3), 3))
+
+        val lastPage = service.listPosts(boardSlug = "notice", page = 0, size = 3)
+        assertThat(lastPage.hasNext).isFalse()
+
+        // 다음 페이지 있음: page=0, size=2, total=3 → hasNext=true
+        whenever(
+            postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
+                board.id!!,
+                PageRequest.of(0, 2),
+            )
+        ).thenReturn(PageImpl(listOf(post(1L, board.id!!, title = "글1"), post(2L, board.id!!, title = "글2")), PageRequest.of(0, 2), 3))
+
+        val firstPage = service.listPosts(boardSlug = "notice", page = 0, size = 2)
+        assertThat(firstPage.hasNext).isTrue()
     }
 
     @Test

@@ -37,7 +37,7 @@ class PublicBoardService(
             page = posts.number,
             size = posts.size,
             totalElements = posts.totalElements,
-            hasNext = posts.totalElements > page.toLong() * size,
+            hasNext = posts.hasNext(),
             posts = posts.content.map { it.toPublicSummary() },
         )
     }
