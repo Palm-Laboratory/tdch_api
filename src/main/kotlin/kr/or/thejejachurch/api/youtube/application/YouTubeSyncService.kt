@@ -22,7 +22,6 @@ import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylis
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubePlaylistRepository
 import kr.or.thejejachurch.api.youtube.infrastructure.persistence.YouTubeVideoRepository
 import org.springframework.http.MediaType
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.client.RestClient
@@ -43,14 +42,6 @@ class YouTubeSyncService(
     private val restClient = RestClient.builder()
         .baseUrl("https://www.googleapis.com/youtube/v3")
         .build()
-
-    @Scheduled(cron = "0 0 8,23 * * *", zone = "Asia/Seoul")
-    fun scheduledSync() {
-        if (!isConfigured()) {
-            return
-        }
-        sync()
-    }
 
     @Transactional
     fun sync(): YouTubeSyncSummary {
@@ -277,7 +268,7 @@ class YouTubeSyncService(
             }
     }
 
-    private fun isConfigured(): Boolean =
+    fun isConfigured(): Boolean =
         youTubeProperties.apiKey.isNotBlank() && youTubeProperties.channelId.isNotBlank()
 
     private fun upsertChannel(channelTitle: String, now: OffsetDateTime): YouTubeChannel {
