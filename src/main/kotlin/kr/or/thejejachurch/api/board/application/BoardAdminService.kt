@@ -191,6 +191,20 @@ class BoardAdminService(
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
         val post = requirePostInBoard(postId, board, menuId)
+        val savedPostId = post.id ?: throw IllegalStateException("게시글 id가 없습니다.")
+
+        val detachedAt = OffsetDateTime.now(clock)
+        val assets = postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(savedPostId)
+            .map { asset ->
+                asset.apply {
+                    this.postId = null
+                    this.detachedAt = detachedAt
+                }
+            }
+        if (assets.isNotEmpty()) {
+            postAssetRepository.saveAll(assets)
+        }
+
         postRepository.delete(post)
     }
 

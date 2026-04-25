@@ -633,9 +633,41 @@ class BoardAdminServiceTest {
         whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
         whenever(postRepository.findById(99L)).thenReturn(Optional.of(post))
+        whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(emptyList())
 
         service.deletePost(actorId = 1L, boardSlug = "notice", postId = 99L)
 
+        verify(postRepository).delete(post)
+        verify(postAssetRepository, never()).saveAll(any<Iterable<PostAsset>>())
+    }
+
+    @Test
+    fun `delete post detaches attached assets before deleting the post so files are cleaned up by gc`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        val post = Post(
+            id = 99L,
+            boardId = 10L,
+            title = "삭제할 글",
+            contentJson = """{"type":"doc"}""",
+            authorId = 1L,
+        )
+        val asset1 = uploadedAsset(id = 100L, actorId = 1L, postId = 99L)
+        val asset2 = uploadedAsset(id = 200L, actorId = 1L, postId = 99L)
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postRepository.findById(99L)).thenReturn(Optional.of(post))
+        whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(asset1, asset2))
+
+        service.deletePost(actorId = 1L, boardSlug = "notice", postId = 99L)
+
+        assertThat(asset1.postId).isNull()
+        assertThat(asset1.detachedAt).isNotNull()
+        assertThat(asset2.postId).isNull()
+        assertThat(asset2.detachedAt).isNotNull()
+        val savedAssets = argumentCaptor<Iterable<PostAsset>>().apply {
+            verify(postAssetRepository).saveAll(capture())
+        }.firstValue.toList()
+        assertThat(savedAssets.map { it.id }).containsExactlyInAnyOrder(100L, 200L)
         verify(postRepository).delete(post)
     }
 

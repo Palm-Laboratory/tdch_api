@@ -9,8 +9,6 @@ import kr.or.thejejachurch.api.common.error.NotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import java.net.URI
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 
 @Component
 class TiptapContentValidator(
@@ -45,27 +43,23 @@ class TiptapContentValidator(
 
     private fun validateImageNode(node: JsonNode, actorId: Long, postId: Long?, referencedAssetIds: MutableList<Long>) {
         val attrs = node.path("attrs")
-        val assetIdNode = attrs.path("assetId")
-        val storedPathNode = attrs.path("storedPath")
-        val sourceMetadata = imageMetadataFromSource(attrs.path("src").asText(null))
-
         if (!attrs.isObject) {
             throw IllegalArgumentException("이미지 노드는 assetId와 storedPath가 필요합니다.")
         }
 
-        val assetId = when {
+        val assetIdNode = attrs.path("assetId")
+        val storedPathNode = attrs.path("storedPath")
+
+        val assetId: Long = when {
             assetIdNode.canConvertToLong() -> assetIdNode.asLong()
-            sourceMetadata.assetId != null -> sourceMetadata.assetId
+            assetIdNode.isTextual -> assetIdNode.asText().toLongOrNull()
+                ?: throw IllegalArgumentException("이미지 노드는 assetId와 storedPath가 필요합니다.")
             else -> throw IllegalArgumentException("이미지 노드는 assetId와 storedPath가 필요합니다.")
         }
-        val storedPath = when {
-            storedPathNode.isTextual -> storedPathNode.asText()
-            sourceMetadata.storedPath != null -> sourceMetadata.storedPath
-            else -> throw IllegalArgumentException("이미지 노드는 assetId와 storedPath가 필요합니다.")
-        }
-        if (storedPath.isBlank()) {
+        if (!storedPathNode.isTextual || storedPathNode.asText().isBlank()) {
             throw IllegalArgumentException("이미지 노드는 assetId와 storedPath가 필요합니다.")
         }
+        val storedPath = storedPathNode.asText()
 
         val asset = postAssetRepository.findByIdOrNull(assetId)
             ?: throw NotFoundException("첨부 파일을 찾을 수 없습니다. id=$assetId")
@@ -91,39 +85,6 @@ class TiptapContentValidator(
             throw ForbiddenException("이미지 첨부 파일을 사용할 수 없습니다. id=$assetId")
         }
     }
-
-    private fun imageMetadataFromSource(src: String?): ImageSourceMetadata {
-        if (src.isNullOrBlank()) {
-            return ImageSourceMetadata()
-        }
-
-        val fragment = src.substringAfter("#", missingDelimiterValue = "")
-        if (fragment.isBlank()) {
-            return ImageSourceMetadata()
-        }
-
-        val params = fragment
-            .split("&")
-            .mapNotNull { entry ->
-                val separatorIndex = entry.indexOf("=")
-                if (separatorIndex <= 0) {
-                    null
-                } else {
-                    val key = decodeUrlComponent(entry.substring(0, separatorIndex))
-                    val value = decodeUrlComponent(entry.substring(separatorIndex + 1))
-                    key to value
-                }
-            }
-            .toMap()
-
-        return ImageSourceMetadata(
-            assetId = params["tdchAssetId"]?.toLongOrNull(),
-            storedPath = params["tdchStoredPath"]?.takeIf { it.isNotBlank() },
-        )
-    }
-
-    private fun decodeUrlComponent(value: String): String =
-        URLDecoder.decode(value, StandardCharsets.UTF_8)
 
     private fun validateYouTubeNode(node: JsonNode) {
         val videoId = node.path("attrs").path("videoId").asText(null)
@@ -196,7 +157,3 @@ class TiptapContentValidator(
     }
 }
 
-private data class ImageSourceMetadata(
-    val assetId: Long? = null,
-    val storedPath: String? = null,
-)

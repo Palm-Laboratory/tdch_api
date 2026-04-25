@@ -29,11 +29,11 @@ class TiptapContentValidatorTest {
     }
 
     @Test
-    fun `accepts simple editor image sources that carry asset metadata in the src fragment`() {
+    fun `accepts image node when assetId is a JSON string instead of a number`() {
         val asset = uploadedAsset(id = 100L, actorId = 1L)
         whenever(postAssetRepository.findById(100L)).thenReturn(Optional.of(asset))
 
-        val referencedAssetIds = validator.validate(
+        validator.validate(
             contentJson = """
                 {
                   "type": "doc",
@@ -41,7 +41,8 @@ class TiptapContentValidatorTest {
                     {
                       "type": "image",
                       "attrs": {
-                        "src": "/upload/uploads/asset-100.png#tdchAssetId=100&tdchStoredPath=uploads%2Fasset-100.png"
+                        "assetId": "100",
+                        "storedPath": "uploads/asset-100.png"
                       }
                     }
                   ]
@@ -49,8 +50,28 @@ class TiptapContentValidatorTest {
             """.trimIndent(),
             actorId = 1L,
         )
+    }
 
-        assertThat(referencedAssetIds).isEqualTo(listOf(100L))
+    @Test
+    fun `rejects image node that contains only a src url without canonical asset attrs`() {
+        assertThrows<IllegalArgumentException> {
+            validator.validate(
+                contentJson = """
+                    {
+                      "type": "doc",
+                      "content": [
+                        {
+                          "type": "image",
+                          "attrs": {
+                            "src": "/upload/uploads/asset-100.png#tdchAssetId=100&tdchStoredPath=uploads%2Fasset-100.png"
+                          }
+                        }
+                      ]
+                    }
+                """.trimIndent(),
+                actorId = 1L,
+            )
+        }
     }
 
     @Test
