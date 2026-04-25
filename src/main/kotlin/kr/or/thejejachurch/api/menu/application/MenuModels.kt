@@ -1,5 +1,6 @@
 package kr.or.thejejachurch.api.menu.application
 
+import kr.or.thejejachurch.api.board.domain.BoardType
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.youtube.domain.YouTubeContentForm
@@ -14,7 +15,7 @@ data class MenuTreeNodeInput(
     val slugCustomized: Boolean = false,
     val staticPageKey: String? = null,
     val boardKey: String? = null,
-    val boardTypeId: Long? = null,
+    val boardType: BoardType? = null,
     val externalUrl: String? = null,
     val openInNewTab: Boolean = false,
     val isAuto: Boolean = false,
@@ -33,7 +34,6 @@ data class MenuTreeNode(
     val slugCustomized: Boolean,
     val staticPageKey: String?,
     val boardKey: String?,
-    val boardTypeId: Long?,
     val boardTypeKey: String?,
     val boardTypeLabel: String?,
     val externalUrl: String?,

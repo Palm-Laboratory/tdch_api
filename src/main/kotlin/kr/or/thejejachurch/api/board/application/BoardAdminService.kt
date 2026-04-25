@@ -37,7 +37,6 @@ class BoardAdminService(
                 slug = board.slug,
                 title = board.title,
                 type = board.type,
-                boardTypeId = board.boardTypeId,
                 description = board.description,
             )
         }

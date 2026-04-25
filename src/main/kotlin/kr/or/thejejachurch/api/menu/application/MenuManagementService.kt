@@ -5,7 +5,6 @@ import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAcco
 import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.BoardType
 import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
-import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardTypeRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
 import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.common.error.NotFoundException
@@ -28,7 +27,6 @@ class MenuManagementService(
     private val menuRevisionRepository: MenuRevisionRepository,
     private val adminAccountRepository: AdminAccountRepository,
     private val boardRepository: BoardRepository,
-    private val boardTypeRepository: BoardTypeRepository,
     private val postRepository: PostRepository,
     private val youTubePlaylistRepository: YouTubePlaylistRepository,
     private val playlistDisplayableVideoCountResolver: PlaylistDisplayableVideoCountResolver,
@@ -298,7 +296,7 @@ class MenuManagementService(
                 seenIds.add(saved.id)
             }
             if (saved.type == MenuType.BOARD) {
-                ensureMenuScopedBoard(saved, node.boardTypeId)
+                ensureMenuScopedBoard(saved, node.boardType)
             }
             persistNodes(
                 nodes = node.children,
@@ -406,9 +404,6 @@ class MenuManagementService(
         val playlistsById = youTubePlaylistRepository.findAll().associateBy { it.id!! }
         val displayableCountsByPlaylistId = playlistDisplayableVideoCountResolver.resolveAll(playlistsById.keys)
         val boardsBySlug = boardRepository.findAll().associateBy { it.slug }
-        val boardTypesById = boardTypeRepository.findAll().mapNotNull { boardType ->
-            boardType.id?.let { it to boardType }
-        }.toMap()
         val childrenByParent = items.groupBy { it.parentId }
 
         fun build(parentId: Long?): List<MenuTreeNode> =
@@ -418,7 +413,6 @@ class MenuManagementService(
                 .map { item ->
                     val playlist = item.playlistId?.let(playlistsById::get)
                     val board = item.boardKey?.let(boardsBySlug::get)
-                    val boardType = board?.boardTypeId?.let(boardTypesById::get)
                     MenuTreeNode(
                         id = item.id!!,
                         type = item.type,
@@ -430,9 +424,8 @@ class MenuManagementService(
                         slugCustomized = item.slugCustomized,
                         staticPageKey = item.staticPageKey,
                         boardKey = item.boardKey,
-                        boardTypeId = boardType?.id,
-                        boardTypeKey = boardType?.key,
-                        boardTypeLabel = boardType?.label,
+                        boardTypeKey = board?.type?.name,
+                        boardTypeLabel = board?.type?.label,
                         externalUrl = item.externalUrl,
                         openInNewTab = item.openInNewTab,
                         playlistTitle = playlist?.title,
@@ -449,19 +442,15 @@ class MenuManagementService(
         return build(parentId = null)
     }
 
-    private fun ensureMenuScopedBoard(menu: MenuItem, requestedBoardTypeId: Long?) {
+    private fun ensureMenuScopedBoard(menu: MenuItem, requestedBoardType: BoardType?) {
         val menuId = menu.id ?: throw IllegalStateException("게시판 메뉴 id가 없습니다.")
         val previousBoard = menu.boardKey?.let(boardRepository::findBySlug)
-        val boardTypeDefinition = requestedBoardTypeId
-            ?.let { boardTypeRepository.findByIdOrNull(it) }
-            ?: previousBoard?.boardTypeId?.let { boardTypeRepository.findByIdOrNull(it) }
-            ?: boardTypeRepository.findByKey(BoardType.GENERAL.name)
-            ?: throw IllegalStateException("기본 게시판 타입을 찾을 수 없습니다.")
-        val boardType = BoardType.valueOf(boardTypeDefinition.key)
+        val boardType = requestedBoardType
+            ?: previousBoard?.type
+            ?: BoardType.GENERAL
         val board = boardRepository.findByMenuId(menuId) ?: previousBoard ?: Board(
             slug = buildBoardSlug(menu, currentBoardId = null),
             menuId = menuId,
-            boardTypeId = boardTypeDefinition.id,
             title = menu.label,
             type = boardType,
             description = null,
@@ -469,7 +458,6 @@ class MenuManagementService(
 
         board.slug = buildBoardSlug(menu, currentBoardId = board.id)
         board.menuId = menuId
-        board.boardTypeId = boardTypeDefinition.id
         board.title = menu.label
         board.type = boardType
         board.description = null

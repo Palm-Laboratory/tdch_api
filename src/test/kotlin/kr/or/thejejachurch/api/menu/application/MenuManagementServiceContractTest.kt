@@ -7,7 +7,6 @@ import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAcco
 import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.BoardType
 import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
-import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardTypeRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
 import kr.or.thejejachurch.api.menu.domain.MenuItem
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
@@ -37,8 +36,8 @@ class MenuManagementServiceContractTest {
         val normalized = Files.readString(service).lowercase()
 
         assertThat(normalized).doesNotContain("게시판 메뉴는 게시판 타입이 필요합니다")
-        assertThat(normalized).contains("ensuremenuscopedboard(saved, node.boardtypeid)")
-        assertThat(normalized).contains("boardtyperepository.findbykey(boardtype.general.name)")
+        assertThat(normalized).contains("ensuremenuscopedboard(saved, node.boardtype)")
+        assertThat(normalized).doesNotContain("boardtyperepository")
     }
 
     @Test
@@ -47,7 +46,7 @@ class MenuManagementServiceContractTest {
         val menuRevisionRepository = mock<MenuRevisionRepository>()
         val adminAccountRepository = mock<AdminAccountRepository>()
         val boardRepository = mock<BoardRepository>()
-        val boardTypeRepository = mock<BoardTypeRepository>()
+
         val postRepository = mock<PostRepository>()
         val youTubePlaylistRepository = mock<YouTubePlaylistRepository>()
         val playlistDisplayableVideoCountResolver = mock<PlaylistDisplayableVideoCountResolver>()
@@ -56,7 +55,7 @@ class MenuManagementServiceContractTest {
             menuRevisionRepository = menuRevisionRepository,
             adminAccountRepository = adminAccountRepository,
             boardRepository = boardRepository,
-            boardTypeRepository = boardTypeRepository,
+
             postRepository = postRepository,
             youTubePlaylistRepository = youTubePlaylistRepository,
             playlistDisplayableVideoCountResolver = playlistDisplayableVideoCountResolver,
@@ -102,7 +101,7 @@ class MenuManagementServiceContractTest {
                 whenever(it.findById(1L)).thenReturn(Optional.of(activeAdmin()))
             },
             boardRepository = mock<BoardRepository>(),
-            boardTypeRepository = mock<BoardTypeRepository>(),
+
             postRepository = mock<PostRepository>(),
             youTubePlaylistRepository = mock<YouTubePlaylistRepository>(),
             playlistDisplayableVideoCountResolver = mock<PlaylistDisplayableVideoCountResolver>(),

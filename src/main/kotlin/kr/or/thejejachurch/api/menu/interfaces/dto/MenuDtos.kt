@@ -1,5 +1,6 @@
 package kr.or.thejejachurch.api.menu.interfaces.dto
 
+import kr.or.thejejachurch.api.board.domain.BoardType
 import kr.or.thejejachurch.api.menu.application.AdminMenuSnapshot
 import kr.or.thejejachurch.api.menu.application.AdminYouTubePlaylistSummary
 import kr.or.thejejachurch.api.menu.application.MenuTreeNode
@@ -26,7 +27,7 @@ data class MenuTreeNodeRequest(
     val slugCustomized: Boolean = false,
     val staticPageKey: String? = null,
     val boardKey: String? = null,
-    val boardTypeId: Long? = null,
+    val boardType: BoardType? = null,
     val externalUrl: String? = null,
     val openInNewTab: Boolean = false,
     val isAuto: Boolean = false,
@@ -45,7 +46,6 @@ data class AdminMenuTreeNodeDto(
     val slugCustomized: Boolean,
     val staticPageKey: String?,
     val boardKey: String?,
-    val boardTypeId: Long?,
     val boardTypeKey: String?,
     val boardTypeLabel: String?,
     val externalUrl: String?,
@@ -136,7 +136,7 @@ private fun MenuTreeNodeRequest.toCommand(): MenuTreeNodeInput =
         slugCustomized = slugCustomized,
         staticPageKey = staticPageKey,
         boardKey = boardKey,
-        boardTypeId = boardTypeId,
+        boardType = boardType,
         externalUrl = externalUrl,
         openInNewTab = openInNewTab,
         isAuto = isAuto,
@@ -159,7 +159,6 @@ fun MenuTreeNode.toDto(): AdminMenuTreeNodeDto =
         slugCustomized = slugCustomized,
         staticPageKey = staticPageKey,
         boardKey = boardKey,
-        boardTypeId = boardTypeId,
         boardTypeKey = boardTypeKey,
         boardTypeLabel = boardTypeLabel,
         externalUrl = externalUrl,

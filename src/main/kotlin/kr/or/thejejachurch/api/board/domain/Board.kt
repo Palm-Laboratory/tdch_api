@@ -20,8 +20,6 @@ class Board(
     var slug: String,
     @Column(name = "menu_id")
     var menuId: Long? = null,
-    @Column(name = "board_type_id")
-    var boardTypeId: Long? = null,
     @Column(nullable = false, length = 200)
     var title: String,
     @Enumerated(EnumType.STRING)

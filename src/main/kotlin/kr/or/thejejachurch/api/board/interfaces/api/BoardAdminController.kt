@@ -155,7 +155,6 @@ data class BoardAdminBoardResponse(
     val slug: String,
     val title: String,
     val type: BoardType,
-    val boardTypeId: Long?,
     val description: String?,
 )
 
@@ -212,7 +211,6 @@ private fun BoardAdminBoardSummary.toResponse(): BoardAdminBoardResponse =
         slug = slug,
         title = title,
         type = type,
-        boardTypeId = boardTypeId,
         description = description,
     )
 

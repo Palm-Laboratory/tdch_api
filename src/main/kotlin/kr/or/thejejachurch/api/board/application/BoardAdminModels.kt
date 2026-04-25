@@ -19,7 +19,6 @@ data class BoardAdminBoardSummary(
     val slug: String,
     val title: String,
     val type: BoardType,
-    val boardTypeId: Long? = null,
     val description: String? = null,
 )
 

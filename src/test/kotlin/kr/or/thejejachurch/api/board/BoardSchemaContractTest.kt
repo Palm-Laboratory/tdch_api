@@ -8,7 +8,7 @@ import java.nio.file.Path
 class BoardSchemaContractTest {
 
     @Test
-    fun `database migrations should be squashed into the current V1 baseline`() {
+    fun `database migrations should include baseline and forward board type cleanup`() {
         val migrationDir = Path.of("src/main/resources/db/migration")
         val migrations = Files.list(migrationDir).use { stream ->
             stream
@@ -18,22 +18,32 @@ class BoardSchemaContractTest {
                 .toList()
         }
 
-        assertThat(migrations).containsExactly("V1__create_tdch_schema.sql")
+        assertThat(migrations).containsExactly(
+            "V1__create_tdch_schema.sql",
+            "V2__drop_board_type_table.sql",
+        )
     }
 
     @Test
-    fun `V1 migration should define the current board upload schema`() {
-        val normalized = readBaselineMigration()
+    fun `V1 migration should retain the original board type baseline`() {
+        val normalized = readMigration("V1__create_tdch_schema.sql")
 
         assertThat(normalized).contains("create table board_type")
-        assertThat(normalized).contains("'notice', '공지사항'")
-        assertThat(normalized).contains("'bulletin', '주보'")
-        assertThat(normalized).contains("'album', '행사 앨범'")
-        assertThat(normalized).contains("'general', '자유게시판'")
+        assertThat(normalized).contains("board_type_id bigint not null references board_type(id)")
+        assertThat(normalized).contains("('notice', '공지사항', '공지와 안내 게시판', 0)")
+    }
+
+    @Test
+    fun `V1 and V2 migrations should define the current board upload schema`() {
+        val normalized = readBaselineMigration()
+        val cleanupMigration = readMigration("V2__drop_board_type_table.sql")
+
+        assertThat(cleanupMigration).contains("update board as b")
+        assertThat(cleanupMigration).contains("drop column if exists board_type_id")
+        assertThat(cleanupMigration).contains("drop table if exists board_type")
 
         assertThat(normalized).contains("create table board")
         assertThat(normalized).contains("menu_id bigint references menu_item(id) on delete set null")
-        assertThat(normalized).contains("board_type_id bigint not null references board_type(id)")
         assertThat(normalized).contains("constraint chk_board_type")
         assertThat(normalized).contains("check (type in ('notice', 'bulletin', 'album', 'general'))")
         assertThat(normalized).contains("create unique index uq_board_menu_id")
@@ -131,7 +141,7 @@ class BoardSchemaContractTest {
         val uploadToken = Files.readString(expectedFiles[3]).lowercase()
 
         assertThat(board).contains("type: boardtype")
-        assertThat(board).contains("boardtypeid")
+        assertThat(board).doesNotContain("boardtypeid")
         assertThat(post).contains("menuid")
         assertThat(post).contains("name = \"menu_id\"")
         assertThat(post).contains("contentjson")
@@ -148,8 +158,14 @@ class BoardSchemaContractTest {
         assertThat(uploadToken).contains("usedat")
     }
 
-    private fun readBaselineMigration(): String {
-        val migration = Path.of("src/main/resources/db/migration/V1__create_tdch_schema.sql")
+    private fun readBaselineMigration(): String =
+        listOf(
+            "V1__create_tdch_schema.sql",
+            "V2__drop_board_type_table.sql",
+        ).joinToString("\n") { readMigration(it) }
+
+    private fun readMigration(fileName: String): String {
+        val migration = Path.of("src/main/resources/db/migration/$fileName")
 
         assertThat(migration).exists()
 
