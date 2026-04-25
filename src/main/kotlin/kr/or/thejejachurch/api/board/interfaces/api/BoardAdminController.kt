@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.board.application.BoardAdminBoardSummary
 import kr.or.thejejachurch.api.board.application.BoardAdminPostDetail
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSaveResult
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSummary
+import kr.or.thejejachurch.api.board.application.BoardAdminPostsPage
 import kr.or.thejejachurch.api.board.application.BoardAdminService
 import kr.or.thejejachurch.api.board.application.BoardPostSaveCommand
 import kr.or.thejejachurch.api.board.domain.BoardType
@@ -46,11 +47,15 @@ class BoardAdminController(
         @RequestHeader("X-Admin-Actor-Id") actorId: Long,
         @PathVariable slug: String,
         @RequestParam(required = false) menuId: Long? = null,
+        @RequestParam(required = false, defaultValue = "0") page: Int = 0,
+        @RequestParam(required = false, defaultValue = "20") size: Int = 20,
+        @RequestParam(required = false) title: String? = null,
     ): BoardAdminListPostsResponse {
         validateAdminKey(adminKey)
-
+        val result = boardAdminService.listPosts(actorId, slug, menuId, page, size, title)
         return BoardAdminListPostsResponse(
-            posts = boardAdminService.listPosts(actorId, slug, menuId).map { it.toResponse() },
+            posts = result.posts.map { it.toResponse() },
+            hasNext = result.hasNext,
         )
     }
 
@@ -160,6 +165,7 @@ data class BoardAdminBoardResponse(
 
 data class BoardAdminListPostsResponse(
     val posts: List<BoardAdminPostSummaryResponse>,
+    val hasNext: Boolean = false,
 )
 
 data class BoardAdminPostSummaryResponse(

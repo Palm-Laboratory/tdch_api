@@ -16,6 +16,28 @@ interface PostRepository : JpaRepository<Post, Long> {
     fun findByBoardIdAndIdAndIsPublicTrue(boardId: Long, id: Long): Post?
     fun findByMenuIdAndIdAndIsPublicTrue(menuId: Long, id: Long): Post?
 
+    @Query(
+        value = """
+            SELECT p FROM Post p
+            WHERE p.boardId = :boardId
+            AND (:menuId IS NULL OR p.menuId = :menuId)
+            AND (:title IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+            ORDER BY p.isPinned DESC, p.createdAt DESC, p.id DESC
+        """,
+        countQuery = """
+            SELECT COUNT(p) FROM Post p
+            WHERE p.boardId = :boardId
+            AND (:menuId IS NULL OR p.menuId = :menuId)
+            AND (:title IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+        """,
+    )
+    fun findAdminPosts(
+        @Param("boardId") boardId: Long,
+        @Param("menuId") menuId: Long?,
+        @Param("title") title: String?,
+        pageable: Pageable,
+    ): Page<Post>
+
     @Modifying
     @Query("update Post post set post.boardId = :boardId where post.menuId = :menuId")
     fun updateBoardIdByMenuId(@Param("menuId") menuId: Long, @Param("boardId") boardId: Long): Int

@@ -11,6 +11,7 @@ import kr.or.thejejachurch.api.common.error.ForbiddenException
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.menu.domain.MenuType
 import kr.or.thejejachurch.api.menu.infrastructure.persistence.MenuItemRepository
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -43,30 +44,42 @@ class BoardAdminService(
     }
 
     @Transactional(readOnly = true)
-    fun listPosts(actorId: Long, boardSlug: String, menuId: Long? = null): List<BoardAdminPostSummary> {
+    fun listPosts(
+        actorId: Long,
+        boardSlug: String,
+        menuId: Long? = null,
+        page: Int = 0,
+        size: Int = 20,
+        title: String? = null,
+    ): BoardAdminPostsPage {
         requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
         val boardId = requireBoardId(board)
-        val posts = menuId
-            ?.let { scopedMenuId ->
-                requireBoardMenu(boardSlug = board.slug, menuId = scopedMenuId)
-                postRepository.findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(boardId, scopedMenuId)
-            }
-            ?: postRepository.findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(boardId)
+        menuId?.let { requireBoardMenu(boardSlug = board.slug, menuId = it) }
 
-        return posts.map { post ->
-            BoardAdminPostSummary(
-                id = post.id,
-                boardId = post.boardId,
-                menuId = post.menuId,
-                title = post.title,
-                isPublic = post.isPublic,
-                isPinned = post.isPinned,
-                authorId = post.authorId,
-                createdAt = post.createdAt,
-                updatedAt = post.updatedAt,
-            )
-        }
+        val postsPage = postRepository.findAdminPosts(
+            boardId = boardId,
+            menuId = menuId,
+            title = title?.takeIf { it.isNotBlank() },
+            pageable = PageRequest.of(page, size),
+        )
+
+        return BoardAdminPostsPage(
+            posts = postsPage.content.map { post ->
+                BoardAdminPostSummary(
+                    id = post.id,
+                    boardId = post.boardId,
+                    menuId = post.menuId,
+                    title = post.title,
+                    isPublic = post.isPublic,
+                    isPinned = post.isPinned,
+                    authorId = post.authorId,
+                    createdAt = post.createdAt,
+                    updatedAt = post.updatedAt,
+                )
+            },
+            hasNext = postsPage.hasNext(),
+        )
     }
 
     @Transactional(readOnly = true)

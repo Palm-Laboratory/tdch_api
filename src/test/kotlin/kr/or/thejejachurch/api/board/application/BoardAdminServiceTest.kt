@@ -27,6 +27,8 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import java.time.OffsetDateTime
 import java.util.Optional
 
@@ -113,29 +115,54 @@ class BoardAdminServiceTest {
     }
 
     @Test
-    fun `list posts receives menu id and does not mix posts from another menu using the same board`() {
+    fun `list posts returns paged results with hasNext`() {
         val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        val posts = (1..20).map { i ->
+            Post(id = i.toLong(), boardId = 10L, menuId = 1001L, title = "글 $i",
+                contentJson = """{"type":"doc"}""", authorId = 1L)
+        }
         whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
-        whenever(postRepository.findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(10L, 1001L)).thenReturn(
-            listOf(
-                Post(
-                    id = 99L,
-                    boardId = 10L,
-                    menuId = 1001L,
-                    title = "첫 번째 공지 메뉴 글",
-                    contentJson = """{"type":"doc"}""",
-                    authorId = 1L,
-                )
-            )
-        )
+        whenever(postRepository.findAdminPosts(eq(10L), eq(null), eq(null), any()))
+            .thenReturn(PageImpl(posts, PageRequest.of(0, 20), 25))
+
+        val result = service.listPosts(actorId = 1L, boardSlug = "notice", page = 0, size = 20)
+
+        assertThat(result.posts).hasSize(20)
+        assertThat(result.hasNext).isTrue()
+    }
+
+    @Test
+    fun `list posts scopes to menu id and returns hasNext false on last page`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        val post = Post(id = 99L, boardId = 10L, menuId = 1001L, title = "공지 글",
+            contentJson = """{"type":"doc"}""", authorId = 1L)
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postRepository.findAdminPosts(eq(10L), eq(1001L), eq(null), any()))
+            .thenReturn(PageImpl(listOf(post), PageRequest.of(0, 20), 1))
 
         val result = service.listPosts(actorId = 1L, boardSlug = "notice", menuId = 1001L)
 
-        assertThat(result).hasSize(1)
-        assertThat(result[0].id).isEqualTo(99L)
-        verify(postRepository).findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(10L, 1001L)
-        verify(postRepository, never()).findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(10L)
+        assertThat(result.posts).hasSize(1)
+        assertThat(result.posts[0].id).isEqualTo(99L)
+        assertThat(result.hasNext).isFalse()
+    }
+
+    @Test
+    fun `list posts filters by title keyword`() {
+        val board = Board(id = 10L, slug = "notice", title = "공지사항", type = BoardType.NOTICE)
+        val post = Post(id = 55L, boardId = 10L, menuId = 1001L, title = "부활절 공지",
+            contentJson = """{"type":"doc"}""", authorId = 1L)
+        whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(postRepository.findAdminPosts(eq(10L), eq(null), eq("부활절"), any()))
+            .thenReturn(PageImpl(listOf(post), PageRequest.of(0, 20), 1))
+
+        val result = service.listPosts(actorId = 1L, boardSlug = "notice", title = "부활절")
+
+        assertThat(result.posts).hasSize(1)
+        assertThat(result.posts[0].title).isEqualTo("부활절 공지")
     }
 
     @Test

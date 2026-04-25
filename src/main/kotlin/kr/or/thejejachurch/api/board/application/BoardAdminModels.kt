@@ -61,6 +61,11 @@ data class BoardAdminPostAsset(
     val sortOrder: Int,
 )
 
+data class BoardAdminPostsPage(
+    val posts: List<BoardAdminPostSummary>,
+    val hasNext: Boolean,
+)
+
 data class BoardAdminPostSaveResult(
     val id: Long,
 )

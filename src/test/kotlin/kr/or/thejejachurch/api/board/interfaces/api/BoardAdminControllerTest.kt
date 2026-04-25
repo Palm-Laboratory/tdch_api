@@ -1,11 +1,12 @@
 package kr.or.thejejachurch.api.board.interfaces.api
 
 import kr.or.thejejachurch.api.board.application.BoardAdminBoardSummary
+import kr.or.thejejachurch.api.board.application.BoardAdminPostAsset
 import kr.or.thejejachurch.api.board.application.BoardAdminPostDetail
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSaveResult
 import kr.or.thejejachurch.api.board.application.BoardAdminPostSummary
+import kr.or.thejejachurch.api.board.application.BoardAdminPostsPage
 import kr.or.thejejachurch.api.board.application.BoardAdminService
-import kr.or.thejejachurch.api.board.application.BoardAdminPostAsset
 import kr.or.thejejachurch.api.board.application.BoardPostSaveCommand
 import kr.or.thejejachurch.api.board.domain.BoardType
 import kr.or.thejejachurch.api.board.domain.PostAssetKind
@@ -58,17 +59,20 @@ class BoardAdminControllerTest {
         val createdAt = OffsetDateTime.parse("2026-04-20T10:15:30+09:00")
         val updatedAt = createdAt.plusHours(1)
         whenever(boardAdminService.listPosts(42L, "notice")).thenReturn(
-            listOf(
-                BoardAdminPostSummary(
-                    id = 11L,
-                    boardId = 1L,
-                    title = "주일 예배 안내",
-                    isPublic = true,
-                    isPinned = true,
-                    authorId = 42L,
-                    createdAt = createdAt,
-                    updatedAt = updatedAt,
-                )
+            BoardAdminPostsPage(
+                posts = listOf(
+                    BoardAdminPostSummary(
+                        id = 11L,
+                        boardId = 1L,
+                        title = "주일 예배 안내",
+                        isPublic = true,
+                        isPinned = true,
+                        authorId = 42L,
+                        createdAt = createdAt,
+                        updatedAt = updatedAt,
+                    )
+                ),
+                hasNext = false,
             )
         )
 
@@ -82,6 +86,7 @@ class BoardAdminControllerTest {
         assertThat(response.posts[0].id).isEqualTo(11L)
         assertThat(response.posts[0].title).isEqualTo("주일 예배 안내")
         assertThat(response.posts[0].isPinned).isTrue()
+        assertThat(response.hasNext).isFalse()
         verify(boardAdminService).listPosts(42L, "notice")
     }
 
