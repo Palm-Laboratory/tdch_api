@@ -39,20 +39,20 @@ class LocalAttachmentStorage(
         val mimeType = detectMimeType(bytes)
         require(mimeType == file.contentType) { "첨부파일 MIME 타입이 일치하지 않습니다." }
 
-        val extension = extensionForMimeType(mimeType)
-        val (processedBytes, dimensions) = processAttachment(bytes, mimeType)
+        val processedAttachment = processAttachment(bytes, mimeType)
+        val extension = extensionForMimeType(processedAttachment.mimeType)
         val storedPath = buildStoredPath(extension)
         val target = rootPath.resolve(storedPath)
 
         Files.createDirectories(target.parent)
-        Files.write(target, processedBytes)
+        Files.write(target, processedAttachment.bytes)
 
         return StoredAttachment(
             storedPath = storedPath,
-            mimeType = mimeType,
-            byteSize = processedBytes.size.toLong(),
-            width = dimensions.first,
-            height = dimensions.second,
+            mimeType = processedAttachment.mimeType,
+            byteSize = processedAttachment.bytes.size.toLong(),
+            width = processedAttachment.width,
+            height = processedAttachment.height,
         )
     }
 
@@ -60,21 +60,36 @@ class LocalAttachmentStorage(
         Files.deleteIfExists(rootPath.resolve(storedPath))
     }
 
-    private fun processAttachment(bytes: ByteArray, mimeType: String): Pair<ByteArray, Pair<Int?, Int?>> =
+    private fun processAttachment(bytes: ByteArray, mimeType: String): ProcessedAttachment =
         when (mimeType) {
             "image/jpeg", "image/png" -> processRasterImage(bytes, mimeType)
-            "image/webp" -> {
-                val dims = webpDimensions(bytes)
-                checkPixelCount(dims.first, dims.second)
-                bytes to dims
-            }
-            else -> bytes to (null to null)
+            "image/webp" -> processWebpImage(bytes)
+            else -> ProcessedAttachment(
+                bytes = bytes,
+                mimeType = mimeType,
+                width = null,
+                height = null,
+            )
         }
 
-    private fun processRasterImage(bytes: ByteArray, mimeType: String): Pair<ByteArray, Pair<Int?, Int?>> {
+    private fun processWebpImage(bytes: ByteArray): ProcessedAttachment {
+        val dims = webpDimensions(bytes)
+        checkPixelCount(dims.first, dims.second)
+
         val sourceImage = ImageIO.read(ByteArrayInputStream(bytes))
             ?: throw IllegalArgumentException("이미지 첨부파일을 읽을 수 없습니다.")
 
+        return processRasterImage(sourceImage, "image/png")
+    }
+
+    private fun processRasterImage(bytes: ByteArray, mimeType: String): ProcessedAttachment {
+        val sourceImage = ImageIO.read(ByteArrayInputStream(bytes))
+            ?: throw IllegalArgumentException("이미지 첨부파일을 읽을 수 없습니다.")
+
+        return processRasterImage(sourceImage, mimeType)
+    }
+
+    private fun processRasterImage(sourceImage: java.awt.image.BufferedImage, mimeType: String): ProcessedAttachment {
         checkPixelCount(sourceImage.width, sourceImage.height)
 
         val format = if (mimeType == "image/jpeg") "jpeg" else "png"
@@ -90,7 +105,12 @@ class LocalAttachmentStorage(
 
         val processedBytes = out.toByteArray()
         val finalImage = ImageIO.read(ByteArrayInputStream(processedBytes))
-        return processedBytes to (finalImage?.width to finalImage?.height)
+        return ProcessedAttachment(
+            bytes = processedBytes,
+            mimeType = if (format == "jpeg") "image/jpeg" else "image/png",
+            width = finalImage?.width,
+            height = finalImage?.height,
+        )
     }
 
     private fun checkPixelCount(width: Int?, height: Int?) {
@@ -212,3 +232,10 @@ class LocalAttachmentStorage(
             bytes[3] == 'F'.code.toByte() &&
             bytes[4] == '-'.code.toByte()
 }
+
+private data class ProcessedAttachment(
+    val bytes: ByteArray,
+    val mimeType: String,
+    val width: Int?,
+    val height: Int?,
+)

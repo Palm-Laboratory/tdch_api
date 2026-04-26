@@ -144,9 +144,62 @@ class LocalAttachmentStorageTest {
         assertThat(childCount(root)).isEqualTo(0L)
     }
 
-    private fun pngBytes(): ByteArray {
-        val image = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
-        image.setRGB(0, 0, Color(255, 0, 0, 255).rgb)
+    @Test
+    fun `store resizes raster images down to the max dimension policy`() {
+        val storage = LocalAttachmentStorage(root)
+        val file = MockMultipartFile(
+            "file",
+            "wide.png",
+            "image/png",
+            pngBytes(width = 4096, height = 1024),
+        )
+
+        val result = storage.store(
+            file = file,
+            kind = PostAssetKind.INLINE_IMAGE,
+            maxByteSize = 10_000_000L,
+        )
+
+        val storedPath = readStringProperty(result, "storedPath")
+        val width = readIntProperty(result, "width")
+        val height = readIntProperty(result, "height")
+        val storedImage = ImageIO.read(root.resolve(storedPath).toFile())
+
+        assertThat(width).isEqualTo(2048)
+        assertThat(height).isEqualTo(512)
+        assertThat(storedImage.width).isEqualTo(2048)
+        assertThat(storedImage.height).isEqualTo(512)
+    }
+
+    @Test
+    fun `store rejects images whose pixel count exceeds the safety limit`() {
+        val storage = LocalAttachmentStorage(root)
+        val file = MockMultipartFile(
+            "file",
+            "huge.webp",
+            "image/webp",
+            webpBytes(width = 10_000, height = 8_001),
+        )
+
+        assertThatThrownBy {
+            storage.store(
+                file = file,
+                kind = PostAssetKind.INLINE_IMAGE,
+                maxByteSize = 20_000_000L,
+            )
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("이미지 해상도")
+
+        assertThat(childCount(root)).isEqualTo(0L)
+    }
+
+    private fun pngBytes(width: Int = 1, height: Int = 1): ByteArray {
+        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                image.setRGB(x, y, Color(255, 0, 0, 255).rgb)
+            }
+        }
 
         return ByteArrayOutputStream().use { output ->
             ImageIO.write(image, "png", output)
@@ -156,6 +209,32 @@ class LocalAttachmentStorageTest {
 
     private fun pdfBytes(): ByteArray =
         "%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n".toByteArray()
+
+    private fun webpBytes(width: Int, height: Int): ByteArray {
+        val bytes = ByteArray(30)
+        bytes[0] = 'R'.code.toByte()
+        bytes[1] = 'I'.code.toByte()
+        bytes[2] = 'F'.code.toByte()
+        bytes[3] = 'F'.code.toByte()
+        bytes[8] = 'W'.code.toByte()
+        bytes[9] = 'E'.code.toByte()
+        bytes[10] = 'B'.code.toByte()
+        bytes[11] = 'P'.code.toByte()
+        bytes[12] = 'V'.code.toByte()
+        bytes[13] = 'P'.code.toByte()
+        bytes[14] = '8'.code.toByte()
+        bytes[15] = 'X'.code.toByte()
+
+        val widthMinusOne = width - 1
+        val heightMinusOne = height - 1
+        bytes[24] = (widthMinusOne and 0xFF).toByte()
+        bytes[25] = ((widthMinusOne ushr 8) and 0xFF).toByte()
+        bytes[26] = ((widthMinusOne ushr 16) and 0xFF).toByte()
+        bytes[27] = (heightMinusOne and 0xFF).toByte()
+        bytes[28] = ((heightMinusOne ushr 8) and 0xFF).toByte()
+        bytes[29] = ((heightMinusOne ushr 16) and 0xFF).toByte()
+        return bytes
+    }
 
     private fun readStringProperty(target: Any, propertyName: String): String {
         val field = target.javaClass.declaredFields.firstOrNull { it.name == propertyName }
