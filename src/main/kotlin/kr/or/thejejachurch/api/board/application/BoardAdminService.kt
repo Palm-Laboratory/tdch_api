@@ -56,13 +56,34 @@ class BoardAdminService(
         val board = requireBoard(boardSlug)
         val boardId = requireBoardId(board)
         menuId?.let { requireBoardMenu(boardSlug = board.slug, menuId = it) }
+        val pageable = PageRequest.of(page, size)
+        val normalizedTitle = title?.trim()?.takeIf { it.isNotEmpty() }
 
-        val postsPage = postRepository.findAdminPosts(
-            boardId = boardId,
-            menuId = menuId,
-            title = title?.takeIf { it.isNotBlank() },
-            pageable = PageRequest.of(page, size),
-        )
+        val postsPage = when {
+            normalizedTitle != null && menuId != null -> postRepository.findAdminPostsByBoardIdAndMenuIdAndTitle(
+                boardId = boardId,
+                menuId = menuId,
+                title = normalizedTitle,
+                pageable = pageable,
+            )
+
+            normalizedTitle != null -> postRepository.findAdminPostsByBoardIdAndTitle(
+                boardId = boardId,
+                title = normalizedTitle,
+                pageable = pageable,
+            )
+
+            menuId != null -> postRepository.findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(
+                boardId = boardId,
+                menuId = menuId,
+                pageable = pageable,
+            )
+
+            else -> postRepository.findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(
+                boardId = boardId,
+                pageable = pageable,
+            )
+        }
 
         return BoardAdminPostsPage(
             posts = postsPage.content.map { post ->
