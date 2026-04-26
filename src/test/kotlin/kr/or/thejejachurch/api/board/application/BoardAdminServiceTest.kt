@@ -29,6 +29,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
 import java.time.OffsetDateTime
 import java.util.Optional
 
@@ -123,7 +124,7 @@ class BoardAdminServiceTest {
         }
         whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
-        whenever(postRepository.findAdminPosts(eq(10L), eq(null), eq(null), any()))
+        whenever(postRepository.findAllByBoardIdOrderByIsPinnedDescCreatedAtDescIdDesc(any<Long>(), any<Pageable>()))
             .thenReturn(PageImpl(posts, PageRequest.of(0, 20), 25))
 
         val result = service.listPosts(actorId = 1L, boardSlug = "notice", page = 0, size = 20)
@@ -139,7 +140,7 @@ class BoardAdminServiceTest {
             contentJson = """{"type":"doc"}""", authorId = 1L)
         whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
-        whenever(postRepository.findAdminPosts(eq(10L), eq(1001L), eq(null), any()))
+        whenever(postRepository.findAllByBoardIdAndMenuIdOrderByIsPinnedDescCreatedAtDescIdDesc(any<Long>(), any<Long>(), any<Pageable>()))
             .thenReturn(PageImpl(listOf(post), PageRequest.of(0, 20), 1))
 
         val result = service.listPosts(actorId = 1L, boardSlug = "notice", menuId = 1001L)
@@ -156,7 +157,7 @@ class BoardAdminServiceTest {
             contentJson = """{"type":"doc"}""", authorId = 1L)
         whenever(adminAccountRepository.findById(1L)).thenReturn(Optional.of(activeAdmin(1L)))
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
-        whenever(postRepository.findAdminPosts(eq(10L), eq(null), eq("부활절"), any()))
+        whenever(postRepository.findAdminPostsByBoardIdAndTitle(any<Long>(), any<String>(), any<Pageable>()))
             .thenReturn(PageImpl(listOf(post), PageRequest.of(0, 20), 1))
 
         val result = service.listPosts(actorId = 1L, boardSlug = "notice", title = "부활절")

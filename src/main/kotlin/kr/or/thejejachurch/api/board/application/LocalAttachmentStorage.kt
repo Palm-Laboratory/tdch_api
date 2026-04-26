@@ -2,15 +2,20 @@ package kr.or.thejejachurch.api.board.application
 
 import kr.or.thejejachurch.api.board.domain.PostAssetKind
 import kr.or.thejejachurch.api.common.config.UploadProperties
+import net.coobird.thumbnailator.Thumbnails
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import org.springframework.web.multipart.MultipartFile
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.LocalDate
 import java.util.UUID
 import javax.imageio.ImageIO
+
+private const val MAX_DIMENSION = 2048
+private const val MAX_PIXEL_COUNT = 80_000_000L
 
 @Component
 class LocalAttachmentStorage(
@@ -35,18 +40,17 @@ class LocalAttachmentStorage(
         require(mimeType == file.contentType) { "첨부파일 MIME 타입이 일치하지 않습니다." }
 
         val extension = extensionForMimeType(mimeType)
-        val dimensions = imageDimensions(bytes, mimeType)
+        val (processedBytes, dimensions) = processAttachment(bytes, mimeType)
         val storedPath = buildStoredPath(extension)
         val target = rootPath.resolve(storedPath)
 
         Files.createDirectories(target.parent)
-        // TODO: Re-encode images to strip EXIF and resize to the final max-dimension policy.
-        Files.write(target, bytes)
+        Files.write(target, processedBytes)
 
         return StoredAttachment(
             storedPath = storedPath,
             mimeType = mimeType,
-            byteSize = byteSize,
+            byteSize = processedBytes.size.toLong(),
             width = dimensions.first,
             height = dimensions.second,
         )
@@ -54,6 +58,45 @@ class LocalAttachmentStorage(
 
     override fun delete(storedPath: String) {
         Files.deleteIfExists(rootPath.resolve(storedPath))
+    }
+
+    private fun processAttachment(bytes: ByteArray, mimeType: String): Pair<ByteArray, Pair<Int?, Int?>> =
+        when (mimeType) {
+            "image/jpeg", "image/png" -> processRasterImage(bytes, mimeType)
+            "image/webp" -> {
+                val dims = webpDimensions(bytes)
+                checkPixelCount(dims.first, dims.second)
+                bytes to dims
+            }
+            else -> bytes to (null to null)
+        }
+
+    private fun processRasterImage(bytes: ByteArray, mimeType: String): Pair<ByteArray, Pair<Int?, Int?>> {
+        val sourceImage = ImageIO.read(ByteArrayInputStream(bytes))
+            ?: throw IllegalArgumentException("이미지 첨부파일을 읽을 수 없습니다.")
+
+        checkPixelCount(sourceImage.width, sourceImage.height)
+
+        val format = if (mimeType == "image/jpeg") "jpeg" else "png"
+        val out = ByteArrayOutputStream()
+        val needsResize = sourceImage.width > MAX_DIMENSION || sourceImage.height > MAX_DIMENSION
+
+        val builder = if (needsResize) {
+            Thumbnails.of(sourceImage).size(MAX_DIMENSION, MAX_DIMENSION).keepAspectRatio(true)
+        } else {
+            Thumbnails.of(sourceImage).scale(1.0)
+        }
+        builder.outputFormat(format).outputQuality(0.85).toOutputStream(out)
+
+        val processedBytes = out.toByteArray()
+        val finalImage = ImageIO.read(ByteArrayInputStream(processedBytes))
+        return processedBytes to (finalImage?.width to finalImage?.height)
+    }
+
+    private fun checkPixelCount(width: Int?, height: Int?) {
+        if (width != null && height != null && width.toLong() * height.toLong() > MAX_PIXEL_COUNT) {
+            throw IllegalArgumentException("이미지 해상도가 허용 범위를 초과합니다.")
+        }
     }
 
     private fun buildStoredPath(extension: String): String {
@@ -84,29 +127,53 @@ class LocalAttachmentStorage(
             else -> throw IllegalArgumentException("지원하지 않는 첨부파일 형식입니다.")
         }
 
-    private fun imageDimensions(bytes: ByteArray, mimeType: String): Pair<Int?, Int?> =
-        when (mimeType) {
-            "image/png", "image/jpeg" -> {
-                val image = ImageIO.read(ByteArrayInputStream(bytes))
-                    ?: throw IllegalArgumentException("이미지 첨부파일을 읽을 수 없습니다.")
-                image.width to image.height
-            }
-            "image/webp" -> webpDimensions(bytes)
-            else -> null to null
-        }
-
     private fun webpDimensions(bytes: ByteArray): Pair<Int?, Int?> {
-        if (bytes.size < 30) {
-            return null to null
-        }
+        if (bytes.size < 30) return null to null
 
         val header = String(bytes, 0, 4, Charsets.US_ASCII)
-        val format = String(bytes, 8, 4, Charsets.US_ASCII)
-        if (header != "RIFF" || format != "WEBP") {
+        val webpMarker = String(bytes, 8, 4, Charsets.US_ASCII)
+        if (header != "RIFF" || webpMarker != "WEBP") {
             throw IllegalArgumentException("지원하지 않는 첨부파일 형식입니다.")
         }
 
-        return null to null
+        return when (String(bytes, 12, 4, Charsets.US_ASCII)) {
+            "VP8 " -> vp8Dimensions(bytes)
+            "VP8L" -> vp8lDimensions(bytes)
+            "VP8X" -> vp8xDimensions(bytes)
+            else -> null to null
+        }
+    }
+
+    // VP8 lossy: keyframe dimensions at bytes 26–29
+    private fun vp8Dimensions(bytes: ByteArray): Pair<Int?, Int?> {
+        if (bytes.size < 30) return null to null
+        if ((bytes[20].toInt() and 0x01) != 0) return null to null
+        if (bytes[23] != 0x9D.toByte() || bytes[24] != 0x01.toByte() || bytes[25] != 0x2A.toByte()) return null to null
+        val width = ((bytes[26].toInt() and 0xFF) or ((bytes[27].toInt() and 0xFF) shl 8)) and 0x3FFF
+        val height = ((bytes[28].toInt() and 0xFF) or ((bytes[29].toInt() and 0xFF) shl 8)) and 0x3FFF
+        return width to height
+    }
+
+    // VP8L lossless: signature 0x2F at byte 20, then (width-1) in bits 0–13, (height-1) in bits 14–27
+    private fun vp8lDimensions(bytes: ByteArray): Pair<Int?, Int?> {
+        if (bytes.size < 25 || bytes[20] != 0x2F.toByte()) return null to null
+        val bits = (bytes[21].toInt() and 0xFF) or
+            ((bytes[22].toInt() and 0xFF) shl 8) or
+            ((bytes[23].toInt() and 0xFF) shl 16) or
+            ((bytes[24].toInt() and 0xFF) shl 24)
+        return ((bits and 0x3FFF) + 1) to (((bits ushr 14) and 0x3FFF) + 1)
+    }
+
+    // VP8X extended: canvas (width-1) at bytes 24–26, (height-1) at bytes 27–29 (24-bit LE)
+    private fun vp8xDimensions(bytes: ByteArray): Pair<Int?, Int?> {
+        if (bytes.size < 30) return null to null
+        val width = ((bytes[24].toInt() and 0xFF) or
+            ((bytes[25].toInt() and 0xFF) shl 8) or
+            ((bytes[26].toInt() and 0xFF) shl 16)) + 1
+        val height = ((bytes[27].toInt() and 0xFF) or
+            ((bytes[28].toInt() and 0xFF) shl 8) or
+            ((bytes[29].toInt() and 0xFF) shl 16)) + 1
+        return width to height
     }
 
     private fun isPng(bytes: ByteArray): Boolean =

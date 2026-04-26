@@ -30,6 +30,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("net.coobird:thumbnailator:0.4.21")
 
     runtimeOnly("org.postgresql:postgresql")
 
