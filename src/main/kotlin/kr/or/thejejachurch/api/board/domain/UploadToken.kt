@@ -32,8 +32,6 @@ class UploadToken(
     var allowedMimeTypes: String = "[]",
     @Column(name = "expires_at", nullable = false)
     var expiresAt: OffsetDateTime,
-    @Column(name = "board_id")
-    var boardId: Long? = null,
     @Column(name = "used_at")
     var usedAt: OffsetDateTime? = null,
     @Column(name = "created_at", nullable = false)

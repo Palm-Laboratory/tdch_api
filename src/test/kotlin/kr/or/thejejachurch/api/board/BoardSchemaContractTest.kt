@@ -21,6 +21,8 @@ class BoardSchemaContractTest {
         assertThat(migrations).containsExactly(
             "V1__create_tdch_schema.sql",
             "V2__drop_board_type_table.sql",
+            "V3__normalize_post_title_column.sql",
+            "V4__drop_upload_token_board_id.sql",
         )
     }
 
@@ -34,13 +36,20 @@ class BoardSchemaContractTest {
     }
 
     @Test
-    fun `V1 and V2 migrations should define the current board upload schema`() {
+    fun `forward migrations should define the current board upload schema`() {
         val normalized = readBaselineMigration()
         val cleanupMigration = readMigration("V2__drop_board_type_table.sql")
+        val titleNormalizationMigration = readMigration("V3__normalize_post_title_column.sql")
+        val uploadTokenCleanupMigration = readMigration("V4__drop_upload_token_board_id.sql")
 
         assertThat(cleanupMigration).contains("update board as b")
         assertThat(cleanupMigration).contains("drop column if exists board_type_id")
         assertThat(cleanupMigration).contains("drop table if exists board_type")
+        assertThat(titleNormalizationMigration).contains("table_schema = 'public'")
+        assertThat(titleNormalizationMigration).contains("alter table post")
+        assertThat(titleNormalizationMigration).contains("alter column title type varchar(200)")
+        assertThat(uploadTokenCleanupMigration).contains("drop index if exists idx_upload_token_board_id")
+        assertThat(uploadTokenCleanupMigration).contains("drop column if exists board_id")
 
         assertThat(normalized).contains("create table board")
         assertThat(normalized).contains("menu_id bigint references menu_item(id) on delete set null")
@@ -70,6 +79,7 @@ class BoardSchemaContractTest {
         assertThat(normalized).contains("idx_post_asset_detached_at")
 
         assertThat(normalized).contains("create table upload_token")
+        assertThat(normalized).contains("board_id bigint references board(id) on delete cascade")
         assertThat(normalized).contains("token_hash varchar(128) not null unique")
         assertThat(normalized).contains("allowed_mime_types jsonb not null default '[]'::jsonb")
         assertThat(normalized).contains("constraint chk_upload_token_asset_kind")
@@ -156,12 +166,15 @@ class BoardSchemaContractTest {
         assertThat(uploadToken).contains("actorid")
         assertThat(uploadToken).contains("maxbytesize")
         assertThat(uploadToken).contains("usedat")
+        assertThat(uploadToken).doesNotContain("boardid")
     }
 
     private fun readBaselineMigration(): String =
         listOf(
             "V1__create_tdch_schema.sql",
             "V2__drop_board_type_table.sql",
+            "V3__normalize_post_title_column.sql",
+            "V4__drop_upload_token_board_id.sql",
         ).joinToString("\n") { readMigration(it) }
 
     private fun readMigration(fileName: String): String {
