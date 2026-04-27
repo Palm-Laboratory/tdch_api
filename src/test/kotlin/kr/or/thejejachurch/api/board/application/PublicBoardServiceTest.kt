@@ -106,6 +106,19 @@ class PublicBoardServiceTest {
             )
         ).thenReturn(PageImpl(listOf(publicPost), pageRequest, 3))
         whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
+        whenever(postAssetRepository.findAllByPostIdIn(listOf(101L))).thenReturn(
+            listOf(
+                asset(id = 201L, postId = 101L, storedPath = "uploads/notice/image.png", sortOrder = 0),
+                asset(
+                    id = 202L,
+                    postId = 101L,
+                    kind = PostAssetKind.FILE_ATTACHMENT,
+                    originalFilename = "notice.pdf",
+                    storedPath = "uploads/notice/notice.pdf",
+                    sortOrder = 1,
+                ),
+            )
+        )
 
         val result = service.listPosts(boardSlug = "notice", page = 1, size = 2)
 
@@ -118,6 +131,9 @@ class PublicBoardServiceTest {
         assertThat(result.posts[0].title).isEqualTo("공개 소식")
         assertThat(result.posts[0].authorName).isEqualTo("관리자")
         assertThat(result.posts[0].viewCount).isZero()
+        assertThat(result.posts[0].hasInlineImage).isTrue()
+        assertThat(result.posts[0].hasVideoEmbed).isFalse()
+        assertThat(result.posts[0].hasAttachments).isTrue()
         verify(postRepository).findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
             board.id!!,
             pageRequest,
@@ -141,6 +157,7 @@ class PublicBoardServiceTest {
             )
         ).thenReturn(PageImpl(listOf(post(1L, board.id!!, title = "글1"), post(2L, board.id!!, title = "글2"), post(3L, board.id!!, title = "글3")), PageRequest.of(0, 3), 3))
         whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
+        whenever(postAssetRepository.findAllByPostIdIn(listOf(1L, 2L, 3L))).thenReturn(emptyList())
 
         val lastPage = service.listPosts(boardSlug = "notice", page = 0, size = 3)
         assertThat(lastPage.hasNext).isFalse()
@@ -152,6 +169,7 @@ class PublicBoardServiceTest {
                 PageRequest.of(0, 2),
             )
         ).thenReturn(PageImpl(listOf(post(1L, board.id!!, title = "글1"), post(2L, board.id!!, title = "글2")), PageRequest.of(0, 2), 3))
+        whenever(postAssetRepository.findAllByPostIdIn(listOf(1L, 2L))).thenReturn(emptyList())
 
         val firstPage = service.listPosts(boardSlug = "notice", page = 0, size = 2)
         assertThat(firstPage.hasNext).isTrue()
@@ -183,6 +201,7 @@ class PublicBoardServiceTest {
             )
         ).thenReturn(PageImpl(listOf(publicPost), pageRequest, 1))
         whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
+        whenever(postAssetRepository.findAllByPostIdIn(listOf(101L))).thenReturn(emptyList())
 
         val result = service.listPosts(boardSlug = "notice", menuId = 1001L, page = 0, size = 20)
 
@@ -259,6 +278,53 @@ class PublicBoardServiceTest {
         assertThat(result.assets[0].publicUrl).isEqualTo(
             "https://cdn.example.com/upload/uploads/2026/notice/image.png"
         )
+    }
+
+    @Test
+    fun `list posts derives summary media flags from assets and content`() {
+        val board = board(slug = "notice")
+        val pageRequest = PageRequest.of(0, 20)
+        val publicPost = post(
+            id = 101L,
+            boardId = board.id!!,
+            title = "영상과 첨부가 있는 글",
+            contentJson = """{"type":"doc","content":[{"type":"youtubeEmbed","attrs":{"videoId":"abc123def45"}}]}""",
+            contentHtml = """<p>본문</p><iframe src="https://www.youtube.com/embed/abc123def45"></iframe>""",
+        )
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(
+            menuItemRepository.existsByTypeAndStatusAndBoardKey(
+                MenuType.BOARD,
+                MenuStatus.PUBLISHED,
+                "notice",
+            )
+        ).thenReturn(true)
+        whenever(
+            postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
+                board.id!!,
+                pageRequest,
+            )
+        ).thenReturn(PageImpl(listOf(publicPost), pageRequest, 1))
+        whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
+        whenever(postAssetRepository.findAllByPostIdIn(listOf(101L))).thenReturn(
+            listOf(
+                asset(id = 301L, postId = 101L, storedPath = "uploads/notice/image.png", sortOrder = 0),
+                asset(
+                    id = 302L,
+                    postId = 101L,
+                    kind = PostAssetKind.FILE_ATTACHMENT,
+                    originalFilename = "notice.pdf",
+                    storedPath = "uploads/notice/notice.pdf",
+                    sortOrder = 1,
+                ),
+            )
+        )
+
+        val result = service.listPosts(boardSlug = "notice", page = 0, size = 20)
+
+        assertThat(result.posts.single().hasInlineImage).isTrue()
+        assertThat(result.posts.single().hasVideoEmbed).isTrue()
+        assertThat(result.posts.single().hasAttachments).isTrue()
     }
 
     @Test

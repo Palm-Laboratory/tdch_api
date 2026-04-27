@@ -4,6 +4,7 @@ import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAcco
 import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.Post
 import kr.or.thejejachurch.api.board.domain.PostAsset
+import kr.or.thejejachurch.api.board.domain.PostAssetKind
 import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostAssetRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
@@ -34,6 +35,12 @@ class PublicBoardService(
         val posts = menuId
             ?.let { postRepository.findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(it, pageRequest) }
             ?: postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(boardId, pageRequest)
+        val postIds = posts.content.mapNotNull { it.id }
+        val assetsByPostId = if (postIds.isEmpty()) {
+            emptyMap()
+        } else {
+            postAssetRepository.findAllByPostIdIn(postIds).groupBy { it.postId }
+        }
         val authorNamesById = adminAccountRepository.findAllById(posts.content.map { it.authorId }.distinct())
             .associateBy({ it.id ?: -1L }, { it.displayName })
 
@@ -42,7 +49,12 @@ class PublicBoardService(
             size = posts.size,
             totalElements = posts.totalElements,
             hasNext = posts.hasNext(),
-            posts = posts.content.map { it.toPublicSummary(authorNamesById[it.authorId] ?: "") },
+            posts = posts.content.map { post ->
+                post.toPublicSummary(
+                    authorName = authorNamesById[post.authorId] ?: "",
+                    assets = assetsByPostId[post.id].orEmpty(),
+                )
+            },
         )
     }
 
@@ -102,7 +114,7 @@ class PublicBoardService(
     private fun requireBoardId(board: Board): Long =
         board.id ?: throw IllegalStateException("게시판 id가 없습니다.")
 
-    private fun Post.toPublicSummary(authorName: String): PublicBoardPostSummary =
+    private fun Post.toPublicSummary(authorName: String, assets: List<PostAsset>): PublicBoardPostSummary =
         PublicBoardPostSummary(
             id = id,
             boardId = boardId,
@@ -111,6 +123,9 @@ class PublicBoardService(
             authorName = authorName,
             viewCount = viewCount,
             contentHtml = contentHtml,
+            hasInlineImage = assets.any { it.kind == PostAssetKind.INLINE_IMAGE },
+            hasVideoEmbed = hasVideoEmbed(),
+            hasAttachments = assets.any { it.kind == PostAssetKind.FILE_ATTACHMENT },
             isPinned = isPinned,
             publishedAt = publishedAt,
             createdAt = createdAt,
@@ -133,4 +148,11 @@ class PublicBoardService(
 
     private fun publicUrl(storedPath: String): String =
         "${uploadProperties.publicBaseUrl.trimEnd('/')}/${storedPath.trimStart('/')}"
+
+    private fun Post.hasVideoEmbed(): Boolean =
+        VIDEO_EMBED_REGEX.containsMatchIn(contentHtml.orEmpty()) || VIDEO_EMBED_REGEX.containsMatchIn(contentJson)
+
+    companion object {
+        private val VIDEO_EMBED_REGEX = Regex("""youtube(?:-nocookie)?\.com|youtu\.be|<iframe\b|"type"\s*:\s*"(?:youtube|youtubeEmbed)"""")
+    }
 }

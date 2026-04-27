@@ -36,6 +36,9 @@ class PublicBoardControllerTest {
                         authorName = "관리자",
                         viewCount = 12L,
                         contentHtml = "<p>주일 예배 안내</p>",
+                        hasInlineImage = true,
+                        hasVideoEmbed = false,
+                        hasAttachments = true,
                         isPinned = true,
                         publishedAt = createdAt,
                         createdAt = createdAt,
@@ -48,6 +51,9 @@ class PublicBoardControllerTest {
                         authorName = "운영자",
                         viewCount = 3L,
                         contentHtml = null,
+                        hasInlineImage = false,
+                        hasVideoEmbed = true,
+                        hasAttachments = false,
                         isPinned = false,
                         publishedAt = null,
                         createdAt = createdAt.plusDays(1),
@@ -74,6 +80,9 @@ class PublicBoardControllerTest {
         assertThat(response.posts.map { it.authorName }).containsExactly("관리자", "운영자")
         assertThat(response.posts.map { it.viewCount }).containsExactly(12L, 3L)
         assertThat(response.posts.map { it.contentHtml }).containsExactly("<p>주일 예배 안내</p>", null)
+        assertThat(response.posts.map { it.hasInlineImage }).containsExactly(true, false)
+        assertThat(response.posts.map { it.hasVideoEmbed }).containsExactly(false, true)
+        assertThat(response.posts.map { it.hasAttachments }).containsExactly(true, false)
         assertThat(response.posts.map { it.isPinned }).containsExactly(true, false)
         assertThat(response.posts.map { it.publishedAt }).containsExactly(createdAt, null)
         assertThat(response.posts.map { it.createdAt }).containsExactly(createdAt, createdAt.plusDays(1))
