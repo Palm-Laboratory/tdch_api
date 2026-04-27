@@ -85,6 +85,10 @@ class BoardAdminService(
             )
         }
 
+        val authorNameById = adminAccountRepository.findAll()
+            .filter { it.id != null }
+            .associate { it.id!! to it.displayName }
+
         return BoardAdminPostsPage(
             posts = postsPage.content.map { post ->
                 BoardAdminPostSummary(
@@ -95,6 +99,7 @@ class BoardAdminService(
                     isPublic = post.isPublic,
                     isPinned = post.isPinned,
                     authorId = post.authorId,
+                    authorName = authorNameById[post.authorId] ?: "-",
                     createdAt = post.createdAt,
                     updatedAt = post.updatedAt,
                 )

@@ -176,6 +176,7 @@ data class BoardAdminPostSummaryResponse(
     val isPublic: Boolean,
     val isPinned: Boolean,
     val authorId: Long,
+    val authorName: String,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
 )
@@ -229,6 +230,7 @@ private fun BoardAdminPostSummary.toResponse(): BoardAdminPostSummaryResponse =
         isPublic = isPublic,
         isPinned = isPinned,
         authorId = authorId,
+        authorName = authorName,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )

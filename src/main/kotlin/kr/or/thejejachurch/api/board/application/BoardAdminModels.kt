@@ -30,6 +30,7 @@ data class BoardAdminPostSummary(
     val isPublic: Boolean,
     val isPinned: Boolean,
     val authorId: Long,
+    val authorName: String,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
 )
