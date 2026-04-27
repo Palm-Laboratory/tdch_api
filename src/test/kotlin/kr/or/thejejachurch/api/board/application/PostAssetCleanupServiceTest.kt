@@ -27,7 +27,7 @@ class PostAssetCleanupServiceTest {
 
     @Test
     fun `cleanupStaleTemporaryAssets deletes storage objects before rows and returns deleted count`() {
-        val cutoff = fixedNow.minusHours(72)
+        val cutoff = fixedNow.minusMinutes(5)
         val staleInlineImage = postAsset(
             id = 11L,
             storedPath = "board/inline/old-image.png",
@@ -55,7 +55,7 @@ class PostAssetCleanupServiceTest {
 
     @Test
     fun `cleanupStaleTemporaryAssets ignores attached and recent assets through repository cutoff query`() {
-        val cutoff = fixedNow.minusHours(72)
+        val cutoff = fixedNow.minusMinutes(5)
         whenever(postAssetRepository.findAllByPostIdIsNullAndDetachedAtBefore(cutoff))
             .thenReturn(emptyList<PostAsset>())
 
