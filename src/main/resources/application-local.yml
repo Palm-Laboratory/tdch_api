@@ -5,3 +5,9 @@ tdch:
   uploads:
     root-path: ${TDCH_UPLOAD_ROOT:${user.dir}/.local/uploads}
     public-base-url: ${TDCH_UPLOAD_PUBLIC_BASE_URL:http://localhost:8080/upload}
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
