@@ -22,7 +22,7 @@ class PublicBoardControllerTest {
         val controller = controller()
         val createdAt = OffsetDateTime.parse("2026-04-20T10:15:30+09:00")
         val updatedAt = createdAt.plusHours(1)
-        whenever(publicBoardService.listPosts("notice", 1, 10)).thenReturn(
+        whenever(publicBoardService.listPosts("notice", 1, 10, null, "예배")).thenReturn(
             PublicBoardPostListResult(
                 page = 1,
                 size = 10,
@@ -67,6 +67,7 @@ class PublicBoardControllerTest {
             slug = "notice",
             page = 1,
             size = 10,
+            title = "예배",
         )
 
         assertThat(response.page).isEqualTo(1)
@@ -87,7 +88,7 @@ class PublicBoardControllerTest {
         assertThat(response.posts.map { it.publishedAt }).containsExactly(createdAt, null)
         assertThat(response.posts.map { it.createdAt }).containsExactly(createdAt, createdAt.plusDays(1))
         assertThat(response.posts.map { it.updatedAt }).containsExactly(updatedAt, updatedAt.plusDays(1))
-        verify(publicBoardService).listPosts("notice", 1, 10)
+        verify(publicBoardService).listPosts("notice", 1, 10, null, "예배")
     }
 
     @Test

@@ -24,8 +24,9 @@ class PublicBoardController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) menuId: Long? = null,
+        @RequestParam(required = false) title: String? = null,
     ): PublicBoardListPostsResponse =
-        publicBoardService.listPosts(slug, page, size, menuId).toResponse()
+        publicBoardService.listPosts(slug, page, size, menuId, title).toResponse()
 
     @GetMapping("/{slug}/posts/{postId}")
     fun getPost(

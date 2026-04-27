@@ -26,6 +26,48 @@ interface PostRepository : JpaRepository<Post, Long> {
         value = """
             SELECT p FROM Post p
             WHERE p.boardId = :boardId
+            AND p.isPublic = true
+            AND LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%'))
+            ORDER BY p.isPinned DESC, p.createdAt DESC, p.id DESC
+        """,
+        countQuery = """
+            SELECT COUNT(p) FROM Post p
+            WHERE p.boardId = :boardId
+            AND p.isPublic = true
+            AND LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%'))
+        """,
+    )
+    fun findPublicPostsByBoardIdAndTitle(
+        @Param("boardId") boardId: Long,
+        @Param("title") title: String,
+        pageable: Pageable,
+    ): Page<Post>
+
+    @Query(
+        value = """
+            SELECT p FROM Post p
+            WHERE p.menuId = :menuId
+            AND p.isPublic = true
+            AND LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%'))
+            ORDER BY p.isPinned DESC, p.createdAt DESC, p.id DESC
+        """,
+        countQuery = """
+            SELECT COUNT(p) FROM Post p
+            WHERE p.menuId = :menuId
+            AND p.isPublic = true
+            AND LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%'))
+        """,
+    )
+    fun findPublicPostsByMenuIdAndTitle(
+        @Param("menuId") menuId: Long,
+        @Param("title") title: String,
+        pageable: Pageable,
+    ): Page<Post>
+
+    @Query(
+        value = """
+            SELECT p FROM Post p
+            WHERE p.boardId = :boardId
             AND LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%'))
             ORDER BY p.isPinned DESC, p.createdAt DESC, p.id DESC
         """,

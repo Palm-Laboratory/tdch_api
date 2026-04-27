@@ -28,13 +28,24 @@ class PublicBoardService(
 ) {
 
     @Transactional(readOnly = true)
-    fun listPosts(boardSlug: String, page: Int, size: Int, menuId: Long? = null): PublicBoardPostListResult {
+    fun listPosts(boardSlug: String, page: Int, size: Int, menuId: Long? = null, title: String? = null): PublicBoardPostListResult {
         val board = requirePublishedBoard(boardSlug, menuId)
         val boardId = requireBoardId(board)
         val pageRequest = PageRequest.of(page, size)
-        val posts = menuId
-            ?.let { postRepository.findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(it, pageRequest) }
-            ?: postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(boardId, pageRequest)
+        val normalizedTitle = title?.trim()?.takeIf { it.isNotEmpty() }
+        val posts = when {
+            normalizedTitle != null && menuId != null ->
+                postRepository.findPublicPostsByMenuIdAndTitle(menuId, normalizedTitle, pageRequest)
+
+            normalizedTitle != null ->
+                postRepository.findPublicPostsByBoardIdAndTitle(boardId, normalizedTitle, pageRequest)
+
+            menuId != null ->
+                postRepository.findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(menuId, pageRequest)
+
+            else ->
+                postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(boardId, pageRequest)
+        }
         val postIds = posts.content.mapNotNull { it.id }
         val assetsByPostId = if (postIds.isEmpty()) {
             emptyMap()

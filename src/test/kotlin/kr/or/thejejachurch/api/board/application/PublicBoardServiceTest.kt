@@ -215,6 +215,36 @@ class PublicBoardServiceTest {
     }
 
     @Test
+    fun `list posts filters public posts by title`() {
+        val board = board(slug = "notice")
+        val pageRequest = PageRequest.of(0, 20)
+        val publicPost = post(id = 101L, boardId = board.id!!, title = "수요 예배 안내")
+        whenever(boardRepository.findBySlug("notice")).thenReturn(board)
+        whenever(
+            menuItemRepository.existsByTypeAndStatusAndBoardKey(
+                MenuType.BOARD,
+                MenuStatus.PUBLISHED,
+                "notice",
+            )
+        ).thenReturn(true)
+        whenever(
+            postRepository.findPublicPostsByBoardIdAndTitle(
+                board.id!!,
+                "수요",
+                pageRequest,
+            )
+        ).thenReturn(PageImpl(listOf(publicPost), pageRequest, 1))
+        whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
+        whenever(postAssetRepository.findAllByPostIdIn(listOf(101L))).thenReturn(emptyList())
+
+        val result = service.listPosts(boardSlug = "notice", page = 0, size = 20, title = "  수요 ")
+
+        assertThat(result.posts).hasSize(1)
+        assertThat(result.posts.single().title).isEqualTo("수요 예배 안내")
+        verify(postRepository).findPublicPostsByBoardIdAndTitle(board.id!!, "수요", pageRequest)
+    }
+
+    @Test
     fun `get post throws not found for private post or post under another board`() {
         val board = board(slug = "notice")
         whenever(boardRepository.findBySlug("notice")).thenReturn(board)
