@@ -1,5 +1,7 @@
 package kr.or.thejejachurch.api.board.application
 
+import kr.or.thejejachurch.api.adminaccount.domain.AdminAccount
+import kr.or.thejejachurch.api.adminaccount.domain.AdminAccountRole
 import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAccountRepository
 import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.Post
@@ -193,9 +195,10 @@ class BoardAdminService(
         command: BoardPostSaveCommand,
         menuId: Long? = command.menuId,
     ): BoardAdminPostSaveResult {
-        requireActiveAdmin(actorId)
+        val actor = requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
         val post = requirePostInBoard(postId, board, menuId)
+        requirePostEditPermission(actor, post)
         val savedPostId = post.id ?: throw IllegalStateException("게시글 id가 없습니다.")
         val assetIds = mergeAssetIds(
             contentValidator.validate(
@@ -226,9 +229,10 @@ class BoardAdminService(
 
     @Transactional
     fun deletePost(actorId: Long, boardSlug: String, postId: Long, menuId: Long? = null) {
-        requireActiveAdmin(actorId)
+        val actor = requireActiveAdmin(actorId)
         val board = requireBoard(boardSlug)
         val post = requirePostInBoard(postId, board, menuId)
+        requirePostEditPermission(actor, post)
         val savedPostId = post.id ?: throw IllegalStateException("게시글 id가 없습니다.")
 
         val detachedAt = OffsetDateTime.now(clock)
@@ -246,12 +250,20 @@ class BoardAdminService(
         postRepository.delete(post)
     }
 
-    private fun requireActiveAdmin(actorId: Long) {
+    private fun requireActiveAdmin(actorId: Long): AdminAccount {
         val actor = adminAccountRepository.findByIdOrNull(actorId)
             ?: throw NotFoundException("관리자 계정을 찾을 수 없습니다. id=$actorId")
 
         if (!actor.active) {
             throw ForbiddenException("비활성화된 계정은 게시판을 관리할 수 없습니다.")
+        }
+
+        return actor
+    }
+
+    private fun requirePostEditPermission(actor: AdminAccount, post: Post) {
+        if (actor.role != AdminAccountRole.SUPER_ADMIN && post.authorId != actor.id) {
+            throw ForbiddenException("본인이 작성한 게시글만 수정·삭제할 수 있습니다.")
         }
     }
 
