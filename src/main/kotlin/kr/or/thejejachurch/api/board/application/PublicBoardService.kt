@@ -84,6 +84,17 @@ class PublicBoardService(
         val authorName = adminAccountRepository.findById(post.authorId)
             .map { it.displayName }
             .orElse("")
+        val currentPostId = post.id ?: throw IllegalStateException("게시글 id가 없습니다.")
+        val previousPost = if (menuId != null) {
+            postRepository.findPreviousPublicPostByMenuId(menuId, post.isPinned, post.createdAt, currentPostId)
+        } else {
+            postRepository.findPreviousPublicPostByBoardId(boardId, post.isPinned, post.createdAt, currentPostId)
+        }
+        val nextPost = if (menuId != null) {
+            postRepository.findNextPublicPostByMenuId(menuId, post.isPinned, post.createdAt, currentPostId)
+        } else {
+            postRepository.findNextPublicPostByBoardId(boardId, post.isPinned, post.createdAt, currentPostId)
+        }
 
         return PublicBoardPostDetail(
             id = post.id,
@@ -99,6 +110,8 @@ class PublicBoardService(
             createdAt = post.createdAt,
             updatedAt = post.updatedAt,
             assets = assets.map { it.toPublicAsset() },
+            previousPost = previousPost?.toAdjacentPost(),
+            nextPost = nextPost?.toAdjacentPost(),
         )
     }
 
@@ -159,6 +172,12 @@ class PublicBoardService(
 
     private fun publicUrl(storedPath: String): String =
         "${uploadProperties.publicBaseUrl.trimEnd('/')}/${storedPath.trimStart('/')}"
+
+    private fun Post.toAdjacentPost(): PublicBoardAdjacentPost =
+        PublicBoardAdjacentPost(
+            id = id ?: throw IllegalStateException("게시글 id가 없습니다."),
+            title = title,
+        )
 
     private fun Post.hasVideoEmbed(): Boolean =
         VIDEO_EMBED_REGEX.containsMatchIn(contentHtml.orEmpty()) || VIDEO_EMBED_REGEX.containsMatchIn(contentJson)

@@ -1,6 +1,7 @@
 package kr.or.thejejachurch.api.board.interfaces.api
 
 import kr.or.thejejachurch.api.board.application.PublicBoardPostAsset
+import kr.or.thejejachurch.api.board.application.PublicBoardAdjacentPost
 import kr.or.thejejachurch.api.board.application.PublicBoardPostDetail
 import kr.or.thejejachurch.api.board.application.PublicBoardPostListResult
 import kr.or.thejejachurch.api.board.application.PublicBoardPostSummary
@@ -76,6 +77,13 @@ data class PublicBoardPostDetailResponse(
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
     val assets: List<PublicBoardPostAssetResponse>,
+    val previousPost: PublicBoardAdjacentPostResponse? = null,
+    val nextPost: PublicBoardAdjacentPostResponse? = null,
+)
+
+data class PublicBoardAdjacentPostResponse(
+    val id: Long,
+    val title: String,
 )
 
 data class PublicBoardPostAssetResponse(
@@ -133,6 +141,8 @@ private fun PublicBoardPostDetail.toResponse(): PublicBoardPostDetailResponse =
         createdAt = createdAt,
         updatedAt = updatedAt,
         assets = assets.map { it.toResponse() },
+        previousPost = previousPost?.toResponse(),
+        nextPost = nextPost?.toResponse(),
     )
 
 private fun PublicBoardPostAsset.toResponse(): PublicBoardPostAssetResponse =
@@ -147,4 +157,10 @@ private fun PublicBoardPostAsset.toResponse(): PublicBoardPostAssetResponse =
         width = width,
         height = height,
         sortOrder = sortOrder,
+    )
+
+private fun PublicBoardAdjacentPost.toResponse(): PublicBoardAdjacentPostResponse =
+    PublicBoardAdjacentPostResponse(
+        id = id,
+        title = title,
     )

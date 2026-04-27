@@ -42,6 +42,13 @@ data class PublicBoardPostDetail(
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
     val assets: List<PublicBoardPostAsset>,
+    val previousPost: PublicBoardAdjacentPost? = null,
+    val nextPost: PublicBoardAdjacentPost? = null,
+)
+
+data class PublicBoardAdjacentPost(
+    val id: Long,
+    val title: String,
 )
 
 data class PublicBoardPostAsset(

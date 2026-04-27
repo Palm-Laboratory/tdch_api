@@ -292,6 +292,10 @@ class PublicBoardServiceTest {
         whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(image))
         whenever(adminAccountRepository.findById(1L)).thenReturn(java.util.Optional.of(adminAccount()))
         whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/upload")
+        whenever(postRepository.findPreviousPublicPostByBoardId(board.id!!, false, post.createdAt, 99L))
+            .thenReturn(post(id = 100L, boardId = board.id!!, title = "이전 글", viewCount = 5))
+        whenever(postRepository.findNextPublicPostByBoardId(board.id!!, false, post.createdAt, 99L))
+            .thenReturn(post(id = 98L, boardId = board.id!!, title = "다음 글", viewCount = 2))
 
         val result = service.getPost(boardSlug = "notice", postId = 99L)
 
@@ -308,6 +312,10 @@ class PublicBoardServiceTest {
         assertThat(result.assets[0].publicUrl).isEqualTo(
             "https://cdn.example.com/upload/uploads/2026/notice/image.png"
         )
+        assertThat(result.previousPost?.id).isEqualTo(100L)
+        assertThat(result.previousPost?.title).isEqualTo("이전 글")
+        assertThat(result.nextPost?.id).isEqualTo(98L)
+        assertThat(result.nextPost?.title).isEqualTo("다음 글")
     }
 
     @Test
@@ -404,6 +412,8 @@ class PublicBoardServiceTest {
         whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(attachment))
         whenever(adminAccountRepository.findById(1L)).thenReturn(java.util.Optional.of(adminAccount()))
         whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/upload/")
+        whenever(postRepository.findPreviousPublicPostByBoardId(board.id!!, false, post.createdAt, 99L)).thenReturn(null)
+        whenever(postRepository.findNextPublicPostByBoardId(board.id!!, false, post.createdAt, 99L)).thenReturn(null)
 
         val result = service.getPost(boardSlug = "notice", postId = 99L)
 

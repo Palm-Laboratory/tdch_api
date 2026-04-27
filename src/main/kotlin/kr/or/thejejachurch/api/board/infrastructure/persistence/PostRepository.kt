@@ -24,6 +24,102 @@ interface PostRepository : JpaRepository<Post, Long> {
 
     @Query(
         value = """
+            SELECT * FROM post
+            WHERE board_id = :boardId
+            AND is_public = true
+            AND (
+                (:isPinned = false AND is_pinned = true)
+                OR (
+                    is_pinned = :isPinned
+                    AND (created_at > :createdAt OR (created_at = :createdAt AND id > :id))
+                )
+            )
+            ORDER BY is_pinned ASC, created_at ASC, id ASC
+            LIMIT 1
+        """,
+        nativeQuery = true,
+    )
+    fun findPreviousPublicPostByBoardId(
+        @Param("boardId") boardId: Long,
+        @Param("isPinned") isPinned: Boolean,
+        @Param("createdAt") createdAt: java.time.OffsetDateTime,
+        @Param("id") id: Long,
+    ): Post?
+
+    @Query(
+        value = """
+            SELECT * FROM post
+            WHERE board_id = :boardId
+            AND is_public = true
+            AND (
+                (:isPinned = true AND is_pinned = false)
+                OR (
+                    is_pinned = :isPinned
+                    AND (created_at < :createdAt OR (created_at = :createdAt AND id < :id))
+                )
+            )
+            ORDER BY is_pinned DESC, created_at DESC, id DESC
+            LIMIT 1
+        """,
+        nativeQuery = true,
+    )
+    fun findNextPublicPostByBoardId(
+        @Param("boardId") boardId: Long,
+        @Param("isPinned") isPinned: Boolean,
+        @Param("createdAt") createdAt: java.time.OffsetDateTime,
+        @Param("id") id: Long,
+    ): Post?
+
+    @Query(
+        value = """
+            SELECT * FROM post
+            WHERE menu_id = :menuId
+            AND is_public = true
+            AND (
+                (:isPinned = false AND is_pinned = true)
+                OR (
+                    is_pinned = :isPinned
+                    AND (created_at > :createdAt OR (created_at = :createdAt AND id > :id))
+                )
+            )
+            ORDER BY is_pinned ASC, created_at ASC, id ASC
+            LIMIT 1
+        """,
+        nativeQuery = true,
+    )
+    fun findPreviousPublicPostByMenuId(
+        @Param("menuId") menuId: Long,
+        @Param("isPinned") isPinned: Boolean,
+        @Param("createdAt") createdAt: java.time.OffsetDateTime,
+        @Param("id") id: Long,
+    ): Post?
+
+    @Query(
+        value = """
+            SELECT * FROM post
+            WHERE menu_id = :menuId
+            AND is_public = true
+            AND (
+                (:isPinned = true AND is_pinned = false)
+                OR (
+                    is_pinned = :isPinned
+                    AND (created_at < :createdAt OR (created_at = :createdAt AND id < :id))
+                )
+            )
+            ORDER BY is_pinned DESC, created_at DESC, id DESC
+            LIMIT 1
+        """,
+        nativeQuery = true,
+    )
+    fun findNextPublicPostByMenuId(
+        @Param("menuId") menuId: Long,
+        @Param("isPinned") isPinned: Boolean,
+        @Param("createdAt") createdAt: java.time.OffsetDateTime,
+        @Param("id") id: Long,
+    ): Post?
+
+    @Query(
+        value = """
             SELECT p FROM Post p
             WHERE p.boardId = :boardId
             AND p.isPublic = true

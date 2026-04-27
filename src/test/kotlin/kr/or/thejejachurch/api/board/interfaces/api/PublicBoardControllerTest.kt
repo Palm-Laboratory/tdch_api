@@ -1,6 +1,7 @@
 package kr.or.thejejachurch.api.board.interfaces.api
 
 import kr.or.thejejachurch.api.board.application.PublicBoardPostAsset
+import kr.or.thejejachurch.api.board.application.PublicBoardAdjacentPost
 import kr.or.thejejachurch.api.board.application.PublicBoardPostDetail
 import kr.or.thejejachurch.api.board.application.PublicBoardPostListResult
 import kr.or.thejejachurch.api.board.application.PublicBoardPostSummary
@@ -135,6 +136,14 @@ class PublicBoardControllerTest {
                         sortOrder = 1,
                     ),
                 ),
+                previousPost = PublicBoardAdjacentPost(
+                    id = 10L,
+                    title = "이전 게시글",
+                ),
+                nextPost = PublicBoardAdjacentPost(
+                    id = 12L,
+                    title = "다음 게시글",
+                ),
             )
         )
 
@@ -171,6 +180,10 @@ class PublicBoardControllerTest {
         assertThat(response.assets.map { it.width }).containsExactly(640, null)
         assertThat(response.assets.map { it.height }).containsExactly(480, null)
         assertThat(response.assets.map { it.sortOrder }).containsExactly(0, 1)
+        assertThat(response.previousPost?.id).isEqualTo(10L)
+        assertThat(response.previousPost?.title).isEqualTo("이전 게시글")
+        assertThat(response.nextPost?.id).isEqualTo(12L)
+        assertThat(response.nextPost?.title).isEqualTo("다음 게시글")
         verify(publicBoardService).getPost("notice", 11L)
     }
 
