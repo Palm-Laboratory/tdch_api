@@ -1,5 +1,6 @@
 package kr.or.thejejachurch.api.board.application
 
+import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAccountRepository
 import kr.or.thejejachurch.api.board.domain.Board
 import kr.or.thejejachurch.api.board.domain.Post
 import kr.or.thejejachurch.api.board.domain.PostAsset
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PublicBoardService(
+    private val adminAccountRepository: AdminAccountRepository,
     private val boardRepository: BoardRepository,
     private val postRepository: PostRepository,
     private val postAssetRepository: PostAssetRepository,
@@ -32,17 +34,19 @@ class PublicBoardService(
         val posts = menuId
             ?.let { postRepository.findAllByMenuIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(it, pageRequest) }
             ?: postRepository.findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(boardId, pageRequest)
+        val authorNamesById = adminAccountRepository.findAllById(posts.content.map { it.authorId }.distinct())
+            .associateBy({ it.id ?: -1L }, { it.displayName })
 
         return PublicBoardPostListResult(
             page = posts.number,
             size = posts.size,
             totalElements = posts.totalElements,
             hasNext = posts.hasNext(),
-            posts = posts.content.map { it.toPublicSummary() },
+            posts = posts.content.map { it.toPublicSummary(authorNamesById[it.authorId] ?: "") },
         )
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun getPost(boardSlug: String, postId: Long, menuId: Long? = null): PublicBoardPostDetail {
         val board = requirePublishedBoard(boardSlug, menuId)
         val boardId = requireBoardId(board)
@@ -52,13 +56,19 @@ class PublicBoardService(
             postRepository.findByBoardIdAndIdAndIsPublicTrue(boardId, postId)
         }
             ?: throw NotFoundException("게시글을 찾을 수 없습니다. id=$postId")
+        post.viewCount += 1
         val assets = postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(postId)
+        val authorName = adminAccountRepository.findById(post.authorId)
+            .map { it.displayName }
+            .orElse("")
 
         return PublicBoardPostDetail(
             id = post.id,
             boardId = post.boardId,
             menuId = post.menuId,
             title = post.title,
+            authorName = authorName,
+            viewCount = post.viewCount,
             contentJson = post.contentJson,
             contentHtml = post.contentHtml,
             isPinned = post.isPinned,
@@ -92,12 +102,14 @@ class PublicBoardService(
     private fun requireBoardId(board: Board): Long =
         board.id ?: throw IllegalStateException("게시판 id가 없습니다.")
 
-    private fun Post.toPublicSummary(): PublicBoardPostSummary =
+    private fun Post.toPublicSummary(authorName: String): PublicBoardPostSummary =
         PublicBoardPostSummary(
             id = id,
             boardId = boardId,
             menuId = menuId,
             title = title,
+            authorName = authorName,
+            viewCount = viewCount,
             contentHtml = contentHtml,
             isPinned = isPinned,
             publishedAt = publishedAt,

@@ -23,6 +23,7 @@ class BoardSchemaContractTest {
             "V2__drop_board_type_table.sql",
             "V3__normalize_post_title_column.sql",
             "V4__drop_upload_token_board_id.sql",
+            "V5__add_post_view_count.sql",
         )
     }
 
@@ -41,6 +42,7 @@ class BoardSchemaContractTest {
         val cleanupMigration = readMigration("V2__drop_board_type_table.sql")
         val titleNormalizationMigration = readMigration("V3__normalize_post_title_column.sql")
         val uploadTokenCleanupMigration = readMigration("V4__drop_upload_token_board_id.sql")
+        val postViewCountMigration = readMigration("V5__add_post_view_count.sql")
 
         assertThat(cleanupMigration).contains("update board as b")
         assertThat(cleanupMigration).contains("drop column if exists board_type_id")
@@ -50,6 +52,7 @@ class BoardSchemaContractTest {
         assertThat(titleNormalizationMigration).contains("alter column title type varchar(200)")
         assertThat(uploadTokenCleanupMigration).contains("drop index if exists idx_upload_token_board_id")
         assertThat(uploadTokenCleanupMigration).contains("drop column if exists board_id")
+        assertThat(postViewCountMigration).contains("add column if not exists view_count bigint not null default 0")
 
         assertThat(normalized).contains("create table board")
         assertThat(normalized).contains("menu_id bigint references menu_item(id) on delete set null")
@@ -63,6 +66,7 @@ class BoardSchemaContractTest {
         assertThat(normalized).contains("content_json jsonb not null")
         assertThat(normalized).contains("content_html text")
         assertThat(normalized).contains("author_id bigint not null references admin_account(id)")
+        assertThat(normalized).contains("view_count bigint not null default 0")
         assertThat(normalized).contains("is_public boolean not null default true")
         assertThat(normalized).contains("is_pinned boolean not null default false")
         assertThat(normalized).contains("idx_post_board_public_pinned_created_at")
@@ -175,6 +179,7 @@ class BoardSchemaContractTest {
             "V2__drop_board_type_table.sql",
             "V3__normalize_post_title_column.sql",
             "V4__drop_upload_token_board_id.sql",
+            "V5__add_post_view_count.sql",
         ).joinToString("\n") { readMigration(it) }
 
     private fun readMigration(fileName: String): String {

@@ -33,6 +33,8 @@ class PublicBoardControllerTest {
                         id = 11L,
                         boardId = 1L,
                         title = "주일 예배 안내",
+                        authorName = "관리자",
+                        viewCount = 12L,
                         contentHtml = "<p>주일 예배 안내</p>",
                         isPinned = true,
                         publishedAt = createdAt,
@@ -43,6 +45,8 @@ class PublicBoardControllerTest {
                         id = 12L,
                         boardId = 1L,
                         title = "수요 예배 안내",
+                        authorName = "운영자",
+                        viewCount = 3L,
                         contentHtml = null,
                         isPinned = false,
                         publishedAt = null,
@@ -67,6 +71,8 @@ class PublicBoardControllerTest {
         assertThat(response.posts.map { it.id }).containsExactly(11L, 12L)
         assertThat(response.posts.map { it.boardId }).containsExactly(1L, 1L)
         assertThat(response.posts.map { it.title }).containsExactly("주일 예배 안내", "수요 예배 안내")
+        assertThat(response.posts.map { it.authorName }).containsExactly("관리자", "운영자")
+        assertThat(response.posts.map { it.viewCount }).containsExactly(12L, 3L)
         assertThat(response.posts.map { it.contentHtml }).containsExactly("<p>주일 예배 안내</p>", null)
         assertThat(response.posts.map { it.isPinned }).containsExactly(true, false)
         assertThat(response.posts.map { it.publishedAt }).containsExactly(createdAt, null)
@@ -85,6 +91,8 @@ class PublicBoardControllerTest {
                 id = 11L,
                 boardId = 1L,
                 title = "주일 예배 안내",
+                authorName = "관리자",
+                viewCount = 34L,
                 contentJson = """{"type":"doc","content":[]}""",
                 contentHtml = "<p>주일 예배 안내</p>",
                 isPinned = true,
@@ -128,6 +136,8 @@ class PublicBoardControllerTest {
         assertThat(response.id).isEqualTo(11L)
         assertThat(response.boardId).isEqualTo(1L)
         assertThat(response.title).isEqualTo("주일 예배 안내")
+        assertThat(response.authorName).isEqualTo("관리자")
+        assertThat(response.viewCount).isEqualTo(34L)
         assertThat(response.contentJson).isEqualTo("""{"type":"doc","content":[]}""")
         assertThat(response.contentHtml).isEqualTo("<p>주일 예배 안내</p>")
         assertThat(response.isPinned).isTrue()

@@ -8,6 +8,9 @@ import kr.or.thejejachurch.api.board.domain.PostAssetKind
 import kr.or.thejejachurch.api.board.infrastructure.persistence.BoardRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostAssetRepository
 import kr.or.thejejachurch.api.board.infrastructure.persistence.PostRepository
+import kr.or.thejejachurch.api.adminaccount.domain.AdminAccount
+import kr.or.thejejachurch.api.adminaccount.domain.AdminAccountRole
+import kr.or.thejejachurch.api.adminaccount.infrastructure.persistence.AdminAccountRepository
 import kr.or.thejejachurch.api.common.config.UploadProperties
 import kr.or.thejejachurch.api.common.error.NotFoundException
 import kr.or.thejejachurch.api.menu.domain.MenuStatus
@@ -29,10 +32,12 @@ class PublicBoardServiceTest {
     private val boardRepository: BoardRepository = mock()
     private val postRepository: PostRepository = mock()
     private val postAssetRepository: PostAssetRepository = mock()
+    private val adminAccountRepository: AdminAccountRepository = mock()
     private val menuItemRepository: MenuItemRepository = mock()
     private val uploadProperties: UploadProperties = mock()
 
     private val service = PublicBoardService(
+        adminAccountRepository = adminAccountRepository,
         boardRepository = boardRepository,
         postRepository = postRepository,
         postAssetRepository = postAssetRepository,
@@ -100,6 +105,7 @@ class PublicBoardServiceTest {
                 pageRequest,
             )
         ).thenReturn(PageImpl(listOf(publicPost), pageRequest, 3))
+        whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
 
         val result = service.listPosts(boardSlug = "notice", page = 1, size = 2)
 
@@ -110,6 +116,8 @@ class PublicBoardServiceTest {
         assertThat(result.posts).hasSize(1)
         assertThat(result.posts[0].id).isEqualTo(101L)
         assertThat(result.posts[0].title).isEqualTo("공개 소식")
+        assertThat(result.posts[0].authorName).isEqualTo("관리자")
+        assertThat(result.posts[0].viewCount).isZero()
         verify(postRepository).findAllByBoardIdAndIsPublicTrueOrderByIsPinnedDescCreatedAtDescIdDesc(
             board.id!!,
             pageRequest,
@@ -132,6 +140,7 @@ class PublicBoardServiceTest {
                 PageRequest.of(0, 3),
             )
         ).thenReturn(PageImpl(listOf(post(1L, board.id!!, title = "글1"), post(2L, board.id!!, title = "글2"), post(3L, board.id!!, title = "글3")), PageRequest.of(0, 3), 3))
+        whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
 
         val lastPage = service.listPosts(boardSlug = "notice", page = 0, size = 3)
         assertThat(lastPage.hasNext).isFalse()
@@ -173,6 +182,7 @@ class PublicBoardServiceTest {
                 pageRequest,
             )
         ).thenReturn(PageImpl(listOf(publicPost), pageRequest, 1))
+        whenever(adminAccountRepository.findAllById(listOf(1L))).thenReturn(listOf(adminAccount()))
 
         val result = service.listPosts(boardSlug = "notice", menuId = 1001L, page = 0, size = 20)
 
@@ -231,12 +241,15 @@ class PublicBoardServiceTest {
         ).thenReturn(true)
         whenever(postRepository.findByBoardIdAndIdAndIsPublicTrue(board.id!!, 99L)).thenReturn(post)
         whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(image))
+        whenever(adminAccountRepository.findById(1L)).thenReturn(java.util.Optional.of(adminAccount()))
         whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/upload")
 
         val result = service.getPost(boardSlug = "notice", postId = 99L)
 
         assertThat(result.id).isEqualTo(99L)
         assertThat(result.title).isEqualTo("첨부 있는 글")
+        assertThat(result.authorName).isEqualTo("관리자")
+        assertThat(result.viewCount).isEqualTo(1L)
         assertThat(result.contentJson).isEqualTo("""{"type":"doc","content":[]}""")
         assertThat(result.contentHtml).isEqualTo("<p>첨부 있는 글</p>")
         assertThat(result.assets).hasSize(1)
@@ -293,6 +306,7 @@ class PublicBoardServiceTest {
         ).thenReturn(true)
         whenever(postRepository.findByBoardIdAndIdAndIsPublicTrue(board.id!!, 99L)).thenReturn(post)
         whenever(postAssetRepository.findAllByPostIdOrderBySortOrderAscIdAsc(99L)).thenReturn(listOf(attachment))
+        whenever(adminAccountRepository.findById(1L)).thenReturn(java.util.Optional.of(adminAccount()))
         whenever(uploadProperties.publicBaseUrl).thenReturn("https://cdn.example.com/upload/")
 
         val result = service.getPost(boardSlug = "notice", postId = 99L)
@@ -321,6 +335,7 @@ class PublicBoardServiceTest {
         contentJson: String = """{"type":"doc"}""",
         contentHtml: String? = "<p>$title</p>",
         isPublic: Boolean = true,
+        viewCount: Long = 0,
     ) = Post(
         id = id,
         boardId = boardId,
@@ -330,6 +345,15 @@ class PublicBoardServiceTest {
         contentHtml = contentHtml,
         isPublic = isPublic,
         authorId = 1L,
+        viewCount = viewCount,
+    )
+
+    private fun adminAccount(id: Long = 1L) = AdminAccount(
+        id = id,
+        username = "admin",
+        displayName = "관리자",
+        passwordHash = "hash",
+        role = AdminAccountRole.ADMIN,
     )
 
     private fun asset(
