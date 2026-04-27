@@ -79,7 +79,9 @@ DISK_THRESHOLD=85 UPLOAD_DIR=/opt/tdch/uploads deploy/scripts/check-disk.sh
 
 The application runs a daily board upload cleanup routine. Expired upload tokens are removed by `UploadTokenCleanupService`, and stale temporary post assets are removed by `PostAssetCleanupService`.
 
-Temporary `post_asset` rows where `post_id` is null and `created_at` is older than 72 hours are treated as stale. Storage objects are deleted before the database rows are deleted.
+The cleanup runs daily at `03:30 Asia/Seoul`.
+
+Temporary `post_asset` rows where `post_id` is null and `detached_at` is older than 24 hours are treated as stale. Storage objects are deleted before the database rows are deleted.
 
 Draft caveat: when a draft feature is introduced, draft-linked assets must be excluded from GC so unsaved draft content does not lose referenced uploads after the stale temporary asset window.
 

@@ -8,7 +8,7 @@ class BoardCleanupScheduler(
     private val uploadTokenCleanupService: UploadTokenCleanupService,
     private val postAssetCleanupService: PostAssetCleanupService,
 ) {
-    @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Seoul")
     fun cleanupBoardUploadState() {
         uploadTokenCleanupService.cleanupExpiredTokens()
         postAssetCleanupService.cleanupStaleTemporaryAssets()
