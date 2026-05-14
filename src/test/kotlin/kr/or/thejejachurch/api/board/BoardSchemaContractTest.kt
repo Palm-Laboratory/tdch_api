@@ -24,6 +24,7 @@ class BoardSchemaContractTest {
             "V3__normalize_post_title_column.sql",
             "V4__drop_upload_token_board_id.sql",
             "V5__add_post_view_count.sql",
+            "V6__create_member_registry_tables.sql",
         )
     }
 

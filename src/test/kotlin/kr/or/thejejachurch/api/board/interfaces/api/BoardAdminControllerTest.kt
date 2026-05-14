@@ -68,6 +68,7 @@ class BoardAdminControllerTest {
                         isPublic = true,
                         isPinned = true,
                         authorId = 42L,
+                        authorName = "관리자",
                         createdAt = createdAt,
                         updatedAt = updatedAt,
                     )
@@ -86,6 +87,7 @@ class BoardAdminControllerTest {
         assertThat(response.posts[0].id).isEqualTo(11L)
         assertThat(response.posts[0].title).isEqualTo("주일 예배 안내")
         assertThat(response.posts[0].isPinned).isTrue()
+        assertThat(response.posts[0].authorName).isEqualTo("관리자")
         assertThat(response.hasNext).isFalse()
         verify(boardAdminService).listPosts(42L, "notice")
     }
